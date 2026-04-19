@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/models/instructor.dart';
+// instructor.dart model importunu kaldırdık
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/badge_widget.dart';
@@ -8,9 +8,10 @@ import '../widgets/section_header.dart';
 import '../providers/favorites_provider.dart';
 
 class InstructorDetailScreen extends StatelessWidget {
-  final Instructor instructor;
+  // Instructor nesnesi yerine Map alıyoruz
+  final Map<String, dynamic> instructorData;
 
-  const InstructorDetailScreen({Key? key, required this.instructor}) : super(key: key);
+  const InstructorDetailScreen({Key? key, required this.instructorData}) : super(key: key);
 
   String getInitials(String name) {
     List<String> names = name.replaceAll(RegExp(r'(Prof\. Dr\.|Doç\. Dr\.|Dr\. Öğr\. Üyesi)\s*'), '').split(" ");
@@ -23,16 +24,22 @@ class InstructorDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
-    final isFav = favProvider.isFavorite("inst_${instructor.id}");
+    final isFav = favProvider.isFavorite("inst_${instructorData['id']}");
+
+    // JSON Map içinden güvenli bir şekilde değerleri alıyoruz
+    final String name = instructorData['name'] ?? 'İsimsiz';
+    final String title = instructorData['title'] ?? '';
+    final String department = instructorData['department'] ?? '';
+    final String office = instructorData['office'] ?? '';
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: instructor.name,
+        title: name,
         showBack: true,
         actions: [
           IconButton(
             icon: Icon(isFav ? Icons.star : Icons.star_border, color: isFav ? AppTheme.warningColor : AppTheme.textPrimary),
-            onPressed: () => context.read<FavoritesProvider>().toggleFavorite("inst_${instructor.id}"),
+            onPressed: () => context.read<FavoritesProvider>().toggleFavorite("inst_${instructorData['id']}"),
           )
         ],
       ),
@@ -47,16 +54,16 @@ class InstructorDetailScreen extends StatelessWidget {
                     radius: 48,
                     backgroundColor: AppTheme.primaryLight.withOpacity(0.2),
                     child: Text(
-                      getInitials(instructor.name),
+                      getInitials(name),
                       style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  AppBadge(label: instructor.title, backgroundColor: AppTheme.primaryColor, textColor: Colors.white),
+                  AppBadge(label: title, backgroundColor: AppTheme.primaryColor, textColor: Colors.white),
                   const SizedBox(height: 8),
-                  Text(instructor.department, style: const TextStyle(fontSize: 16, color: AppTheme.textMuted)),
+                  Text(department, style: const TextStyle(fontSize: 16, color: AppTheme.textMuted)),
                   const SizedBox(height: 4),
-                  Text("Ofis: ${instructor.office}", style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text("Ofis: $office", style: const TextStyle(fontWeight: FontWeight.w600)),
                 ],
               ),
             ),

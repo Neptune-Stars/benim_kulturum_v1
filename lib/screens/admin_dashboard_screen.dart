@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../data/mock_data.dart';
+import '../../data/data_service.dart'; // MOCK DATA YERİNE JSON SERVİSİ GELDİ
 import '../../widgets/search_bar_widget.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -15,6 +15,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late Future<Map<String, dynamic>> _databaseFuture; // JSON verisini tutacak değişken
 
   final List<String> _tabs = [
     "Genel", "Binalar", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane"
@@ -24,6 +25,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _databaseFuture = DataService.loadDatabase(); // Ekran açıldığında veriyi asenkron olarak çekmeye başla
   }
 
   @override
@@ -135,54 +137,88 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildGenelTab(),
-          _buildManagementTab(
-            title: "Binalar",
-            count: MockData.buildings.length,
-            items: MockData.buildings.map((b) => _buildListItem(b.name, b.location, () => _openBuildingForm(isEdit: true))).toList(),
-            onAdd: () => _openBuildingForm(isEdit: false),
-          ),
-          _buildManagementTab(
-            title: "Derslikler",
-            count: MockData.classrooms.length,
-            items: MockData.classrooms.map((c) => _buildListItem(c.name, c.building, () => _openClassroomForm(isEdit: true))).toList(),
-            onAdd: () => _openClassroomForm(isEdit: false),
-          ),
-          _buildManagementTab(
-            title: "Hocalar",
-            count: MockData.instructors.length,
-            items: MockData.instructors.map((i) => _buildListItem(i.name, i.department, () => _openInstructorForm(isEdit: true))).toList(),
-            onAdd: () => _openInstructorForm(isEdit: false),
-          ),
-          _buildManagementTab(
-            title: "Etkinlikler",
-            count: MockData.events.length,
-            items: MockData.events.map((e) => _buildListItem(e.title, e.date, () => _openEventForm(isEdit: true))).toList(),
-            onAdd: () => _openEventForm(isEdit: false),
-          ),
-          _buildManagementTab(
-            title: "Duyurular",
-            count: MockData.announcements.length,
-            items: MockData.announcements.map((a) => _buildListItem(a.title, a.date, () => _openAnnouncementForm(isEdit: true))).toList(),
-            onAdd: () => _openAnnouncementForm(isEdit: false),
-          ),
-          _buildManagementTab(
-            title: "Yemekhane",
-            count: 5, // Pazartesi-Cuma
-            items: ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"].map((d) => _buildListItem("$d Menüsü", "Öğle & Akşam", () => _openMenuForm(isEdit: true))).toList(),
-            onAdd: () => _openMenuForm(isEdit: false),
-          ),
-        ],
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _databaseFuture,
+        builder: (context, snapshot) {
+          // 1. Durum: Veri yüklenirken çark göster
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // 2. Durum: JSON yüklenirken hata çıkarsa
+          if (snapshot.hasError) {
+            return Center(child: Text("Veri yüklenemedi: ${snapshot.error}"));
+          }
+
+          // 3. Durum: Veri boşsa
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("Gösterilecek veri bulunamadı."));
+          }
+
+          // Veriyi JSON map'inden çıkarıp listelere atıyoruz
+          final data = snapshot.data!;
+          final buildings = data['buildings'] as List<dynamic>? ?? [];
+          final classrooms = data['classrooms'] as List<dynamic>? ?? [];
+          final instructors = data['instructors'] as List<dynamic>? ?? [];
+          final events = data['events'] as List<dynamic>? ?? [];
+          final announcements = data['announcements'] as List<dynamic>? ?? [];
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildGenelTab(data),
+              _buildManagementTab(
+                title: "Binalar",
+                count: buildings.length,
+                items: buildings.map((b) => _buildListItem(b['name'], b['location'], () => _openBuildingForm(isEdit: true))).toList(),
+                onAdd: () => _openBuildingForm(isEdit: false),
+              ),
+              _buildManagementTab(
+                title: "Derslikler",
+                count: classrooms.length,
+                items: classrooms.map((c) => _buildListItem(c['name'], c['building'], () => _openClassroomForm(isEdit: true))).toList(),
+                onAdd: () => _openClassroomForm(isEdit: false),
+              ),
+              _buildManagementTab(
+                title: "Hocalar",
+                count: instructors.length,
+                items: instructors.map((i) => _buildListItem(i['name'], i['department'], () => _openInstructorForm(isEdit: true))).toList(),
+                onAdd: () => _openInstructorForm(isEdit: false),
+              ),
+              _buildManagementTab(
+                title: "Etkinlikler",
+                count: events.length,
+                items: events.map((e) => _buildListItem(e['title'], e['date'], () => _openEventForm(isEdit: true))).toList(),
+                onAdd: () => _openEventForm(isEdit: false),
+              ),
+              _buildManagementTab(
+                title: "Duyurular",
+                count: announcements.length,
+                items: announcements.map((a) => _buildListItem(a['title'], a['date'], () => _openAnnouncementForm(isEdit: true))).toList(),
+                onAdd: () => _openAnnouncementForm(isEdit: false),
+              ),
+              _buildManagementTab(
+                title: "Yemekhane",
+                count: 5,
+                items: ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"].map((d) => _buildListItem("$d Menüsü", "Öğle & Akşam", () => _openMenuForm(isEdit: true))).toList(),
+                onAdd: () => _openMenuForm(isEdit: false),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   // --- TAB BUILDERS ---
 
-  Widget _buildGenelTab() {
+  Widget _buildGenelTab(Map<String, dynamic> data) {
+    final bCount = (data['buildings'] as List?)?.length ?? 0;
+    final cCount = (data['classrooms'] as List?)?.length ?? 0;
+    final iCount = (data['instructors'] as List?)?.length ?? 0;
+    final eCount = (data['events'] as List?)?.length ?? 0;
+    final aCount = (data['announcements'] as List?)?.length ?? 0;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -211,11 +247,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             crossAxisSpacing: 16,
             childAspectRatio: 1.5,
             children: [
-              _buildStatCard(Icons.business, "Binalar", MockData.buildings.length.toString(), 1),
-              _buildStatCard(Icons.meeting_room, "Derslikler", MockData.classrooms.length.toString(), 2),
-              _buildStatCard(Icons.people, "Hocalar", MockData.instructors.length.toString(), 3),
-              _buildStatCard(Icons.event, "Etkinlikler", MockData.events.length.toString(), 4),
-              _buildStatCard(Icons.campaign, "Duyurular", MockData.announcements.length.toString(), 5),
+              _buildStatCard(Icons.business, "Binalar", bCount.toString(), 1),
+              _buildStatCard(Icons.meeting_room, "Derslikler", cCount.toString(), 2),
+              _buildStatCard(Icons.people, "Hocalar", iCount.toString(), 3),
+              _buildStatCard(Icons.event, "Etkinlikler", eCount.toString(), 4),
+              _buildStatCard(Icons.campaign, "Duyurular", aCount.toString(), 5),
               _buildStatCard(Icons.restaurant, "Menü", "Güncel", 6),
             ],
           ),
