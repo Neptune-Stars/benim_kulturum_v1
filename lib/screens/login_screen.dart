@@ -38,7 +38,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isStudent && email == "ogrenci@uni.edu.tr" && password == "123456") {
       context.read<AuthProvider>().login("student");
       context.go('/main');
-    } else if (!_isStudent && email == "admin@uni.edu.tr" && password == "admin123") {
+    } else if (!_isStudent &&
+        email == "admin@uni.edu.tr" &&
+        password == "admin123") {
       context.read<AuthProvider>().login("admin");
       context.go('/admin');
     } else {
@@ -48,8 +50,49 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  InputDecoration _inputDecoration(
+      BuildContext context, {
+        required String label,
+        required IconData icon,
+        Widget? suffixIcon,
+      }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final borderColor = Theme.of(context).dividerColor;
+    final fillColor = Theme.of(context).cardColor;
+
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: mutedColor),
+      prefixIcon: Icon(icon, color: mutedColor),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: fillColor,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.primaryColor),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final cardColor = Theme.of(context).cardColor;
+    final borderColor = Theme.of(context).dividerColor;
+    final inactiveBg = isDark ? cardColor : Colors.white;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -60,25 +103,34 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               const Icon(Icons.school, size: 64, color: AppTheme.primaryColor),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 "Giriş Yap",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
               const SizedBox(height: 32),
 
-              // Role Selector
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isStudent ? AppTheme.primaryColor : Colors.white,
-                        foregroundColor: _isStudent ? Colors.white : AppTheme.textPrimary,
+                        backgroundColor:
+                        _isStudent ? AppTheme.primaryColor : inactiveBg,
+                        foregroundColor:
+                        _isStudent ? Colors.white : textColor,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: _isStudent ? AppTheme.primaryColor : AppTheme.borderColor),
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: _isStudent
+                                ? AppTheme.primaryColor
+                                : borderColor,
+                          ),
                         ),
                       ),
                       onPressed: () => setState(() {
@@ -88,16 +140,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text("Öğrenci"),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: !_isStudent ? AppTheme.primaryColor : Colors.white,
-                        foregroundColor: !_isStudent ? Colors.white : AppTheme.textPrimary,
+                        backgroundColor:
+                        !_isStudent ? AppTheme.primaryColor : inactiveBg,
+                        foregroundColor:
+                        !_isStudent ? Colors.white : textColor,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: !_isStudent ? AppTheme.primaryColor : AppTheme.borderColor),
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: !_isStudent
+                                ? AppTheme.primaryColor
+                                : borderColor,
+                          ),
                         ),
                       ),
                       onPressed: () => setState(() {
@@ -111,87 +169,118 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Error Banner
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: AppTheme.destructiveColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppTheme.destructiveColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppTheme.destructiveColor.withOpacity(0.25),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.report_problem, color: AppTheme.destructiveColor, size: 20),
+                      const Icon(
+                        Icons.report_problem,
+                        color: AppTheme.destructiveColor,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(_errorMessage!, style: const TextStyle(color: AppTheme.destructiveColor)),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(
+                            color: AppTheme.destructiveColor,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-              // Form Fields
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: "E-posta",
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                style: TextStyle(color: textColor),
+                decoration: _inputDecoration(
+                  context,
+                  label: "E-posta",
+                  icon: Icons.email_outlined,
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
                 obscureText: _obscureText,
-                decoration: InputDecoration(
-                  labelText: "Şifre",
-                  prefixIcon: const Icon(Icons.lock_outline),
+                style: TextStyle(color: textColor),
+                decoration: _inputDecoration(
+                  context,
+                  label: "Şifre",
+                  icon: Icons.lock_outline,
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscureText = !_obscureText),
+                    icon: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: mutedColor,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureText = !_obscureText),
                   ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 32),
 
-              // Login Button
               SizedBox(
                 height: 56,
                 child: ElevatedButton(
                   onPressed: _login,
-                  child: const Text("Giriş Yap", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    "Giriş Yap",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 36),
 
-              // Demo Credentials Hint Box
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryLight.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.borderColor),
+                  color: isDark
+                      ? Colors.white.withOpacity(0.04)
+                      : AppTheme.primaryLight.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Column(
                   children: [
-                    const Text("Demo Hesap Bilgileri", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    Text(
+                      "Demo Hesap Bilgileri",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
-                      _isStudent ? "ogrenci@uni.edu.tr / 123456" : "admin@uni.edu.tr / admin123",
-                      style: const TextStyle(color: AppTheme.textMuted),
+                      _isStudent
+                          ? "ogrenci@uni.edu.tr / 123456"
+                          : "admin@uni.edu.tr / admin123",
+                      style: TextStyle(color: mutedColor),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
                     TextButton.icon(
                       onPressed: _autoFill,
                       icon: const Icon(Icons.edit, size: 18),
                       label: const Text("Otomatik Doldur"),
-                    )
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),

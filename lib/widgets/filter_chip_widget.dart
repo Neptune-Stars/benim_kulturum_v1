@@ -15,22 +15,27 @@ class AppFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textColor =
+        Theme.of(context).textTheme.bodyMedium?.color ?? AppTheme.textPrimary;
+    final cardColor = Theme.of(context).cardColor;
+    final borderColor = Theme.of(context).dividerColor;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? AppTheme.primaryColor : Colors.white,
+          color: active ? AppTheme.primaryColor : cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: active ? AppTheme.primaryColor : AppTheme.borderColor,
+            color: active ? AppTheme.primaryColor : borderColor,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: active ? Colors.white : AppTheme.textPrimary,
+            color: active ? Colors.white : textColor,
             fontWeight: active ? FontWeight.w600 : FontWeight.normal,
           ),
         ),

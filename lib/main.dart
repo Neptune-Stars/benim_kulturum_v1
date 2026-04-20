@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-// Theme & Providers
 import 'theme/app_theme.dart';
+
 import 'providers/auth_provider.dart';
 import 'providers/favorites_provider.dart';
+import 'providers/joined_events_provider.dart';
+import 'providers/theme_provider.dart';
 
-// Screens (To be generated in next steps)
-import 'package:benim_kulturum_v1/screens/splash_screen.dart';
-import 'package:benim_kulturum_v1/screens/welcome_screen.dart';
-import 'package:benim_kulturum_v1/screens/login_screen.dart';
-import 'package:benim_kulturum_v1/screens/main_screen.dart';
-import 'package:benim_kulturum_v1/screens/admin_dashboard_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/welcome_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/main_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+
+import 'providers/profile_provider.dart';
+
+import 'providers/notification_provider.dart';
 
 void main() {
   runApp(
@@ -20,6 +25,13 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (_) => JoinedEventsProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(
+          create: (_) => ProfileProvider()..loadProfileImage(),
+        ),
+
       ],
       child: const BenimKulturumApp(),
     ),
@@ -57,11 +69,17 @@ class BenimKulturumApp extends StatelessWidget {
       ],
     );
 
-    return MaterialApp.router(
-      title: 'Benim Kültürüm',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      routerConfig: router,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp.router(
+          title: 'Benim Kültürüm',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          routerConfig: router,
+        );
+      },
     );
   }
 }

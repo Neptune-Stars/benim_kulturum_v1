@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/search_bar_widget.dart';
@@ -6,10 +8,16 @@ import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
 import '../data/mock_data.dart';
+import '../providers/joined_events_provider.dart';
 import 'event_detail_screen.dart';
 
 class EventsScreen extends StatefulWidget {
-  const EventsScreen({Key? key}) : super(key: key);
+  final bool showOnlyJoined;
+
+  const EventsScreen({
+    Key? key,
+    this.showOnlyJoined = false,
+  }) : super(key: key);
 
   @override
   State<EventsScreen> createState() => _EventsScreenState();
@@ -19,35 +27,62 @@ class _EventsScreenState extends State<EventsScreen> {
   String _searchQuery = "";
   String _selectedFilter = "Tümü";
 
-  final List<String> _filters = ["Tümü", "Akademik", "Kültürel", "Spor", "Sosyal"];
+  final List<String> _filters = [
+    "Tümü",
+    "Akademik",
+    "Kültürel",
+    "Spor",
+    "Sosyal",
+  ];
 
   String _getCategoryLabel(String cat) {
-    switch(cat) {
-      case "academic": return "Akademik";
-      case "cultural": return "Kültürel";
-      case "sports": return "Spor";
-      case "social": return "Sosyal";
-      default: return "Genel";
+    switch (cat) {
+      case "academic":
+        return "Akademik";
+      case "cultural":
+        return "Kültürel";
+      case "sports":
+        return "Spor";
+      case "social":
+        return "Sosyal";
+      default:
+        return "Genel";
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final joinedProvider = context.watch<JoinedEventsProvider>();
+
     final filteredEvents = MockData.events.where((e) {
-      final matchesSearch = e.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          e.description.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesSearch =
+          e.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              e.description.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      final mappedFilter = _selectedFilter == "Akademik" ? "academic" :
-      _selectedFilter == "Kültürel" ? "cultural" :
-      _selectedFilter == "Spor" ? "sports" :
-      _selectedFilter == "Sosyal" ? "social" : "Tümü";
+      final mappedFilter = _selectedFilter == "Akademik"
+          ? "academic"
+          : _selectedFilter == "Kültürel"
+          ? "cultural"
+          : _selectedFilter == "Spor"
+          ? "sports"
+          : _selectedFilter == "Sosyal"
+          ? "social"
+          : "Tümü";
 
-      final matchesFilter = _selectedFilter == "Tümü" || e.category == mappedFilter;
-      return matchesSearch && matchesFilter;
+      final matchesFilter =
+          _selectedFilter == "Tümü" || e.category == mappedFilter;
+
+      final matchesJoined =
+          !widget.showOnlyJoined || joinedProvider.isJoined(e.id);
+
+      return matchesSearch && matchesFilter && matchesJoined;
     }).toList();
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Etkinlikler", showBack: true),
+      appBar: CustomAppBar(
+        title: widget.showOnlyJoined ? "Etkinliklerim" : "Etkinlikler",
+        showBack: true,
+      ),
       body: Column(
         children: [
           Padding(
@@ -75,19 +110,49 @@ class _EventsScreenState extends State<EventsScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
+            child: filteredEvents.isEmpty
+                ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  widget.showOnlyJoined
+                      ? "Henüz katıldığın bir etkinlik yok."
+                      : "Etkinlik bulunamadı.",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+                : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               itemCount: filteredEvents.length,
               itemBuilder: (context, index) {
                 final e = filteredEvents[index];
+                final isJoined = joinedProvider.isJoined(e.id);
+
                 return InfoCard(
                   title: e.title,
                   subtitle: e.description,
                   metadata: "${e.date} • ${e.time} | ${e.location}",
-                  badge: AppBadge(label: _getCategoryLabel(e.category)),
+                  badge: AppBadge(
+                    label: isJoined
+                        ? "Katıldın"
+                        : _getCategoryLabel(e.category),
+                    backgroundColor: isJoined
+                        ? AppTheme.successColor.withOpacity(0.12)
+                        : null,
+                    textColor: isJoined
+                        ? AppTheme.successColor
+                        : null,
+                  ),
                   onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => EventDetailScreen(event: e))
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EventDetailScreen(event: e),
+                    ),
                   ),
                 );
               },

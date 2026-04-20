@@ -10,12 +10,21 @@ import '../providers/favorites_provider.dart';
 class InstructorDetailScreen extends StatelessWidget {
   final Instructor instructor;
 
-  const InstructorDetailScreen({Key? key, required this.instructor}) : super(key: key);
+  const InstructorDetailScreen({
+    Key? key,
+    required this.instructor,
+  }) : super(key: key);
 
   String getInitials(String name) {
-    List<String> names = name.replaceAll(RegExp(r'(Prof\. Dr\.|Doç\. Dr\.|Dr\. Öğr\. Üyesi)\s*'), '').split(" ");
+    List<String> names = name
+        .replaceAll(
+      RegExp(r'(Prof\. Dr\.|Doç\. Dr\.|Dr\. Öğr\. Üyesi)\s*'),
+      '',
+    )
+        .split(" ");
+
     if (names.length >= 2) {
-      return "${names[0][0]}${names[names.length-1][0]}".toUpperCase();
+      return "${names[0][0]}${names[names.length - 1][0]}".toUpperCase();
     }
     return names.isNotEmpty ? names[0][0].toUpperCase() : "?";
   }
@@ -25,15 +34,29 @@ class InstructorDetailScreen extends StatelessWidget {
     final favProvider = context.watch<FavoritesProvider>();
     final isFav = favProvider.isFavorite("inst_${instructor.id}");
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final dividerColor = Theme.of(context).dividerColor;
+    final cardColor = Theme.of(context).cardColor;
+
     return Scaffold(
       appBar: CustomAppBar(
         title: instructor.name,
         showBack: true,
         actions: [
           IconButton(
-            icon: Icon(isFav ? Icons.star : Icons.star_border, color: isFav ? AppTheme.warningColor : AppTheme.textPrimary),
-            onPressed: () => context.read<FavoritesProvider>().toggleFavorite("inst_${instructor.id}"),
-          )
+            icon: Icon(
+              isFav ? Icons.star : Icons.star_border,
+              color: isFav ? AppTheme.warningColor : textColor,
+            ),
+            onPressed: () {
+              context
+                  .read<FavoritesProvider>()
+                  .toggleFavorite("inst_${instructor.id}");
+            },
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -45,31 +68,75 @@ class InstructorDetailScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 48,
-                    backgroundColor: AppTheme.primaryLight.withOpacity(0.2),
+                    backgroundColor: AppTheme.primaryLight.withOpacity(0.18),
                     child: Text(
                       getInitials(instructor.name),
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  AppBadge(label: instructor.title, backgroundColor: AppTheme.primaryColor, textColor: Colors.white),
+                  AppBadge(
+                    label: instructor.title,
+                    backgroundColor: AppTheme.primaryColor,
+                    textColor: Colors.white,
+                  ),
                   const SizedBox(height: 8),
-                  Text(instructor.department, style: const TextStyle(fontSize: 16, color: AppTheme.textMuted)),
+                  Text(
+                    instructor.department,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: mutedColor,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text("Ofis: ${instructor.office}", style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    "Ofis: ${instructor.office}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 32),
-            SizedBox(
+
+            Container(
               width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.email),
-                label: const Text("E-posta ile İletişim", style: TextStyle(fontSize: 16)),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: dividerColor),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.email_outlined,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      instructor.email,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+
             const SizedBox(height: 32),
             const SectionHeader(title: "Ofis Saatleri"),
             Card(
@@ -77,26 +144,56 @@ class InstructorDetailScreen extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _buildOfficeHourRow("Pazartesi", "10:00 - 12:00"),
+                  _buildOfficeHourRow(
+                    context,
+                    "Pazartesi",
+                    "10:00 - 12:00",
+                  ),
                   const Divider(height: 1),
-                  _buildOfficeHourRow("Çarşamba", "14:00 - 16:00"),
+                  _buildOfficeHourRow(
+                    context,
+                    "Çarşamba",
+                    "14:00 - 16:00",
+                  ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOfficeHourRow(String day, String time) {
+  Widget _buildOfficeHourRow(
+      BuildContext context,
+      String day,
+      String time,
+      ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(day, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
-          Text(time, style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+          Text(
+            day,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 16,
+              color: textColor,
+            ),
+          ),
+          Text(
+            time,
+            style: TextStyle(
+              color: mutedColor,
+              fontSize: 14,
+            ),
+          ),
         ],
       ),
     );

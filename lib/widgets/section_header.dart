@@ -15,6 +15,11 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor =
+        Theme.of(context).textTheme.titleMedium?.color ?? AppTheme.textPrimary;
+    final actionColor = isDark ? Colors.white : AppTheme.primaryColor;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -22,10 +27,10 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
+              color: titleColor,
             ),
           ),
           if (actionLabel != null && onAction != null)
@@ -33,7 +38,10 @@ class SectionHeader extends StatelessWidget {
               onPressed: onAction,
               child: Text(
                 actionLabel!,
-                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: actionColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],

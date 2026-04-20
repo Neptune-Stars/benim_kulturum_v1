@@ -6,7 +6,6 @@ import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
 import '../data/mock_data.dart';
-import 'classroom_detail_screen.dart';
 
 class ClassroomsScreen extends StatefulWidget {
   const ClassroomsScreen({Key? key}) : super(key: key);
@@ -17,17 +16,46 @@ class ClassroomsScreen extends StatefulWidget {
 
 class _ClassroomsScreenState extends State<ClassroomsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedTypeFilter = "Tümü";
+  String _selectedFloorFilter = "Tüm Katlar";
 
-  final List<String> _filters = ["Tümü", "Derslik", "Amfi", "Laboratuvar"];
+  final List<String> _typeFilters = [
+    "Tümü",
+    "Derslik",
+    "Amfi",
+    "Laboratuvar",
+  ];
+
+  String _floorLabel(int floor) => "$floor. Kat";
 
   @override
   Widget build(BuildContext context) {
-    final filteredClassrooms = MockData.classrooms.where((c) {
-      final matchesSearch = c.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          c.building.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesFilter = _selectedFilter == "Tümü" || c.type == _selectedFilter;
-      return matchesSearch && matchesFilter;
+    final floorFilters = [
+      "Tüm Katlar",
+      ...{
+        ...MockData.classrooms.map((c) => _floorLabel(c.floor)),
+      }.toList()
+        ..sort((a, b) {
+          if (a == "Tüm Katlar") return -1;
+          if (b == "Tüm Katlar") return 1;
+          final aNum = int.parse(a.split('.').first);
+          final bNum = int.parse(b.split('.').first);
+          return aNum.compareTo(bNum);
+        }),
+    ];
+
+    final filteredClassrooms = MockData.classrooms.where((classroom) {
+      final matchesSearch =
+          classroom.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              classroom.building.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      final matchesType = _selectedTypeFilter == "Tümü" ||
+          classroom.type == _selectedTypeFilter;
+
+      final matchesFloor = _selectedFloorFilter == "Tüm Katlar" ||
+          _floorLabel(classroom.floor) == _selectedFloorFilter;
+
+      return matchesSearch && matchesType && matchesFloor;
     }).toList();
 
     return Scaffold(
@@ -41,38 +69,77 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
               onChanged: (val) => setState(() => _searchQuery = val),
             ),
           ),
+
+          // Tip filtreleri
           SizedBox(
             height: 40,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              itemCount: _filters.length,
+              itemCount: _typeFilters.length,
               itemBuilder: (context, index) {
-                final filter = _filters[index];
+                final filter = _typeFilters[index];
                 return AppFilterChip(
                   label: filter,
-                  active: _selectedFilter == filter,
-                  onTap: () => setState(() => _selectedFilter = filter),
+                  active: _selectedTypeFilter == filter,
+                  onTap: () => setState(() => _selectedTypeFilter = filter),
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
-          Expanded(
+
+          const SizedBox(height: 10),
+
+          // Kat filtreleri
+          SizedBox(
+            height: 40,
             child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              itemCount: floorFilters.length,
+              itemBuilder: (context, index) {
+                final filter = floorFilters[index];
+                return AppFilterChip(
+                  label: filter,
+                  active: _selectedFloorFilter == filter,
+                  onTap: () => setState(() => _selectedFloorFilter = filter),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Expanded(
+            child: filteredClassrooms.isEmpty
+                ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text(
+                  "Seçtiğin filtrelere uygun derslik bulunamadı.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+                : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               itemCount: filteredClassrooms.length,
               itemBuilder: (context, index) {
-                final c = filteredClassrooms[index];
+                final classroom = filteredClassrooms[index];
+
                 return InfoCard(
-                  title: c.name,
-                  subtitle: c.building,
-                  metadata: "Kapasite: ${c.capacity} Kişi",
-                  badge: AppBadge(label: c.type),
-                  onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroom: c))
-                  ),
+                  title: classroom.name,
+                  subtitle: classroom.building,
+                  metadata:
+                  "Kapasite: ${classroom.capacity} Kişi • Kat: ${classroom.floor}",
+                  badge: AppBadge(label: classroom.type),
+                  onTap: () {
+                    // Burada varsa detail ekranına gidebilir
+                  },
                 );
               },
             ),

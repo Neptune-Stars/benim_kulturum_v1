@@ -15,16 +15,24 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final defaultBg = isDark
+        ? AppTheme.primaryColor.withOpacity(0.18)
+        : AppTheme.primaryLight.withOpacity(0.10);
+
+    final defaultText = isDark ? Colors.white : AppTheme.primaryColor;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: backgroundColor ?? AppTheme.primaryLight.withOpacity(0.1),
+        color: backgroundColor ?? defaultBg,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: textColor ?? AppTheme.primaryColor,
+          color: textColor ?? defaultText,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),

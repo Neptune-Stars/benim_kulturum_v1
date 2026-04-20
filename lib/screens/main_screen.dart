@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-// --- NOTE: These files will be created in the next steps! ---
 import 'home_screen.dart';
 import 'buildings_screen.dart';
 import 'cafeteria_menu_screen.dart';
@@ -18,8 +17,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // We use a list of screens that correspond to our bottom nav items.
-  // We'll wrap them in an IndexedStack later to keep state, or just switch them here.
   final List<Widget> _screens = const [
     HomeScreen(),
     BuildingsScreen(),
@@ -34,7 +31,9 @@ class _MainScreenState extends State<MainScreen> {
       body: _screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppTheme.borderColor, width: 1)),
+          border: Border(
+            top: BorderSide(color: AppTheme.borderColor, width: 1),
+          ),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
@@ -57,7 +56,7 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.business_outlined),
               activeIcon: Icon(Icons.business),
-              label: "Binalar",
+              label: "Kampüs Rehber",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.restaurant_outlined),

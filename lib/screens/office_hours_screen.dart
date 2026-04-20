@@ -4,6 +4,9 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
+import '../data/mock_data.dart';
+import '../models/models/instructor.dart';
+import 'instructor_detail_screen.dart';
 
 class OfficeHoursScreen extends StatefulWidget {
   const OfficeHoursScreen({Key? key}) : super(key: key);
@@ -18,23 +21,78 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
 
   final List<String> _filters = ["Tümü", "Pazartesi", "Çarşamba", "Cuma"];
 
-  // Hardcoded based on specification
+  // Şimdilik geçici veri. İleride instructor modeline taşınmalı.
   final List<Map<String, String>> _officeHours = [
-    {"name": "Prof. Dr. Ahmet Yılmaz", "office": "MF-405", "day": "Pazartesi", "time": "10:00-12:00", "dept": "Bilgisayar Mühendisliği"},
-    {"name": "Prof. Dr. Ahmet Yılmaz", "office": "MF-405", "day": "Çarşamba", "time": "14:00-16:00", "dept": "Bilgisayar Mühendisliği"},
-    {"name": "Doç. Dr. Ayşe Demir", "office": "İİBF-302", "day": "Pazartesi", "time": "13:00-15:00", "dept": "İktisat"},
-    {"name": "Doç. Dr. Ayşe Demir", "office": "İİBF-302", "day": "Cuma", "time": "10:00-12:00", "dept": "İktisat"},
-    {"name": "Dr. Öğr. Üyesi Mehmet Kaya", "office": "MF-308", "day": "Çarşamba", "time": "10:00-12:00", "dept": "Elektrik-Elektronik Müh."},
-    {"name": "Prof. Dr. Fatma Şahin", "office": "FEF-201", "day": "Pazartesi", "time": "14:00-16:00", "dept": "Matematik"},
-    {"name": "Prof. Dr. Fatma Şahin", "office": "FEF-201", "day": "Cuma", "time": "13:00-15:00", "dept": "Matematik"},
+    {
+      "name": "Prof. Dr. Ahmet Yılmaz",
+      "office": "MF-405",
+      "day": "Pazartesi",
+      "time": "10:00-12:00",
+      "dept": "Bilgisayar Mühendisliği",
+    },
+    {
+      "name": "Prof. Dr. Ahmet Yılmaz",
+      "office": "MF-405",
+      "day": "Çarşamba",
+      "time": "14:00-16:00",
+      "dept": "Bilgisayar Mühendisliği",
+    },
+    {
+      "name": "Doç. Dr. Ayşe Demir",
+      "office": "İİBF-302",
+      "day": "Pazartesi",
+      "time": "13:00-15:00",
+      "dept": "İktisat",
+    },
+    {
+      "name": "Doç. Dr. Ayşe Demir",
+      "office": "İİBF-302",
+      "day": "Cuma",
+      "time": "10:00-12:00",
+      "dept": "İktisat",
+    },
+    {
+      "name": "Dr. Öğr. Üyesi Mehmet Kaya",
+      "office": "MF-308",
+      "day": "Çarşamba",
+      "time": "10:00-12:00",
+      "dept": "Elektrik-Elektronik Müh.",
+    },
+    {
+      "name": "Prof. Dr. Fatma Şahin",
+      "office": "FEF-201",
+      "day": "Pazartesi",
+      "time": "14:00-16:00",
+      "dept": "Matematik",
+    },
+    {
+      "name": "Prof. Dr. Fatma Şahin",
+      "office": "FEF-201",
+      "day": "Cuma",
+      "time": "13:00-15:00",
+      "dept": "Matematik",
+    },
   ];
+
+  Instructor? _findInstructorByName(String name) {
+    for (final instructor in MockData.instructors) {
+      if (instructor.name == name) {
+        return instructor;
+      }
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final filteredHours = _officeHours.where((oh) {
-      final matchesSearch = oh["name"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          oh["dept"]!.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesFilter = _selectedFilter == "Tümü" || oh["day"] == _selectedFilter;
+      final matchesSearch =
+          oh["name"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              oh["dept"]!.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      final matchesFilter =
+          _selectedFilter == "Tümü" || oh["day"] == _selectedFilter;
+
       return matchesSearch && matchesFilter;
     }).toList();
 
@@ -72,11 +130,25 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
               itemCount: filteredHours.length,
               itemBuilder: (context, index) {
                 final oh = filteredHours[index];
+                final instructor = _findInstructorByName(oh["name"]!);
+
                 return InfoCard(
                   title: oh["name"]!,
                   subtitle: oh["dept"]!,
-                  metadata: "${oh["day"]} • ${oh["time"]} | Ofis: ${oh["office"]}",
-                  showChevron: false,
+                  metadata:
+                  "${oh["day"]} • ${oh["time"]} | Ofis: ${oh["office"]}",
+                  showChevron: instructor != null,
+                  onTap: instructor == null
+                      ? null
+                      : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            InstructorDetailScreen(instructor: instructor),
+                      ),
+                    );
+                  },
                 );
               },
             ),

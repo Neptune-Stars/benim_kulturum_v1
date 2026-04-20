@@ -1,30 +1,207 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/settings_row.dart';
 import '../widgets/badge_widget.dart';
+
 import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/joined_events_provider.dart';
+import '../providers/theme_provider.dart';
+import '../providers/notification_provider.dart';
+import '../providers/profile_provider.dart';
+
 import 'report_issue_screen.dart';
 import 'favorites_screen.dart';
+import 'events_screen.dart';
+import 'privacy_policy_screen.dart';
+
+import 'help_support_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
+  void _showProfilePhotoOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        final textColor =
+            Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+        final mutedColor = Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.darkTextMuted
+            : AppTheme.textMuted;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Profil Fotoğrafı",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(
+                    Icons.photo_library_outlined,
+                    color: AppTheme.primaryColor,
+                  ),
+                  title: Text(
+                    "Galeriden Seç",
+                    style: TextStyle(color: textColor),
+                  ),
+                  subtitle: Text(
+                    "Profil fotoğrafı ekle",
+                    style: TextStyle(color: mutedColor),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(bottomSheetContext);
+                    await context
+                        .read<ProfileProvider>()
+                        .pickProfileImageFromGallery();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: AppTheme.destructiveColor,
+                  ),
+                  title: Text(
+                    "Fotoğrafı Kaldır",
+                    style: TextStyle(color: textColor),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(bottomSheetContext);
+                    await context.read<ProfileProvider>().removeProfileImage();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileAvatar(BuildContext context) {
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, _) {
+        final imagePath = profileProvider.profileImagePath;
+
+        return GestureDetector(
+          onTap: () => _showProfilePhotoOptions(context),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: Colors.white,
+                backgroundImage:
+                imagePath != null ? FileImage(File(imagePath)) : null,
+                child: imagePath == null
+                    ? const Icon(
+                  Icons.person,
+                  size: 48,
+                  color: AppTheme.primaryColor,
+                )
+                    : null,
+              ),
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSwitchRow({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final switchTextColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final switchMutedColor = Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.darkTextMuted
+        : AppTheme.textMuted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: switchMutedColor),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                color: switchTextColor,
+              ),
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final favCount = context.watch<FavoritesProvider>().favorites.length;
+    final joinedCount = context.watch<JoinedEventsProvider>().joinedCount;
+
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.darkTextMuted
+        : AppTheme.textMuted;
 
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Header
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40,
+                  horizontal: 20,
+                ),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [AppTheme.primaryColor, AppTheme.primaryLight],
@@ -34,40 +211,68 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const CircleAvatar(
-                      radius: 48,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, size: 48, color: AppTheme.primaryColor),
-                    ),
+                    _buildProfileAvatar(context),
                     const SizedBox(height: 16),
-                    const Text("Öğrenci Adı", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Öğrenci Adı",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    const Text("20210001234", style: TextStyle(color: Colors.white70, fontSize: 16)),
+                    const Text(
+                      "20210001234",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    AppBadge(label: "3. Sınıf", backgroundColor: Colors.white.withOpacity(0.2), textColor: Colors.white),
+                    AppBadge(
+                      label: "3. Sınıf",
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      textColor: Colors.white,
+                    ),
                   ],
                 ),
               ),
-
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Stats Row
                     Row(
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const FavoritesScreen(),
+                              ),
+                            ),
                             child: Card(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding:
+                                const EdgeInsets.symmetric(vertical: 16),
                                 child: Column(
                                   children: [
-                                    Text(favCount.toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                                    Text(
+                                      favCount.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
                                     const SizedBox(height: 4),
-                                    const Text("Favori", style: TextStyle(color: AppTheme.textMuted)),
+                                    Text(
+                                      "Favori",
+                                      style: TextStyle(color: mutedColor),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -76,15 +281,40 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Column(
-                                children: [
-                                  const Text("12", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                                  const SizedBox(height: 4),
-                                  const Text("Ziyaret Edilen", style: TextStyle(color: AppTheme.textMuted)),
-                                ],
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                const EventsScreen(showOnlyJoined: true),
+                              ),
+                            ),
+                            child: Card(
+                              child: Padding(
+                                padding:
+                                const EdgeInsets.symmetric(vertical: 16),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      joinedCount.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Etkinliklerim",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: mutedColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -92,59 +322,130 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // Ayarlar
-                    const Text("Ayarlar", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    Text(
+                      "Ayarlar",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Card(
                       child: Column(
                         children: [
-                          SettingsRow(icon: Icons.notifications_none, label: "Bildirimler", value: "Açık"),
+                          Consumer<NotificationProvider>(
+                            builder: (context, notificationProvider, _) {
+                              return _buildSwitchRow(
+                                context: context,
+                                icon: Icons.notifications_none,
+                                label: "Bildirimler",
+                                value: notificationProvider.notificationsEnabled,
+                                onChanged: (value) {
+                                  context
+                                      .read<NotificationProvider>()
+                                      .setNotifications(value);
+                                },
+                              );
+                            },
+                          ),
                           const Divider(height: 1),
-                          SettingsRow(icon: Icons.dark_mode_outlined, label: "Karanlık Mod", value: "Kapalı"),
+                          Consumer<ThemeProvider>(
+                            builder: (context, themeProvider, _) {
+                              return _buildSwitchRow(
+                                context: context,
+                                icon: Icons.dark_mode_outlined,
+                                label: "Karanlık Mod",
+                                value: themeProvider.isDarkMode,
+                                onChanged: (value) {
+                                  context
+                                      .read<ThemeProvider>()
+                                      .setDarkMode(value);
+                                },
+                              );
+                            },
+                          ),
                           const Divider(height: 1),
-                          SettingsRow(icon: Icons.language, label: "Dil", value: "Türkçe"),
+                          const SettingsRow(
+                            icon: Icons.language,
+                            label: "Dil",
+                            value: "Türkçe",
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Destek
-                    const Text("Destek", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    Text(
+                      "Destek",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Card(
                       child: Column(
                         children: [
-                          SettingsRow(icon: Icons.help_outline, label: "Yardım & Destek"),
+                          SettingsRow(
+                            icon: Icons.help_outline,
+                            label: "Yardım & Destek",
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const HelpSupportScreen(),
+                              ),
+                            ),
+                          ),
                           const Divider(height: 1),
                           SettingsRow(
                             icon: Icons.report_problem_outlined,
                             label: "Sorun Bildir",
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportIssueScreen())),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ReportIssueScreen(),
+                              ),
+                            ),
                           ),
                           const Divider(height: 1),
-                          SettingsRow(icon: Icons.privacy_tip_outlined, label: "Gizlilik Politikası"),
+                          SettingsRow(
+                            icon: Icons.privacy_tip_outlined,
+                            label: "Gizlilik Politikası",
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPolicyScreen(),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 32),
-
-                    // Logout Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).cardColor,
                           foregroundColor: AppTheme.destructiveColor,
-                          side: const BorderSide(color: AppTheme.destructiveColor),
+                          side: const BorderSide(
+                            color: AppTheme.destructiveColor,
+                          ),
                         ),
                         onPressed: () {
                           context.read<AuthProvider>().logout();
                           context.go('/login');
                         },
                         icon: const Icon(Icons.logout),
-                        label: const Text("Çıkış Yap", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          "Çıkış Yap",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),

@@ -17,14 +17,60 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final _locationController = TextEditingController();
   final _descController = TextEditingController();
 
-  final List<String> _categories = ["Altyapı Sorunu", "Temizlik", "Güvenlik", "Teknik Sorun", "Ulaşım", "Diğer"];
+  final List<String> _categories = [
+    "Altyapı Sorunu",
+    "Temizlik",
+    "Güvenlik",
+    "Teknik Sorun",
+    "Ulaşım",
+    "Diğer",
+  ];
 
-  bool get _isFormValid => _selectedCategory != null && _subjectController.text.isNotEmpty && _descController.text.isNotEmpty;
+  bool get _isFormValid =>
+      _selectedCategory != null &&
+          _subjectController.text.isNotEmpty &&
+          _descController.text.isNotEmpty;
+
+  InputDecoration _inputDecoration(
+      BuildContext context, {
+        required String label,
+        bool alignLabelWithHint = false,
+      }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final borderColor = Theme.of(context).dividerColor;
+    final fillColor = Theme.of(context).cardColor;
+
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: mutedColor),
+      alignLabelWithHint: alignLabelWithHint,
+      filled: true,
+      fillColor: fillColor,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.primaryColor),
+      ),
+    );
+  }
 
   void _submit() {
     FocusScope.of(context).unfocus();
 
-    // Show success dialog
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.darkTextMuted
+        : AppTheme.textMuted;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -35,26 +81,46 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: AppTheme.successColor, size: 64),
+              const Icon(
+                Icons.check_circle,
+                color: AppTheme.successColor,
+                size: 64,
+              ),
               const SizedBox(height: 16),
-              const Text("Başarılı!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(
+                "Başarılı!",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
               const SizedBox(height: 8),
-              const Text("Sorun bildiriminiz başarıyla iletildi. En kısa sürede ilgileneceğiz.", textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textMuted)),
+              Text(
+                "Sorun bildiriminiz başarıyla iletildi. En kısa sürede ilgileneceğiz.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: mutedColor),
+              ),
             ],
           ),
         ),
       ),
     );
 
-    // Auto close dialog and screen after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.of(context).pop(); // close dialog
-      Navigator.of(context).pop(); // close screen
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final borderColor = Theme.of(context).dividerColor;
+
     return Scaffold(
       appBar: const CustomAppBar(title: "Sorun Bildir", showBack: true),
       body: SingleChildScrollView(
@@ -63,71 +129,128 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: isDark
+                    ? AppTheme.primaryColor.withOpacity(0.14)
+                    : AppTheme.primaryLight.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark
+                      ? AppTheme.primaryColor.withOpacity(0.20)
+                      : AppTheme.primaryLight.withOpacity(0.20),
+                ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppTheme.primaryColor),
-                  SizedBox(width: 12),
-                  Expanded(child: Text("Kampüste karşılaştığınız sorunları buradan yetkililere iletebilirsiniz.", style: TextStyle(color: AppTheme.primaryColor))),
+                  const Icon(
+                    Icons.info_outline,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Kampüste karşılaştığınız sorunları buradan yetkililere iletebilirsiniz.",
+                      style: TextStyle(
+                        color: textColor,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Kategori", border: OutlineInputBorder()),
+              decoration: _inputDecoration(context, label: "Kategori"),
               value: _selectedCategory,
-              items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              dropdownColor: Theme.of(context).cardColor,
+              style: TextStyle(color: textColor),
+              items: _categories
+                  .map(
+                    (c) => DropdownMenuItem(
+                  value: c,
+                  child: Text(c),
+                ),
+              )
+                  .toList(),
               onChanged: (val) => setState(() => _selectedCategory = val),
             ),
             const SizedBox(height: 20),
 
-            const Text("Öncelik", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 8),
+            Text(
+              "Öncelik",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
-                _buildPriorityButton("Düşük", AppTheme.successColor),
+                _buildPriorityButton(context, "Düşük", AppTheme.successColor),
                 const SizedBox(width: 8),
-                _buildPriorityButton("Orta", AppTheme.warningColor),
+                _buildPriorityButton(context, "Orta", AppTheme.warningColor),
                 const SizedBox(width: 8),
-                _buildPriorityButton("Yüksek", AppTheme.destructiveColor),
+                _buildPriorityButton(
+                  context,
+                  "Yüksek",
+                  AppTheme.destructiveColor,
+                ),
               ],
             ),
             const SizedBox(height: 20),
 
             TextField(
               controller: _subjectController,
-              decoration: const InputDecoration(labelText: "Konu", border: OutlineInputBorder()),
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration(context, label: "Konu"),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 20),
 
             TextField(
               controller: _locationController,
-              decoration: const InputDecoration(labelText: "Konum (İsteğe Bağlı)", border: OutlineInputBorder()),
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration(
+                context,
+                label: "Konum (İsteğe Bağlı)",
+              ),
             ),
             const SizedBox(height: 20),
 
             TextField(
               controller: _descController,
               maxLines: 5,
-              decoration: const InputDecoration(labelText: "Açıklama", border: OutlineInputBorder(), alignLabelWithHint: true),
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration(
+                context,
+                label: "Açıklama",
+                alignLabelWithHint: true,
+              ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 20),
 
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: AppTheme.borderColor),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: textColor,
+                  side: BorderSide(color: borderColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26),
+                  ),
+                ),
+                onPressed: () {},
+                icon: Icon(Icons.camera_alt, color: mutedColor),
+                label: Text(
+                  "Fotoğraf Ekle (İsteğe Bağlı)",
+                  style: TextStyle(color: mutedColor),
+                ),
               ),
-              onPressed: () {}, // Optional photo add action
-              icon: const Icon(Icons.camera_alt, color: AppTheme.textMuted),
-              label: const Text("Fotoğraf Ekle (İsteğe Bağlı)", style: TextStyle(color: AppTheme.textPrimary)),
             ),
             const SizedBox(height: 32),
 
@@ -137,9 +260,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               child: ElevatedButton(
                 onPressed: _isFormValid ? _submit : null,
                 style: ElevatedButton.styleFrom(
-                  disabledBackgroundColor: AppTheme.borderColor,
+                  disabledBackgroundColor: borderColor,
+                  disabledForegroundColor: mutedColor,
                 ),
-                child: const Text("Gönder", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "Gönder",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             )
           ],
@@ -148,24 +278,35 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  Widget _buildPriorityButton(String label, Color color) {
+  Widget _buildPriorityButton(
+      BuildContext context,
+      String label,
+      Color color,
+      ) {
     final isSelected = _selectedPriority == label;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final borderColor = Theme.of(context).dividerColor;
+    final cardColor = Theme.of(context).cardColor;
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _selectedPriority = label),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? color : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isSelected ? color : AppTheme.borderColor),
+            color: isSelected ? color : cardColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? color : borderColor,
+            ),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppTheme.textPrimary,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.white : textColor,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             ),
           ),
         ),
