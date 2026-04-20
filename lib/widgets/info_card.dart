@@ -21,6 +21,13 @@ class InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final subtitleColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final metadataColor = isDark ? Colors.white : AppTheme.textPrimary;
+    final chevronColor = isDark ? Colors.white70 : AppTheme.textMuted;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -39,7 +46,11 @@ class InfoCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             title,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: titleColor,
+                            ),
                           ),
                         ),
                         if (badge != null) ...[
@@ -52,21 +63,27 @@ class InfoCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         subtitle!,
-                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                        style: TextStyle(
+                          color: subtitleColor,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                     if (metadata != null) ...[
                       const SizedBox(height: 8),
                       Text(
                         metadata!,
-                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: metadataColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
-              if (showChevron)
-                const Icon(Icons.chevron_right, color: AppTheme.textMuted),
+              if (showChevron) Icon(Icons.chevron_right, color: chevronColor),
             ],
           ),
         ),

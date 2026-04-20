@@ -45,7 +45,7 @@ class BuildingDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             if (relatedClassrooms.isNotEmpty) ...[
-              const SectionHeader(title: "Bu Binada Derslikler"),
+              const SectionHeader(title: "İlgili Derslikler"),
               ...relatedClassrooms.map((c) => InfoCard(
                 title: c.name,
                 subtitle: "${c.type} • Kat ${c.floor}",

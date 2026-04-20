@@ -19,29 +19,41 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final chevronColor =
+    isDark ? Colors.white.withOpacity(0.55) : AppTheme.borderColor;
+
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: AppTheme.textMuted),
+            Icon(icon, color: mutedColor),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: textColor,
+                ),
               ),
             ),
             if (value != null) ...[
               Text(
                 value!,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textMuted),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: mutedColor,
+                ),
               ),
               const SizedBox(width: 8),
             ],
-            if (showChevron)
-              const Icon(Icons.chevron_right, color: AppTheme.borderColor),
+            if (showChevron) Icon(Icons.chevron_right, color: chevronColor),
           ],
         ),
       ),

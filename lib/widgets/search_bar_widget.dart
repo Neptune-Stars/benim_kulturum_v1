@@ -19,24 +19,34 @@ class AppSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fillColor = Theme.of(context).cardColor;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final borderColor = Theme.of(context).dividerColor;
+
     return TextField(
       controller: controller,
       readOnly: readOnly,
       onTap: onTap,
       onChanged: onChanged,
+      style: TextStyle(color: textColor),
+      cursorColor: AppTheme.primaryColor,
       decoration: InputDecoration(
         hintText: placeholder,
-        prefixIcon: const Icon(Icons.search, color: AppTheme.textMuted),
+        hintStyle: TextStyle(color: mutedColor),
+        prefixIcon: Icon(Icons.search, color: mutedColor),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: fillColor,
         contentPadding: const EdgeInsets.symmetric(vertical: 0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.borderColor),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.borderColor),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
