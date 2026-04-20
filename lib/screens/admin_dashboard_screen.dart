@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../data/data_service.dart'; // MOCK DATA YERİNE JSON SERVİSİ GELDİ
+import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Future<Map<String, dynamic>> _databaseFuture; // JSON verisini tutacak değişken
+  late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _tabs = [
     "Genel", "Binalar", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane"
@@ -25,7 +26,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _databaseFuture = DataService.loadDatabase(); // Ekran açıldığında veriyi asenkron olarak çekmeye başla
+    _loadData();
+  }
+
+  void _loadData() {
+    setState(() {
+      _databaseFuture = DataService.loadDatabase();
+    });
   }
 
   @override
@@ -43,7 +50,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     _tabController.animateTo(index);
   }
 
-  void _showDeleteDialog() {
+  // Ortak Silme Fonksiyonu
+  void _showDeleteDialog(String collectionKey, int index) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -52,63 +60,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal", style: TextStyle(color: AppTheme.textMuted))),
           TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt silindi (Demo)")));
+              onPressed: () async {
+                var box = Hive.box('campusDataBox');
+                List currentList = List.from(box.get(collectionKey, defaultValue: []));
+
+                currentList.removeAt(index);
+                await box.put(collectionKey, currentList);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt veritabanından silindi.")));
+                  _loadData();
+                }
               },
               child: const Text("Sil", style: TextStyle(color: AppTheme.destructiveColor))
           ),
         ],
       ),
-    );
-  }
-
-  void _showFormDialog({required String title, required List<Widget> fields}) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: fields.map((f) => Padding(padding: const EdgeInsets.only(bottom: 12), child: f)).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal", style: TextStyle(color: AppTheme.textMuted))),
-          ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kaydedildi (Demo)")));
-              },
-              child: const Text("Kaydet")
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, {bool isNumber = false, int lines = 1}) {
-    return TextField(
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      maxLines: lines,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
-    );
-  }
-
-  Widget _buildDropdown(String label, List<String> options) {
-    return DropdownButtonFormField<String>(
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
-      items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
-      onChanged: (val) {},
     );
   }
 
@@ -140,22 +108,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       body: FutureBuilder<Map<String, dynamic>>(
         future: _databaseFuture,
         builder: (context, snapshot) {
-          // 1. Durum: Veri yüklenirken çark göster
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          // 2. Durum: JSON yüklenirken hata çıkarsa
           if (snapshot.hasError) {
             return Center(child: Text("Veri yüklenemedi: ${snapshot.error}"));
           }
-
-          // 3. Durum: Veri boşsa
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text("Gösterilecek veri bulunamadı."));
           }
 
-          // Veriyi JSON map'inden çıkarıp listelere atıyoruz
           final data = snapshot.data!;
           final buildings = data['buildings'] as List<dynamic>? ?? [];
           final classrooms = data['classrooms'] as List<dynamic>? ?? [];
@@ -163,45 +125,85 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           final events = data['events'] as List<dynamic>? ?? [];
           final announcements = data['announcements'] as List<dynamic>? ?? [];
 
+          // Yemekhane verilerini çözümleme
+          final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
+          final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
+          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ["Kahvaltı", "Öğle", "Akşam"];
+
           return TabBarView(
             controller: _tabController,
             children: [
               _buildGenelTab(data),
+
+              // 1. BİNALAR
               _buildManagementTab(
                 title: "Binalar",
                 count: buildings.length,
-                items: buildings.map((b) => _buildListItem(b['name'], b['location'], () => _openBuildingForm(isEdit: true))).toList(),
+                items: buildings.asMap().entries.map((e) => _buildListItem(
+                    e.value['name'] ?? '', e.value['location'] ?? '',
+                        () => _openBuildingForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('buildings', e.key)
+                )).toList(),
                 onAdd: () => _openBuildingForm(isEdit: false),
               ),
+
+              // 2. DERSLİKLER
               _buildManagementTab(
                 title: "Derslikler",
                 count: classrooms.length,
-                items: classrooms.map((c) => _buildListItem(c['name'], c['building'], () => _openClassroomForm(isEdit: true))).toList(),
+                items: classrooms.asMap().entries.map((e) => _buildListItem(
+                    e.value['name'] ?? '', e.value['building'] ?? '',
+                        () => _openClassroomForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('classrooms', e.key)
+                )).toList(),
                 onAdd: () => _openClassroomForm(isEdit: false),
               ),
+
+              // 3. HOCALAR
               _buildManagementTab(
                 title: "Hocalar",
                 count: instructors.length,
-                items: instructors.map((i) => _buildListItem(i['name'], i['department'], () => _openInstructorForm(isEdit: true))).toList(),
+                items: instructors.asMap().entries.map((e) => _buildListItem(
+                    e.value['name'] ?? '', e.value['department'] ?? '',
+                        () => _openInstructorForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('instructors', e.key)
+                )).toList(),
                 onAdd: () => _openInstructorForm(isEdit: false),
               ),
+
+              // 4. ETKİNLİKLER
               _buildManagementTab(
                 title: "Etkinlikler",
                 count: events.length,
-                items: events.map((e) => _buildListItem(e['title'], e['date'], () => _openEventForm(isEdit: true))).toList(),
+                items: events.asMap().entries.map((e) => _buildListItem(
+                    e.value['title'] ?? '', "${e.value['date']} - ${e.value['location']}",
+                        () => _openEventForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('events', e.key)
+                )).toList(),
                 onAdd: () => _openEventForm(isEdit: false),
               ),
+
+              // 5. DUYURULAR
               _buildManagementTab(
                 title: "Duyurular",
                 count: announcements.length,
-                items: announcements.map((a) => _buildListItem(a['title'], a['date'], () => _openAnnouncementForm(isEdit: true))).toList(),
+                items: announcements.asMap().entries.map((e) => _buildListItem(
+                    e.value['title'] ?? '', e.value['date'] ?? '',
+                        () => _openAnnouncementForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('announcements', e.key)
+                )).toList(),
                 onAdd: () => _openAnnouncementForm(isEdit: false),
               ),
+
+              // 6. YEMEKHANE (Özel Yapı)
               _buildManagementTab(
-                title: "Yemekhane",
-                count: 5,
-                items: ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"].map((d) => _buildListItem("$d Menüsü", "Öğle & Akşam", () => _openMenuForm(isEdit: true))).toList(),
-                onAdd: () => _openMenuForm(isEdit: false),
+                title: "Yemekhane Menüleri",
+                count: mealTypes.length,
+                items: mealTypes.map((meal) {
+                  final menu = menus[meal] ?? {};
+                  return _buildListItem(
+                      meal,
+                      "Saat: ${menu['time'] ?? '-'} | Fiyat: ${menu['price'] ?? '-'}",
+                          () => _openMenuForm(mealName: meal, item: menu, fullCafeteriaData: cafeteriaData),
+                      null // Yemekhane öğünleri silinmez, sadece güncellenir
+                  );
+                }).toList(),
+                onAdd: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Yeni öğün eklenemez, mevcutları düzenleyin."))),
               ),
             ],
           );
@@ -210,7 +212,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // --- TAB BUILDERS ---
+  // --- SEKME İÇERİKLERİ ---
 
   Widget _buildGenelTab(Map<String, dynamic> data) {
     final bCount = (data['buildings'] as List?)?.length ?? 0;
@@ -224,7 +226,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: AppTheme.successColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.successColor.withOpacity(0.3))),
@@ -232,13 +233,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               children: [
                 Icon(Icons.check_circle, color: AppTheme.successColor),
                 SizedBox(width: 12),
-                Expanded(child: Text("Tüm sistemler çalışıyor", style: TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold))),
+                Expanded(child: Text("Yerel Veritabanı (Hive) Aktif ve Bağlı", style: TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold))),
               ],
             ),
           ),
           const SizedBox(height: 24),
-
-          // Stat Grid
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -255,21 +254,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               _buildStatCard(Icons.restaurant, "Menü", "Güncel", 6),
             ],
           ),
-          const SizedBox(height: 32),
-
-          const Text("Hızlı Yönetim", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-          const SizedBox(height: 12),
-          Card(
-            child: Column(
-              children: [
-                _buildQuickRow(Icons.business, "Binaları Yönet", 1),
-                const Divider(height: 1),
-                _buildQuickRow(Icons.meeting_room, "Derslikleri Yönet", 2),
-                const Divider(height: 1),
-                _buildQuickRow(Icons.people, "Hocaları Yönet", 3),
-              ],
-            ),
-          )
         ],
       ),
     );
@@ -288,10 +272,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, color: AppTheme.primaryColor),
-                const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20),
-              ],
+              children: [Icon(icon, color: AppTheme.primaryColor), const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20)],
             ),
             const Spacer(),
             Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
@@ -299,15 +280,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildQuickRow(IconData icon, String label, int tabIndex) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.textMuted),
-      title: Text(label),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => _switchTab(tabIndex),
     );
   }
 
@@ -329,11 +301,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ],
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppSearchBar(placeholder: "Ara..."),
-        ),
-        const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -346,7 +313,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildListItem(String title, String subtitle, VoidCallback onEdit) {
+  Widget _buildListItem(String title, String subtitle, VoidCallback onEdit, VoidCallback? onDelete) {
     return Row(
       children: [
         Expanded(
@@ -360,85 +327,284 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ),
         ),
         IconButton(icon: const Icon(Icons.edit, color: AppTheme.primaryLight), onPressed: onEdit),
-        IconButton(icon: const Icon(Icons.delete, color: AppTheme.destructiveColor), onPressed: _showDeleteDialog),
+        if (onDelete != null)
+          IconButton(icon: const Icon(Icons.delete, color: AppTheme.destructiveColor), onPressed: onDelete),
       ],
     );
   }
 
-  // --- FORM MODALS ---
+  // --- GERÇEK VERİTABANI FORMLARI ---
 
-  void _openBuildingForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Bina" : "Yeni Bina Ekle",
-        fields: [
-          _buildTextField("Bina Adı"),
-          _buildTextField("Kısaltma"),
-          _buildTextField("Kat Sayısı", isNumber: true),
-          _buildTextField("Oda Sayısı", isNumber: true),
-          _buildDropdown("Tür", ["Akademik", "İdari", "Sosyal"]),
-          _buildTextField("Konum"),
-        ]
+  void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+    final nameCtrl = TextEditingController(text: item?['name']);
+    final locCtrl = TextEditingController(text: item?['location']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? "Düzenle: Bina" : "Yeni Bina", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Bina Adı")),
+            const SizedBox(height: 12),
+            TextField(controller: locCtrl, decoration: const InputDecoration(labelText: "Konum")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          ElevatedButton(
+              onPressed: () async {
+                var box = Hive.box('campusDataBox');
+                List list = List.from(box.get('buildings', defaultValue: []));
+
+                Map<String, dynamic> newData = {
+                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
+                  'name': nameCtrl.text,
+                  'location': locCtrl.text,
+                  'abbr': item?['abbr'] ?? 'YENİ',
+                  'floors': item?['floors'] ?? 1,
+                  'rooms': item?['rooms'] ?? 10,
+                  'type': item?['type'] ?? 'academic'
+                };
+
+                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
+                await box.put('buildings', list);
+                if (context.mounted) { Navigator.pop(context); _loadData(); }
+              },
+              child: const Text("Kaydet")
+          )
+        ],
+      ),
     );
   }
 
-  void _openClassroomForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Derslik" : "Yeni Derslik Ekle",
-        fields: [
-          _buildTextField("Derslik Adı"),
-          _buildDropdown("Bina", ["Mühendislik Fakültesi", "İİBF", "Fen Edebiyat"]),
-          _buildTextField("Kapasite", isNumber: true),
-          _buildDropdown("Tür", ["Derslik", "Amfi", "Laboratuvar", "Seminer Salonu"]),
-          _buildTextField("Kat", isNumber: true),
-        ]
+  void _openClassroomForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+    final nameCtrl = TextEditingController(text: item?['name']);
+    final buildCtrl = TextEditingController(text: item?['building']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? "Düzenle: Derslik" : "Yeni Derslik", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Derslik Adı")),
+            const SizedBox(height: 12),
+            TextField(controller: buildCtrl, decoration: const InputDecoration(labelText: "Bağlı Olduğu Bina")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          ElevatedButton(
+              onPressed: () async {
+                var box = Hive.box('campusDataBox');
+                List list = List.from(box.get('classrooms', defaultValue: []));
+
+                Map<String, dynamic> newData = {
+                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
+                  'name': nameCtrl.text,
+                  'building': buildCtrl.text,
+                  'capacity': item?['capacity'] ?? 40,
+                  'type': item?['type'] ?? 'Derslik',
+                  'floor': item?['floor'] ?? 1
+                };
+
+                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
+                await box.put('classrooms', list);
+                if (context.mounted) { Navigator.pop(context); _loadData(); }
+              },
+              child: const Text("Kaydet")
+          )
+        ],
+      ),
     );
   }
 
-  void _openInstructorForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Hoca" : "Yeni Hoca Ekle",
-        fields: [
-          _buildTextField("Ad Soyad"),
-          _buildDropdown("Unvan", ["Profesör", "Doçent", "Dr. Öğretim Üyesi", "Arş. Gör."]),
-          _buildTextField("Bölüm"),
-          _buildTextField("Ofis"),
-        ]
+  void _openInstructorForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+    final nameCtrl = TextEditingController(text: item?['name']);
+    final deptCtrl = TextEditingController(text: item?['department']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? "Düzenle: Hoca" : "Yeni Hoca", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Hoca Adı Soyadı")),
+            const SizedBox(height: 12),
+            TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          ElevatedButton(
+              onPressed: () async {
+                var box = Hive.box('campusDataBox');
+                List list = List.from(box.get('instructors', defaultValue: []));
+
+                Map<String, dynamic> newData = {
+                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
+                  'name': nameCtrl.text,
+                  'department': deptCtrl.text,
+                  'title': item?['title'] ?? 'Öğretim Üyesi',
+                  'office': item?['office'] ?? 'Bilinmiyor',
+                  'filter': item?['filter'] ?? 'engineering'
+                };
+
+                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
+                await box.put('instructors', list);
+                if (context.mounted) { Navigator.pop(context); _loadData(); }
+              },
+              child: const Text("Kaydet")
+          )
+        ],
+      ),
     );
   }
 
-  void _openEventForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Etkinlik" : "Yeni Etkinlik Ekle",
-        fields: [
-          _buildTextField("Etkinlik Adı"),
-          _buildTextField("Tarih"),
-          _buildTextField("Saat"),
-          _buildTextField("Konum"),
-          _buildDropdown("Kategori", ["Akademik", "Kültürel", "Spor", "Sosyal"]),
-        ]
+  void _openEventForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+    final titleCtrl = TextEditingController(text: item?['title']);
+    final dateCtrl = TextEditingController(text: item?['date']);
+    final locCtrl = TextEditingController(text: item?['location']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? "Düzenle: Etkinlik" : "Yeni Etkinlik", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Etkinlik Başlığı")),
+            const SizedBox(height: 12),
+            TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: "Tarih (Örn: 20 Nisan, 14:00)")),
+            const SizedBox(height: 12),
+            TextField(controller: locCtrl, decoration: const InputDecoration(labelText: "Konum")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          ElevatedButton(
+              onPressed: () async {
+                var box = Hive.box('campusDataBox');
+                List list = List.from(box.get('events', defaultValue: []));
+
+                Map<String, dynamic> newData = {
+                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
+                  'title': titleCtrl.text,
+                  'date': dateCtrl.text,
+                  'location': locCtrl.text,
+                  'category': item?['category'] ?? 'Genel',
+                  'description': item?['description'] ?? 'Detay girilmedi.'
+                };
+
+                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
+                await box.put('events', list);
+                if (context.mounted) { Navigator.pop(context); _loadData(); }
+              },
+              child: const Text("Kaydet")
+          )
+        ],
+      ),
     );
   }
 
-  void _openAnnouncementForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Duyuru" : "Yeni Duyuru Ekle",
-        fields: [
-          _buildTextField("Başlık"),
-          _buildDropdown("Kategori", ["Genel", "Akademik", "İdari", "Burs"]),
-          _buildTextField("Tarih"),
-          _buildTextField("İçerik", lines: 4),
-        ]
+  void _openAnnouncementForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+    final titleCtrl = TextEditingController(text: item?['title']);
+    final dateCtrl = TextEditingController(text: item?['date']);
+    final contentCtrl = TextEditingController(text: item?['content']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? "Düzenle: Duyuru" : "Yeni Duyuru", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Başlık")),
+            const SizedBox(height: 12),
+            TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: "Tarih (Örn: 18 Nisan)")),
+            const SizedBox(height: 12),
+            TextField(controller: contentCtrl, maxLines: 3, decoration: const InputDecoration(labelText: "İçerik")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          ElevatedButton(
+              onPressed: () async {
+                var box = Hive.box('campusDataBox');
+                List list = List.from(box.get('announcements', defaultValue: []));
+
+                Map<String, dynamic> newData = {
+                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
+                  'title': titleCtrl.text,
+                  'date': dateCtrl.text,
+                  'content': contentCtrl.text,
+                  'category': item?['category'] ?? 'Genel'
+                };
+
+                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
+                await box.put('announcements', list);
+                if (context.mounted) { Navigator.pop(context); _loadData(); }
+              },
+              child: const Text("Kaydet")
+          )
+        ],
+      ),
     );
   }
 
-  void _openMenuForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Menüyü Düzenle" : "Menü Ekle",
-        fields: [
-          _buildDropdown("Gün", ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]),
-          _buildDropdown("Öğün", ["Kahvaltı", "Öğle", "Akşam"]),
-          _buildTextField("Yemekler (Virgül ile ayırın)", lines: 3),
-        ]
+  void _openMenuForm({required String mealName, required Map<dynamic, dynamic> item, required Map<dynamic, dynamic> fullCafeteriaData}) {
+    final timeCtrl = TextEditingController(text: item['time']);
+    final priceCtrl = TextEditingController(text: item['price']);
+    // Liste olan yemekleri text'e çevirip virgülle ayırıyoruz
+    final itemsListText = (item['items'] as List<dynamic>? ?? []).join(", ");
+    final itemsCtrl = TextEditingController(text: itemsListText);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Menü Düzenle: $mealName", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: timeCtrl, decoration: const InputDecoration(labelText: "Saat Aralığı (Örn: 12:00-14:00)")),
+            const SizedBox(height: 12),
+            TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Fiyat (Örn: ₺35)")),
+            const SizedBox(height: 12),
+            TextField(
+              controller: itemsCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: "Yemekler (Virgülle ayırın)", hintText: "Çorba, Pilav, Salata"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          ElevatedButton(
+              onPressed: () async {
+                // Virgülle ayrılmış yazıyı tekrar listeye çeviriyoruz
+                List<String> newItems = itemsCtrl.text.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+                // Sadece ilgili öğünü (Örn: Öğle) güncelliyoruz
+                fullCafeteriaData['menus'][mealName] = {
+                  'time': timeCtrl.text,
+                  'price': priceCtrl.text,
+                  'items': newItems,
+                  'isChips': item['isChips'] ?? false,
+                };
+
+                var box = Hive.box('campusDataBox');
+                await box.put('cafeteria', fullCafeteriaData); // Tüm menüyü tekrar kaydediyoruz
+
+                if (context.mounted) { Navigator.pop(context); _loadData(); }
+              },
+              child: const Text("Kaydet")
+          )
+        ],
+      ),
     );
   }
 }
