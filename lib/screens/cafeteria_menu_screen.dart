@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/badge_widget.dart';
+import '../data/data_service.dart'; // JSON Servisi
 
 class CafeteriaMenuScreen extends StatefulWidget {
   const CafeteriaMenuScreen({Key? key}) : super(key: key);

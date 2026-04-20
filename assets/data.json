@@ -1,0 +1,698 @@
+{
+  "buildings": [
+    {
+      "id": 1,
+      "name": "Ataköy Ana Bina",
+      "abbr": "ATK-Ana",
+      "floors": 5,
+      "rooms": 85,
+      "type": "academic",
+      "location": "Ataköy Yerleşkesi"
+    },
+    {
+      "id": 2,
+      "name": "Rektörlük",
+      "abbr": "REK",
+      "floors": 3,
+      "rooms": 15,
+      "type": "admin",
+      "location": "Ataköy Yerleşkesi"
+    },
+    {
+      "id": 3,
+      "name": "Öğrenci İşleri",
+      "abbr": "ÖİDB",
+      "floors": 2,
+      "rooms": 10,
+      "type": "admin",
+      "location": "Ataköy Yerleşkesi"
+    },
+    {
+      "id": 4,
+      "name": "Basın Ekspres Binası",
+      "abbr": "BEX",
+      "floors": 6,
+      "rooms": 60,
+      "type": "academic",
+      "location": "Basın Ekspres Yerleşkesi"
+    },
+    {
+      "id": 5,
+      "name": "Şirinevler Binası",
+      "abbr": "ŞİR",
+      "floors": 5,
+      "rooms": 45,
+      "type": "academic",
+      "location": "Şirinevler Yerleşkesi"
+    },
+    {
+      "id": 6,
+      "name": "İncirli Binası",
+      "abbr": "İNC",
+      "floors": 4,
+      "rooms": 35,
+      "type": "academic",
+      "location": "İncirli Yerleşkesi"
+    }
+  ],
+  "classrooms": [
+    { "id": 1, "name": "ATK-Amfi 1", "building": "Ataköy Ana Bina", "capacity": 150, "type": "Amfi", "floor": 1 },
+    { "id": 2, "name": "ATK-Amfi 2", "building": "Ataköy Ana Bina", "capacity": 150, "type": "Amfi", "floor": 1 },
+    { "id": 3, "name": "ATK-Amfi 3", "building": "Ataköy Ana Bina", "capacity": 150, "type": "Amfi", "floor": 1 },
+    { "id": 4, "name": "ATK-101", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 2 },
+    { "id": 5, "name": "ATK-102", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 2 },
+    { "id": 6, "name": "ATK-103", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 2 },
+    { "id": 7, "name": "ATK-104", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 3 },
+    { "id": 8, "name": "ATK-105", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 3 },
+    { "id": 9, "name": "Akil Muhtar Konferans Salonu", "building": "Ataköy Ana Bina", "capacity": 300, "type": "Konferans Salonu", "floor": -1 },
+    { "id": 10, "name": "Önder Öztunalı Konferans Salonu", "building": "Ataköy Ana Bina", "capacity": 350, "type": "Konferans Salonu", "floor": -1 },
+    { "id": 11, "name": "Çok Amaçlı Salon", "building": "Ataköy Ana Bina", "capacity": 250, "type": "Konferans Salonu", "floor": -1 },
+
+    { "id": 12, "name": "BEX-Amfi 1", "building": "Basın Ekspres Binası", "capacity": 120, "type": "Amfi", "floor": 1 },
+    { "id": 13, "name": "BEX-Amfi 2", "building": "Basın Ekspres Binası", "capacity": 120, "type": "Amfi", "floor": 1 },
+    { "id": 14, "name": "BEX-Amfi 3", "building": "Basın Ekspres Binası", "capacity": 120, "type": "Amfi", "floor": 1 },
+    { "id": 15, "name": "BEX-101", "building": "Basın Ekspres Binası", "capacity": 50, "type": "Derslik", "floor": 2 },
+    { "id": 16, "name": "BEX-102", "building": "Basın Ekspres Binası", "capacity": 50, "type": "Derslik", "floor": 2 },
+    { "id": 17, "name": "BEX-103", "building": "Basın Ekspres Binası", "capacity": 50, "type": "Derslik", "floor": 2 },
+    { "id": 18, "name": "BEX-104", "building": "Basın Ekspres Binası", "capacity": 50, "type": "Derslik", "floor": 3 },
+    { "id": 19, "name": "BEX-105", "building": "Basın Ekspres Binası", "capacity": 50, "type": "Derslik", "floor": 3 },
+
+    { "id": 20, "name": "ŞİR-Amfi 1", "building": "Şirinevler Binası", "capacity": 110, "type": "Amfi", "floor": 1 },
+    { "id": 21, "name": "ŞİR-Amfi 2", "building": "Şirinevler Binası", "capacity": 110, "type": "Amfi", "floor": 1 },
+    { "id": 22, "name": "ŞİR-Amfi 3", "building": "Şirinevler Binası", "capacity": 110, "type": "Amfi", "floor": 1 },
+    { "id": 23, "name": "ŞİR-101", "building": "Şirinevler Binası", "capacity": 45, "type": "Derslik", "floor": 2 },
+    { "id": 24, "name": "ŞİR-102", "building": "Şirinevler Binası", "capacity": 45, "type": "Derslik", "floor": 2 },
+    { "id": 25, "name": "ŞİR-103", "building": "Şirinevler Binası", "capacity": 45, "type": "Derslik", "floor": 2 },
+    { "id": 26, "name": "ŞİR-104", "building": "Şirinevler Binası", "capacity": 45, "type": "Derslik", "floor": 3 },
+    { "id": 27, "name": "ŞİR-105", "building": "Şirinevler Binası", "capacity": 45, "type": "Derslik", "floor": 3 },
+
+    { "id": 28, "name": "İNC-Amfi 1", "building": "İncirli Binası", "capacity": 100, "type": "Amfi", "floor": 1 },
+    { "id": 29, "name": "İNC-Amfi 2", "building": "İncirli Binası", "capacity": 100, "type": "Amfi", "floor": 1 },
+    { "id": 30, "name": "İNC-Amfi 3", "building": "İncirli Binası", "capacity": 100, "type": "Amfi", "floor": 1 },
+    { "id": 31, "name": "İNC-101", "building": "İncirli Binası", "capacity": 40, "type": "Derslik", "floor": 2 },
+    { "id": 32, "name": "İNC-102", "building": "İncirli Binası", "capacity": 40, "type": "Derslik", "floor": 2 },
+    { "id": 33, "name": "İNC-103", "building": "İncirli Binası", "capacity": 40, "type": "Derslik", "floor": 2 },
+    { "id": 34, "name": "İNC-104", "building": "İncirli Binası", "capacity": 40, "type": "Derslik", "floor": 3 },
+    { "id": 35, "name": "İNC-105", "building": "İncirli Binası", "capacity": 40, "type": "Derslik", "floor": 3 }
+  ],
+  "instructors": [
+    {
+      "id": 1,
+      "name": "Prof. Dr. Cemile Gökyayla",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-Dekanlık",
+      "title": "Profesör (Dekan)",
+      "filter": "law"
+    },
+    {
+      "id": 2,
+      "name": "Doç. Dr. Mustafa Aytaç Özelçi",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-201",
+      "title": "Doçent",
+      "filter": "law"
+    },
+    {
+      "id": 3,
+      "name": "Doç. Dr. Fatih Gündoğdu",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-202",
+      "title": "Doçent",
+      "filter": "law"
+    },
+    {
+      "id": 4,
+      "name": "Doç. Dr. Gizem Perçin",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-203",
+      "title": "Doçent",
+      "filter": "law"
+    },
+    {
+      "id": 5,
+      "name": "Dr. Öğr. Üyesi Sakine Nilüfer Bilgin",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-105",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "law"
+    },
+    {
+      "id": 6,
+      "name": "Arş. Gör. Merve Akbulut",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-106",
+      "title": "Araştırma Görevlisi",
+      "filter": "law"
+    },
+    {
+      "id": 7,
+      "name": "Prof. Dr. Oğuz Sancakdar",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-301",
+      "title": "Profesör",
+      "filter": "law"
+    },
+    {
+      "id": 8,
+      "name": "Prof. Dr. Ali Rıza Töngür",
+      "department": "Hukuk Fakültesi",
+      "office": "Hukuk-302",
+      "title": "Profesör",
+      "filter": "law"
+    },
+    {
+      "id": 9,
+      "name": "Doç. Dr. Esra Saatçı",
+      "department": "Elektrik-Elektronik Müh.",
+      "office": "MF-101",
+      "title": "Doçent (Bölüm Başkanı)",
+      "filter": "engineering"
+    },
+    {
+      "id": 10,
+      "name": "Dr. Öğr. Üyesi Berrak Öztürk Şimşek",
+      "department": "Elektrik-Elektronik Müh.",
+      "office": "MF-102",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "engineering"
+    },
+    {
+      "id": 11,
+      "name": "Prof. Dr. Mehmet Oruç Bilgiç",
+      "department": "Elektrik-Elektronik Müh.",
+      "office": "MF-103",
+      "title": "Profesör",
+      "filter": "engineering"
+    },
+    {
+      "id": 12,
+      "name": "Prof. Dr. Metin Şengül",
+      "department": "Elektrik-Elektronik Müh.",
+      "office": "MF-104",
+      "title": "Profesör",
+      "filter": "engineering"
+    },
+    {
+      "id": 13,
+      "name": "Prof. Dr. Atilla Özmen",
+      "department": "Elektrik-Elektronik Müh.",
+      "office": "MF-105",
+      "title": "Profesör",
+      "filter": "engineering"
+    },
+    {
+      "id": 14,
+      "name": "Dr. Öğr. Üyesi Ertuğrul Saatçı",
+      "department": "Elektrik-Elektronik Müh.",
+      "office": "MF-106",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 15,
+      "name": "Prof. Dr. Akhan Akbulut",
+      "department": "Bilgisayar Mühendisliği",
+      "office": "MF-201",
+      "title": "Profesör (Bölüm Başkanı)",
+      "filter": "engineering"
+    },
+    {
+      "id": 16,
+      "name": "Dr. Öğr. Üyesi Öznur Şengel",
+      "department": "Bilgisayar Mühendisliği",
+      "office": "MF-202",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "engineering"
+    },
+    {
+      "id": 17,
+      "name": "Prof. Dr. Murat Taylı",
+      "department": "Bilgisayar Mühendisliği",
+      "office": "MF-203",
+      "title": "Profesör",
+      "filter": "engineering"
+    },
+    {
+      "id": 18,
+      "name": "Dr. Öğr. Üyesi Canan Akkoyunlu",
+      "department": "Bilgisayar Mühendisliği",
+      "office": "MF-204",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 19,
+      "name": "Dr. Öğr. Üyesi Visam Elmasry",
+      "department": "Bilgisayar Mühendisliği",
+      "office": "MF-205",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 20,
+      "name": "Dr. Öğr. Üyesi Necip Gökhan Kasapoğlu",
+      "department": "Bilgisayar Mühendisliği",
+      "office": "MF-206",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 21,
+      "name": "Prof. Dr. Ahmet Murat Türk",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-301",
+      "title": "Profesör (Bölüm Başkanı)",
+      "filter": "engineering"
+    },
+    {
+      "id": 22,
+      "name": "Dr. Öğr. Üyesi Edip Seçkin",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-302",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "engineering"
+    },
+    {
+      "id": 23,
+      "name": "Dr. Öğr. Üyesi Nazife Özge Fercan",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-303",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "engineering"
+    },
+    {
+      "id": 24,
+      "name": "Prof. Dr. Turgut Uzel",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-304",
+      "title": "Profesör",
+      "filter": "engineering"
+    },
+    {
+      "id": 25,
+      "name": "Doç. Dr. Mehmet Nurettin Uğural",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-305",
+      "title": "Doçent",
+      "filter": "engineering"
+    },
+    {
+      "id": 26,
+      "name": "Dr. Öğr. Üyesi Mustafa Cömert",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-306",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 27,
+      "name": "Dr. Öğr. Üyesi Sead Ahmed Salih",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-307",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 28,
+      "name": "Dr. Öğr. Üyesi Fatma Sevil Malcıoğlu",
+      "department": "İnşaat Mühendisliği",
+      "office": "MF-308",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "engineering"
+    },
+    {
+      "id": 29,
+      "name": "Doç. Dr. Ayhan Erbay",
+      "department": "Psikoloji",
+      "office": "FEF-101",
+      "title": "Doçent (Bölüm Başkanı)",
+      "filter": "psychology"
+    },
+    {
+      "id": 30,
+      "name": "Doç. Dr. Burcu Türk",
+      "department": "Psikoloji",
+      "office": "FEF-102",
+      "title": "Doçent (Bşk. Yrd.)",
+      "filter": "psychology"
+    },
+    {
+      "id": 31,
+      "name": "Prof. Dr. Melis Seray Özden Yıldırım",
+      "department": "Psikoloji",
+      "office": "FEF-103",
+      "title": "Profesör",
+      "filter": "psychology"
+    },
+    {
+      "id": 32,
+      "name": "Prof. Dr. Yusuf Özay Özdemir",
+      "department": "Psikoloji",
+      "office": "FEF-104",
+      "title": "Profesör",
+      "filter": "psychology"
+    },
+    {
+      "id": 33,
+      "name": "Dr. Öğr. Üyesi Ezgi Özkan",
+      "department": "Psikoloji",
+      "office": "FEF-105",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "psychology"
+    },
+    {
+      "id": 34,
+      "name": "Prof. Dr. Evren Burak Enginöz",
+      "department": "Mimarlık",
+      "office": "MİM-101",
+      "title": "Profesör (Bölüm Başkanı)",
+      "filter": "architecture"
+    },
+    {
+      "id": 35,
+      "name": "Dr. Öğr. Üyesi Nevzat Ömer Saatcıoğlu",
+      "department": "Mimarlık",
+      "office": "MİM-102",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "architecture"
+    },
+    {
+      "id": 36,
+      "name": "Prof. Dr. Esra Bostancıoğlu",
+      "department": "Mimarlık",
+      "office": "MİM-103",
+      "title": "Profesör",
+      "filter": "architecture"
+    },
+    {
+      "id": 37,
+      "name": "Prof. Dr. Esin Kasapoğlu",
+      "department": "Mimarlık",
+      "office": "MİM-104",
+      "title": "Profesör",
+      "filter": "architecture"
+    },
+    {
+      "id": 38,
+      "name": "Prof. Dr. Neslihan Dostoğlu",
+      "department": "Mimarlık",
+      "office": "MİM-105",
+      "title": "Profesör",
+      "filter": "architecture"
+    },
+    {
+      "id": 39,
+      "name": "Prof. Dr. Rana Kutlu",
+      "department": "İç Mimarlık ve Çevre Tasarımı",
+      "office": "MİM-201",
+      "title": "Profesör (Bölüm Başkanı)",
+      "filter": "architecture"
+    },
+    {
+      "id": 40,
+      "name": "Dr. Öğr. Üyesi Arzu Erçetin",
+      "department": "İç Mimarlık ve Çevre Tasarımı",
+      "office": "MİM-202",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "architecture"
+    },
+    {
+      "id": 41,
+      "name": "Prof. Dr. Yasemin Erkan Yazıcı",
+      "department": "İç Mimarlık ve Çevre Tasarımı",
+      "office": "MİM-203",
+      "title": "Profesör",
+      "filter": "architecture"
+    },
+    {
+      "id": 42,
+      "name": "Prof. Dr. Gülay Usta",
+      "department": "İç Mimarlık ve Çevre Tasarımı",
+      "office": "MİM-204",
+      "title": "Profesör",
+      "filter": "architecture"
+    },
+    {
+      "id": 43,
+      "name": "Prof. Dr. Nebile Korucu Gümüşoğlu",
+      "department": "İşletme",
+      "office": "İİBF-101",
+      "title": "Profesör (Bölüm Başkanı V.)",
+      "filter": "economics"
+    },
+    {
+      "id": 44,
+      "name": "Dr. Öğr. Üyesi Mustafa Bekmezci",
+      "department": "İşletme",
+      "office": "İİBF-102",
+      "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
+      "filter": "economics"
+    },
+    {
+      "id": 45,
+      "name": "Prof. Dr. Peyami Sefa Çarıkçıoğlu",
+      "department": "İşletme",
+      "office": "İİBF-103",
+      "title": "Profesör",
+      "filter": "economics"
+    },
+    {
+      "id": 46,
+      "name": "Prof. Dr. Mahmut Paksoy",
+      "department": "İşletme",
+      "office": "İİBF-104",
+      "title": "Profesör",
+      "filter": "economics"
+    },
+    {
+      "id": 47,
+      "name": "Prof. Dr. Sevim Akyüz",
+      "department": "Fizik",
+      "office": "FEF-201",
+      "title": "Profesör (Bölüm Başkanı)",
+      "filter": "science"
+    },
+    {
+      "id": 48,
+      "name": "Prof. Dr. Mehmet Özer",
+      "department": "Fizik",
+      "office": "FEF-202",
+      "title": "Profesör",
+      "filter": "science"
+    },
+    {
+      "id": 49,
+      "name": "Prof. Dr. Gülce Öğrüç Ildız",
+      "department": "Fizik",
+      "office": "FEF-203",
+      "title": "Profesör",
+      "filter": "science"
+    },
+    {
+      "id": 50,
+      "name": "Prof. Dr. Dursun Koçer",
+      "department": "Fizik",
+      "office": "FEF-204",
+      "title": "Profesör",
+      "filter": "science"
+    },
+    {
+      "id": 51,
+      "name": "Prof. Dr. Zekiye Antakyalıoğlu Er",
+      "department": "İngiliz Dili ve Edebiyatı",
+      "office": "FEF-301",
+      "title": "Profesör (Bölüm Başkanı)",
+      "filter": "literature"
+    },
+    {
+      "id": 52,
+      "name": "Prof. Dr. Gillian Mary Elizabeth Alban",
+      "department": "İngiliz Dili ve Edebiyatı",
+      "office": "FEF-302",
+      "title": "Profesör",
+      "filter": "literature"
+    },
+    {
+      "id": 53,
+      "name": "Doç. Dr. Sultan Komut Bakınç",
+      "department": "İngiliz Dili ve Edebiyatı",
+      "office": "FEF-303",
+      "title": "Doçent",
+      "filter": "literature"
+    },
+    {
+      "id": 54,
+      "name": "Dr. Öğr. Üyesi Özlem Gülgün Güner",
+      "department": "İngiliz Dili ve Edebiyatı",
+      "office": "FEF-304",
+      "title": "Dr. Öğr. Üyesi",
+      "filter": "literature"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "title": "Bahar Şenliği 2026",
+      "date": "25-26 Nisan",
+      "time": "10:00",
+      "location": "Kampüs Merkez Alanı",
+      "description": "İki gün sürecek bahar şenliğinde konserler, etkinlikler ve yarışmalar",
+      "category": "cultural"
+    },
+    {
+      "id": 2,
+      "title": "Kariyer Günleri",
+      "date": "20 Nisan",
+      "time": "14:00",
+      "location": "Konferans Salonu",
+      "description": "Teknoloji sektöründen konuklar ve iş olanakları",
+      "category": "academic"
+    },
+    {
+      "id": 3,
+      "title": "Basketbol Turnuvası",
+      "date": "22 Nisan",
+      "time": "16:00",
+      "location": "Spor Salonu",
+      "description": "Fakülteler arası basketbol turnuvası final maçı",
+      "category": "sports"
+    },
+    {
+      "id": 4,
+      "title": "Kitap Kulübü Toplantısı",
+      "date": "22 Nisan",
+      "time": "17:00",
+      "location": "Kütüphane",
+      "description": "Bu ayın kitabı: 1984 - George Orwell",
+      "category": "cultural"
+    },
+    {
+      "id": 5,
+      "title": "Yapay Zeka Semineri",
+      "date": "23 Nisan",
+      "time": "13:00",
+      "location": "MF Amfi",
+      "description": "Yapay zekanın geleceği ve etik sorunlar",
+      "category": "academic"
+    },
+    {
+      "id": 6,
+      "title": "Kan Bağışı Kampanyası",
+      "date": "24 Nisan",
+      "time": "09:00",
+      "location": "Öğrenci İşleri Binası",
+      "description": "Kızılay ile birlikte düzenlenen kan bağışı etkinliği",
+      "category": "social"
+    }
+  ],
+  "announcements": [
+    {
+      "id": 1,
+      "title": "Bahar Şenliği 2026",
+      "content": "25-26 Nisan tarihlerinde kampüste bahar şenliği düzenlenecektir. Tüm öğrencilerimizi etkinliklere bekliyoruz.",
+      "date": "2 saat önce",
+      "category": "general",
+      "isNew": true
+    },
+    {
+      "id": 2,
+      "title": "Vize Sınavı Programı Açıklandı",
+      "content": "Vize sınavı programı öğrenci bilgi sisteminde yayınlandı.",
+      "date": "5 saat önce",
+      "category": "academic",
+      "isNew": true
+    },
+    {
+      "id": 3,
+      "title": "Burs Başvuruları Başladı",
+      "content": "2026 Bahar dönemi burs başvuruları 30 Nisan'a kadar alınacaktır.",
+      "date": "1 gün önce",
+      "category": "scholarship",
+      "isNew": false
+    },
+    {
+      "id": 4,
+      "title": "Kütüphane Çalışma Saatleri",
+      "content": "Kütüphane hafta sonu 24 saat açık olacaktır.",
+      "date": "2 gün önce",
+      "category": "general",
+      "isNew": false
+    },
+    {
+      "id": 5,
+      "title": "Yaz Okulu Kayıtları",
+      "content": "Yaz okulu ön kayıtları 1 Mayıs'ta başlayacaktır.",
+      "date": "3 gün önce",
+      "category": "academic",
+      "isNew": false
+    },
+    {
+      "id": 6,
+      "title": "Öğrenci Kartı Yenileme",
+      "content": "Öğrenci kartlarınızı yeniletmek için Öğrenci İşleri Daire Başkanlığı'na başvurabilirsiniz.",
+      "date": "5 gün önce",
+      "category": "admin",
+      "isNew": false
+    }
+  ],
+  "cafeteria": {
+    "dates": [
+      "18 Nisan (Cumartesi)",
+      "19 Nisan (Pazar)",
+      "20 Nisan (Pazartesi)",
+      "21 Nisan (Salı)",
+      "22 Nisan (Çarşamba)"
+    ],
+    "mealTypes": ["Kahvaltı", "Öğle", "Akşam"],
+    "menus": {
+      "Kahvaltı": {
+        "time": "08:00-10:00",
+        "price": "₺25",
+        "items": ["Peynir", "Zeytin", "Domates", "Salatalık", "Reçel", "Tereyağı", "Haşlanmış yumurta", "Çay"],
+        "isChips": true
+      },
+      "Öğle": {
+        "time": "12:00-14:00",
+        "price": "₺35",
+        "items": ["Mercimek Çorbası", "Tavuk Şinitzel", "Pilav", "Mevsim Salata", "Sütlaç", "Ayran"],
+        "isChips": false
+      },
+      "Akşam": {
+        "time": "18:00-20:00",
+        "price": "₺35",
+        "items": ["Ezogelin Çorbası", "Karnıyarık", "Bulgur Pilavı", "Çoban Salata", "Meyve", "Ayran"],
+        "isChips": false
+      }
+    }
+  },
+  "campusPrices": {
+    "categories": ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"],
+    "items": {
+      "Çay/Kahve": [
+        {"name": "Çay", "price": "₺3"}, {"name": "Türk Kahvesi", "price": "₺12"},
+        {"name": "Nescafe", "price": "₺8"}, {"name": "Cappuccino", "price": "₺15"},
+        {"name": "Latte", "price": "₺15"}, {"name": "Espresso", "price": "₺10"},
+        {"name": "Sıcak Çikolata", "price": "₺12"}
+      ],
+      "İçecekler": [
+        {"name": "Su (0.5L)", "price": "₺3"}, {"name": "Ayran", "price": "₺5"},
+        {"name": "Kola (330ml)", "price": "₺12"}, {"name": "Fanta", "price": "₺12"},
+        {"name": "Sprite", "price": "₺12"}, {"name": "Ice Tea", "price": "₺10"},
+        {"name": "Meyve Suyu (200ml)", "price": "₺8"}, {"name": "Soğuk Kahve", "price": "₺18"}
+      ],
+      "Atıştırmalıklar": [
+        {"name": "Poğaça", "price": "₺8"}, {"name": "Simit", "price": "₺5"},
+        {"name": "Tost", "price": "₺15"}, {"name": "Sandviç", "price": "₺20"},
+        {"name": "Börek", "price": "₺12"}, {"name": "Waffle", "price": "₺25"},
+        {"name": "Kurabiye", "price": "₺5"}, {"name": "Çikolata", "price": "₺10"},
+        {"name": "Cips", "price": "₺8"}
+      ],
+      "Yemek": [
+        {"name": "Kahvaltı Tabağı", "price": "₺25"}, {"name": "Öğle Menüsü", "price": "₺35"},
+        {"name": "Akşam Menüsü", "price": "₺35"}, {"name": "Pizza (dilim)", "price": "₺20"},
+        {"name": "Lahmacun", "price": "₺15"}, {"name": "Döner", "price": "₺40"},
+        {"name": "Pilav Üstü", "price": "₺30"}
+      ]
+    }
+  }
+}

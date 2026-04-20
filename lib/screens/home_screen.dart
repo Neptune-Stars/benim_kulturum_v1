@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../widgets/search_bar_widget.dart';
+import '../widgets/section_header.dart';
+import '../widgets/quick_action_card.dart';
+import '../widgets/info_card.dart';
+import '../widgets/badge_widget.dart';
+import '../data/data_service.dart'; // JSON Servisi
 
 import '../widgets/search_bar_widget.dart';
 import '../widgets/quick_action_card.dart';
@@ -20,8 +25,21 @@ import 'report_issue_screen.dart';
 import 'announcements_screen.dart';
 import 'event_detail_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<Map<String, dynamic>> _databaseFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _databaseFuture = DataService.loadDatabase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -388,9 +406,8 @@ class HomeScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
-        ),
+            );
+          }
       ),
     );
   }

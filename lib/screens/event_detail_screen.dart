@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../models/models/event.dart';
+// event.dart model importunu kaldırdık
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/badge_widget.dart';
@@ -9,9 +8,10 @@ import '../providers/favorites_provider.dart';
 import '../providers/joined_events_provider.dart';
 
 class EventDetailScreen extends StatelessWidget {
-  final Event event;
+  // Event nesnesi yerine Map alıyoruz
+  final Map<String, dynamic> eventData;
 
-  const EventDetailScreen({Key? key, required this.event}) : super(key: key);
+  const EventDetailScreen({Key? key, required this.eventData}) : super(key: key);
 
   String _getCategoryLabel(String cat) {
     switch (cat) {
@@ -33,7 +33,15 @@ class EventDetailScreen extends StatelessWidget {
     final favProvider = context.watch<FavoritesProvider>();
     final joinedProvider = context.watch<JoinedEventsProvider>();
 
-    final isFav = favProvider.isFavorite("evt_${event.id}");
+    final isFav = favProvider.isFavorite("evt_${eventData['id']}");
+
+    // JSON Map içinden güvenli okuma yapıyoruz
+    final String title = eventData['title'] ?? 'Etkinlik';
+    final String category = eventData['category'] ?? '';
+    final String date = eventData['date'] ?? '';
+    final String time = eventData['time'] ?? '';
+    final String location = eventData['location'] ?? '';
+    final String description = eventData['description'] ?? '';
     final isJoined = joinedProvider.isJoined(event.id);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -48,7 +56,7 @@ class EventDetailScreen extends StatelessWidget {
         : AppTheme.primaryLight.withOpacity(0.30);
 
     return Scaffold(
-      appBar: CustomAppBar(title: event.title, showBack: true),
+      appBar: CustomAppBar(title: title, showBack: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -65,7 +73,7 @@ class EventDetailScreen extends StatelessWidget {
               child: Column(
                 children: [
                   AppBadge(
-                    label: _getCategoryLabel(event.category),
+                    label: _getCategoryLabel(category),
                     backgroundColor: AppTheme.primaryColor,
                     textColor: Colors.white,
                   ),
@@ -78,7 +86,7 @@ class EventDetailScreen extends StatelessWidget {
                     ),
                   if (isJoined) const SizedBox(height: 16),
                   Text(
-                    event.title,
+                    title,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
@@ -90,26 +98,11 @@ class EventDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            _buildDetailRow(
-              context,
-              Icons.calendar_today,
-              "Tarih",
-              event.date,
-            ),
+            _buildDetailRow(Icons.calendar_today, "Tarih", date),
             const Divider(height: 24),
-            _buildDetailRow(
-              context,
-              Icons.access_time,
-              "Saat",
-              event.time,
-            ),
+            _buildDetailRow(Icons.access_time, "Saat", time),
             const Divider(height: 24),
-            _buildDetailRow(
-              context,
-              Icons.location_on,
-              "Konum",
-              event.location,
-            ),
+            _buildDetailRow(Icons.location_on, "Konum", location),
             const SizedBox(height: 32),
             Text(
               "Açıklama",
@@ -121,12 +114,8 @@ class EventDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              event.description,
-              style: TextStyle(
-                fontSize: 16,
-                color: mutedColor,
-                height: 1.5,
-              ),
+              description,
+              style: const TextStyle(fontSize: 16, color: AppTheme.textMuted, height: 1.5),
             ),
             const SizedBox(height: 48),
             SizedBox(
@@ -171,9 +160,7 @@ class EventDetailScreen extends StatelessWidget {
               width: double.infinity,
               height: 50,
               child: OutlinedButton.icon(
-                onPressed: () => context
-                    .read<FavoritesProvider>()
-                    .toggleFavorite("evt_${event.id}"),
+                onPressed: () => context.read<FavoritesProvider>().toggleFavorite("evt_${eventData['id']}"),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textColor,
                   side: BorderSide(color: Theme.of(context).dividerColor),

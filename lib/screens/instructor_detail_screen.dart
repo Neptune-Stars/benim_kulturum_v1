@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/models/instructor.dart';
+// instructor.dart model importunu kaldırdık
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/badge_widget.dart';
@@ -8,12 +8,10 @@ import '../widgets/section_header.dart';
 import '../providers/favorites_provider.dart';
 
 class InstructorDetailScreen extends StatelessWidget {
-  final Instructor instructor;
+  // Instructor nesnesi yerine Map alıyoruz
+  final Map<String, dynamic> instructorData;
 
-  const InstructorDetailScreen({
-    Key? key,
-    required this.instructor,
-  }) : super(key: key);
+  const InstructorDetailScreen({Key? key, required this.instructorData}) : super(key: key);
 
   String getInitials(String name) {
     List<String> names = name
@@ -32,7 +30,13 @@ class InstructorDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
-    final isFav = favProvider.isFavorite("inst_${instructor.id}");
+    final isFav = favProvider.isFavorite("inst_${instructorData['id']}");
+
+    // JSON Map içinden güvenli bir şekilde değerleri alıyoruz
+    final String name = instructorData['name'] ?? 'İsimsiz';
+    final String title = instructorData['title'] ?? '';
+    final String department = instructorData['department'] ?? '';
+    final String office = instructorData['office'] ?? '';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor =
@@ -43,20 +47,13 @@ class InstructorDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: instructor.name,
+        title: name,
         showBack: true,
         actions: [
           IconButton(
-            icon: Icon(
-              isFav ? Icons.star : Icons.star_border,
-              color: isFav ? AppTheme.warningColor : textColor,
-            ),
-            onPressed: () {
-              context
-                  .read<FavoritesProvider>()
-                  .toggleFavorite("inst_${instructor.id}");
-            },
-          ),
+            icon: Icon(isFav ? Icons.star : Icons.star_border, color: isFav ? AppTheme.warningColor : AppTheme.textPrimary),
+            onPressed: () => context.read<FavoritesProvider>().toggleFavorite("inst_${instructorData['id']}"),
+          )
         ],
       ),
       body: SingleChildScrollView(

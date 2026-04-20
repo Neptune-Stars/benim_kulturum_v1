@@ -4,7 +4,7 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/mock_data.dart';
+import '../data/data_service.dart'; // JSON Servisi
 
 // Import detail screens for navigation
 import 'building_detail_screen.dart';
@@ -23,6 +23,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   String _selectedFilter = "Tümü";
+  late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _filters = ["Tümü", "Binalar", "Derslikler", "Hocalar", "Etkinlikler"];
   final List<String> _recentSearches = ["MF-101", "Kütüphane", "Ahmet Yılmaz", "Bahar Şenliği"];
@@ -30,13 +31,11 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto focus is handled by the TextField autofocus property
+    _databaseFuture = DataService.loadDatabase();
   }
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> searchResults = _buildSearchResults();
-
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -81,11 +80,23 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: _searchQuery.isEmpty
                   ? _buildRecentSearches()
-                  : searchResults.isEmpty
-                  ? _buildEmptyState()
-                  : ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                children: searchResults,
+                  : FutureBuilder<Map<String, dynamic>>(
+                future: _databaseFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData) return _buildEmptyState();
+
+                  List<Widget> searchResults = _buildSearchResults(snapshot.data!);
+
+                  return searchResults.isEmpty
+                      ? _buildEmptyState()
+                      : ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    children: searchResults,
+                  );
+                },
               ),
             ),
           ],
@@ -133,49 +144,53 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  List<Widget> _buildSearchResults() {
+  List<Widget> _buildSearchResults(Map<String, dynamic> data) {
     List<Widget> results = [];
     final query = _searchQuery.toLowerCase();
 
     if (_selectedFilter == "Tümü" || _selectedFilter == "Binalar") {
-      for (var b in MockData.buildings) {
-        if (b.name.toLowerCase().contains(query) || b.abbr.toLowerCase().contains(query)) {
+      final buildings = data['buildings'] as List? ?? [];
+      for (var b in buildings) {
+        if (b['name'].toLowerCase().contains(query) || b['abbr'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: b.name, subtitle: b.location, badge: AppBadge(label: "Bina"),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BuildingDetailScreen(building: b))),
+            title: b['name'], subtitle: b['location'], badge: const AppBadge(label: "Bina"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: b))),
           ));
         }
       }
     }
 
     if (_selectedFilter == "Tümü" || _selectedFilter == "Derslikler") {
-      for (var c in MockData.classrooms) {
-        if (c.name.toLowerCase().contains(query) || c.building.toLowerCase().contains(query)) {
+      final classrooms = data['classrooms'] as List? ?? [];
+      for (var c in classrooms) {
+        if (c['name'].toLowerCase().contains(query) || c['building'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: c.name, subtitle: c.building, badge: AppBadge(label: "Derslik"),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroom: c))),
+            title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Derslik"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))),
           ));
         }
       }
     }
 
     if (_selectedFilter == "Tümü" || _selectedFilter == "Hocalar") {
-      for (var i in MockData.instructors) {
-        if (i.name.toLowerCase().contains(query) || i.department.toLowerCase().contains(query)) {
+      final instructors = data['instructors'] as List? ?? [];
+      for (var i in instructors) {
+        if (i['name'].toLowerCase().contains(query) || i['department'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: i.name, subtitle: i.department, badge: AppBadge(label: "Hoca"),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructor: i))),
+            title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Hoca"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: i))),
           ));
         }
       }
     }
 
     if (_selectedFilter == "Tümü" || _selectedFilter == "Etkinlikler") {
-      for (var e in MockData.events) {
-        if (e.title.toLowerCase().contains(query) || e.description.toLowerCase().contains(query)) {
+      final events = data['events'] as List? ?? [];
+      for (var e in events) {
+        if (e['title'].toLowerCase().contains(query) || e['description'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: e.title, subtitle: e.date, badge: AppBadge(label: "Etkinlik"),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(event: e))),
+            title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Etkinlik"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e))),
           ));
         }
       }

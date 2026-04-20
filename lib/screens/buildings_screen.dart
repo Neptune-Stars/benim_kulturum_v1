@@ -7,7 +7,7 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/mock_data.dart';
+import '../data/data_service.dart'; // MOCK DATA YERİNE JSON SERVİSİ
 import 'building_detail_screen.dart';
 
 class BuildingsScreen extends StatefulWidget {
@@ -20,6 +20,7 @@ class BuildingsScreen extends StatefulWidget {
 class _BuildingsScreenState extends State<BuildingsScreen> {
   String _searchQuery = "";
   String _selectedFilter = "Tümü";
+  late Future<Map<String, dynamic>> _databaseFuture; // JSON Future
 
   final List<String> _filters = [
     "Tümü",
@@ -315,11 +316,44 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                       builder: (_) => BuildingDetailScreen(building: b),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                  child: Row(
+                    children: [
+                      const Icon(Icons.map, color: AppTheme.primaryColor),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text("Kampüs haritasını görüntüle", style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text("Haritayı Aç", style: TextStyle(color: AppTheme.primaryColor)),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: filteredBuildings.length,
+                  itemBuilder: (context, index) {
+                    final b = filteredBuildings[index];
+                    return InfoCard(
+                      title: b['name'] ?? "",
+                      subtitle: b['location'] ?? "",
+                      badge: AppBadge(label: b['abbr'] ?? ""),
+                      onTap: () => Navigator.push(
+                          context,
+                          // Artık modele değil, Map objesine (b) gönderiyoruz
+                          MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: b))
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

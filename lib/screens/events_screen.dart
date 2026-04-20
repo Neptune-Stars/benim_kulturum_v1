@@ -7,8 +7,7 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/mock_data.dart';
-import '../providers/joined_events_provider.dart';
+import '../data/data_service.dart'; // MOCK DATA YERİNE JSON SERVİSİ
 import 'event_detail_screen.dart';
 
 class EventsScreen extends StatefulWidget {
@@ -26,6 +25,7 @@ class EventsScreen extends StatefulWidget {
 class _EventsScreenState extends State<EventsScreen> {
   String _searchQuery = "";
   String _selectedFilter = "Tümü";
+  late Future<Map<String, dynamic>> _databaseFuture; // JSON Future
 
   final List<String> _filters = [
     "Tümü",
@@ -34,6 +34,12 @@ class _EventsScreenState extends State<EventsScreen> {
     "Spor",
     "Sosyal",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _databaseFuture = DataService.loadDatabase();
+  }
 
   String _getCategoryLabel(String cat) {
     switch (cat) {

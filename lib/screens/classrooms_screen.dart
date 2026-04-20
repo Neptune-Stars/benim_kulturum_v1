@@ -5,7 +5,8 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/mock_data.dart';
+import '../data/data_service.dart'; // MOCK DATA YERİNE JSON SERVİSİ
+import 'classroom_detail_screen.dart';
 
 class ClassroomsScreen extends StatefulWidget {
   const ClassroomsScreen({Key? key}) : super(key: key);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/filter_chip_widget.dart';
+import '../data/data_service.dart'; // JSON Servisi
 
 class CampusPricesScreen extends StatefulWidget {
   const CampusPricesScreen({Key? key}) : super(key: key);
@@ -12,6 +13,7 @@ class CampusPricesScreen extends StatefulWidget {
 
 class _CampusPricesScreenState extends State<CampusPricesScreen> {
   String _selectedCategory = "Çay/Kahve";
+  late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _categories = [
     "Çay/Kahve",
