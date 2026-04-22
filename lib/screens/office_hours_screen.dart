@@ -4,7 +4,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
-import '../data/data_service.dart'; // JSON Servisi
+import '../data/data_service.dart';
 
 class OfficeHoursScreen extends StatefulWidget {
   const OfficeHoursScreen({Key? key}) : super(key: key);
@@ -18,7 +18,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   String _selectedFilter = "Tümü";
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  // Filtrelere haftanın tüm günlerini ekledik
   final List<String> _filters = ["Tümü", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
 
   @override
@@ -27,14 +26,12 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
     _databaseFuture = DataService.loadDatabase();
   }
 
-  // JSON'dan gelen hocaları otomatik olarak ofis saati listesine dönüştüren fonksiyon
   List<Map<String, String>> _generateDynamicOfficeHours(List<dynamic> instructors) {
     List<Map<String, String>> generatedList = [];
     final days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
 
     for (int i = 0; i < instructors.length; i++) {
       var instructor = instructors[i];
-      // Hocanın sırasına göre matematiksel olarak 2 farklı gün atıyoruz
       String day1 = days[i % 5];
       String day2 = days[(i + 2) % 5];
 
@@ -57,15 +54,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
     return generatedList;
   }
 
-  Instructor? _findInstructorByName(String name) {
-    for (final instructor in MockData.instructors) {
-      if (instructor.name == name) {
-        return instructor;
-      }
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,11 +69,8 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
             }
 
             final allInstructors = snapshot.data!['instructors'] as List<dynamic>? ?? [];
-
-            // Hocalar listesini otomatik ofis saatleri listesine çeviriyoruz
             final allOfficeHours = _generateDynamicOfficeHours(allInstructors);
 
-            // Arama ve Filtreleme İşlemleri
             final filteredHours = allOfficeHours.where((oh) {
               final matchesSearch = oh['name']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   oh['dept']!.toLowerCase().contains(_searchQuery.toLowerCase());

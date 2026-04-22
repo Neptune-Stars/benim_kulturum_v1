@@ -5,7 +5,7 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/data_service.dart'; // JSON Servisi
+import '../data/data_service.dart';
 import 'instructor_detail_screen.dart';
 
 class InstructorsScreen extends StatefulWidget {
@@ -20,7 +20,6 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
   String _selectedFilter = "Tümü";
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  // 1. GÜNCELLEME: Yeni fakülteler filtre butonlarına eklendi
   final List<String> _filters = [
     "Tümü",
     "Mühendislik",
@@ -64,7 +63,6 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
 
               bool matchesFilter = _selectedFilter == "Tümü";
 
-              // 2. GÜNCELLEME: Yeni bölümlerin JSON karşılıkları eşleştirildi
               if (_selectedFilter == "Mühendislik" && filterValue == "engineering") matchesFilter = true;
               if (_selectedFilter == "İktisat" && filterValue == "economics") matchesFilter = true;
               if (_selectedFilter == "Fen-Edebiyat" && filterValue == "science") matchesFilter = true;
@@ -108,14 +106,18 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                     itemCount: filteredInstructors.length,
                     itemBuilder: (context, index) {
                       final instructor = filteredInstructors[index];
+
+                      // HATA ÇÖZÜMÜ: Map türünü güvenli bir şekilde String key'lere dönüştürüyoruz (Casting)
+                      final Map<String, dynamic> safeInstructorData = Map<String, dynamic>.from(instructor as Map);
+
                       return InfoCard(
-                        title: instructor['name'] ?? '',
-                        subtitle: instructor['department'] ?? '',
-                        metadata: "Ofis: ${instructor['office']}",
-                        badge: AppBadge(label: instructor['title'] ?? ''),
+                        title: safeInstructorData['name'] ?? '',
+                        subtitle: safeInstructorData['department'] ?? '',
+                        metadata: "Ofis: ${safeInstructorData['office']}",
+                        badge: AppBadge(label: safeInstructorData['title'] ?? ''),
                         onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: instructor))
+                            MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: safeInstructorData))
                         ),
                       );
                     },

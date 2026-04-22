@@ -2,57 +2,129 @@
   "buildings": [
     {
       "id": 1,
-      "name": "Ataköy Ana Bina",
-      "abbr": "ATK-Ana",
-      "floors": 5,
-      "rooms": 85,
-      "type": "academic",
-      "location": "Ataköy Yerleşkesi"
+      "name": "Rektörlük",
+      "abbr": "REK",
+      "type": "admin",
+      "location": "Ataköy Yerleşkesi, En Üst Kat"
     },
     {
       "id": 2,
-      "name": "Rektörlük",
-      "abbr": "REK",
-      "floors": 3,
-      "rooms": 15,
+      "name": "Öğrenci İşleri Daire Başkanlığı",
+      "abbr": "ÖİDB",
       "type": "admin",
-      "location": "Ataköy Yerleşkesi"
+      "location": "Ataköy Yerleşkesi, Zemin Kat"
     },
     {
       "id": 3,
-      "name": "Öğrenci İşleri",
-      "abbr": "ÖİDB",
-      "floors": 2,
-      "rooms": 10,
-      "type": "admin",
-      "location": "Ataköy Yerleşkesi"
+      "name": "Mühendislik Fakültesi",
+      "abbr": "MF",
+      "type": "faculty",
+      "location": "Ataköy Yerleşkesi, 2. Kat"
     },
     {
       "id": 4,
-      "name": "Basın Ekspres Binası",
-      "abbr": "BEX",
-      "floors": 6,
-      "rooms": 60,
-      "type": "academic",
-      "location": "Basın Ekspres Yerleşkesi"
+      "name": "Hukuk Fakültesi",
+      "abbr": "HF",
+      "type": "faculty",
+      "location": "Ataköy Yerleşkesi, 3. Kat"
     },
     {
       "id": 5,
-      "name": "Şirinevler Binası",
-      "abbr": "ŞİR",
-      "floors": 5,
-      "rooms": 45,
-      "type": "academic",
-      "location": "Şirinevler Yerleşkesi"
+      "name": "Merkez Kütüphane",
+      "abbr": "KTP",
+      "type": "study",
+      "location": "Ataköy Yerleşkesi, 1. Kat"
     },
     {
       "id": 6,
-      "name": "İncirli Binası",
-      "abbr": "İNC",
-      "floors": 4,
-      "rooms": 35,
-      "type": "academic",
-      "location": "İncirli Yerleşkesi"
+      "name": "Ara Kat Çalışma Alanı 1",
+      "abbr": "ÇLŞ-1",
+      "type": "study",
+      "location": "Ataköy Yerleşkesi, Ara Kat 1"
+    },
+    {
+      "id": 7,
+      "name": "Ara Kat Çalışma Alanı 2",
+      "abbr": "ÇLŞ-2",
+      "type": "study",
+      "location": "Ataköy Yerleşkesi, Ara Kat 2"
+    },
+    {
+      "id": 8,
+      "name": "Starbucks",
+      "abbr": "KAFE",
+      "type": "food",
+      "location": "Ataköy Yerleşkesi, Ön Bahçe"
+    },
+    {
+      "id": 9,
+      "name": "Simit Sarayı",
+      "abbr": "KAFE",
+      "type": "food",
+      "location": "Ataköy Yerleşkesi, Zemin Kat"
+    },
+    {
+      "id": 10,
+      "name": "Kantin (Ana Bina)",
+      "abbr": "KANTİN",
+      "type": "food",
+      "location": "Ataköy Yerleşkesi, -1. Kat"
+    },
+    {
+      "id": 11,
+      "name": "Teras Kafe",
+      "abbr": "KAFE",
+      "type": "food",
+      "location": "Ataköy Yerleşkesi, Teras"
+    },
+    {
+      "id": 12,
+      "name": "Ön Bahçe Sosyal Alan",
+      "abbr": "SOSYAL",
+      "type": "social",
+      "location": "Ataköy Yerleşkesi, Açık Alan"
+    },
+    {
+      "id": 13,
+      "name": "İktisadi ve İdari Bilimler Fakültesi",
+      "abbr": "İİBF",
+      "type": "faculty",
+      "location": "Basın Ekspres Yerleşkesi, 2. Kat"
+    },
+    {
+      "id": 14,
+      "name": "Basın Ekspres Kantin",
+      "abbr": "KANTİN",
+      "type": "food",
+      "location": "Basın Ekspres Yerleşkesi, Zemin Kat"
+    },
+    {
+      "id": 15,
+      "name": "Yabancı Diller Yüksekokulu (Hazırlık)",
+      "abbr": "YDY",
+      "type": "faculty",
+      "location": "Şirinevler Yerleşkesi, 3. Kat"
+    },
+    {
+      "id": 16,
+      "name": "Şirinevler Arka Bahçe",
+      "abbr": "SOSYAL",
+      "type": "social",
+      "location": "Şirinevler Yerleşkesi, Açık Alan"
+    },
+    {
+      "id": 17,
+      "name": "Sağlık Bilimleri Fakültesi",
+      "abbr": "SBF",
+      "type": "faculty",
+      "location": "İncirli Yerleşkesi, 1. Kat"
+    },
+    {
+      "id": 18,
+      "name": "İncirli Kütüphane",
+      "abbr": "KTP",
+      "type": "study",
+      "location": "İncirli Yerleşkesi, Zemin Kat"
     }
   ],
   "classrooms": [
@@ -64,7 +136,7 @@
     { "id": 6, "name": "ATK-103", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 2 },
     { "id": 7, "name": "ATK-104", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 3 },
     { "id": 8, "name": "ATK-105", "building": "Ataköy Ana Bina", "capacity": 60, "type": "Derslik", "floor": 3 },
-    { "id": 9, "name": "Akil Muhtar Konferans Salonu", "building": "Ataköy Ana Bina", "capacity": 300, "type": "Konferans Salonu", "floor": -1 },
+    { "id": 9, "name": "Akıngüç Konferans Salonu", "building": "Ataköy Ana Bina", "capacity": 300, "type": "Konferans Salonu", "floor": -1 },
     { "id": 10, "name": "Önder Öztunalı Konferans Salonu", "building": "Ataköy Ana Bina", "capacity": 350, "type": "Konferans Salonu", "floor": -1 },
     { "id": 11, "name": "Çok Amaçlı Salon", "building": "Ataköy Ana Bina", "capacity": 250, "type": "Konferans Salonu", "floor": -1 },
 

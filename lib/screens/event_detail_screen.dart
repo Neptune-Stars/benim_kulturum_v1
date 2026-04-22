@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// event.dart model importunu kaldırdık
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/badge_widget.dart';
@@ -8,23 +7,17 @@ import '../providers/favorites_provider.dart';
 import '../providers/joined_events_provider.dart';
 
 class EventDetailScreen extends StatelessWidget {
-  // Event nesnesi yerine Map alıyoruz
   final Map<String, dynamic> eventData;
 
   const EventDetailScreen({Key? key, required this.eventData}) : super(key: key);
 
   String _getCategoryLabel(String cat) {
     switch (cat) {
-      case "academic":
-        return "Akademik";
-      case "cultural":
-        return "Kültürel";
-      case "sports":
-        return "Spor";
-      case "social":
-        return "Sosyal";
-      default:
-        return "Genel";
+      case "academic": return "Akademik";
+      case "cultural": return "Kültürel";
+      case "sports": return "Spor";
+      case "social": return "Sosyal";
+      default: return "Genel";
     }
   }
 
@@ -33,27 +26,23 @@ class EventDetailScreen extends StatelessWidget {
     final favProvider = context.watch<FavoritesProvider>();
     final joinedProvider = context.watch<JoinedEventsProvider>();
 
-    final isFav = favProvider.isFavorite("evt_${eventData['id']}");
+    final eventId = eventData['id'];
+    final isFav = favProvider.isFavorite("evt_$eventId");
 
-    // JSON Map içinden güvenli okuma yapıyoruz
     final String title = eventData['title'] ?? 'Etkinlik';
     final String category = eventData['category'] ?? '';
     final String date = eventData['date'] ?? '';
     final String time = eventData['time'] ?? '';
     final String location = eventData['location'] ?? '';
     final String description = eventData['description'] ?? '';
-    final isJoined = joinedProvider.isJoined(event.id);
+
+    // Hata düzeltildi: event.id yerine eventId kullanılıyor
+    final isJoined = joinedProvider.isJoined(eventId);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-    final softBoxColor = isDark
-        ? Colors.white.withOpacity(0.06)
-        : AppTheme.primaryLight.withOpacity(0.10);
-    final softBorderColor = isDark
-        ? Colors.white.withOpacity(0.10)
-        : AppTheme.primaryLight.withOpacity(0.30);
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final softBoxColor = isDark ? Colors.white.withOpacity(0.06) : AppTheme.primaryLight.withOpacity(0.10);
+    final softBorderColor = isDark ? Colors.white.withOpacity(0.10) : AppTheme.primaryLight.withOpacity(0.30);
 
     return Scaffold(
       appBar: CustomAppBar(title: title, showBack: true),
@@ -88,96 +77,65 @@ class EventDetailScreen extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            _buildDetailRow(Icons.calendar_today, "Tarih", date),
+            // Hata düzeltildi: _buildDetailRow içine context eklendi
+            _buildDetailRow(context, Icons.calendar_today, "Tarih", date),
             const Divider(height: 24),
-            _buildDetailRow(Icons.access_time, "Saat", time),
+            _buildDetailRow(context, Icons.access_time, "Saat", time),
             const Divider(height: 24),
-            _buildDetailRow(Icons.location_on, "Konum", location),
+            _buildDetailRow(context, Icons.location_on, "Konum", location),
             const SizedBox(height: 32),
-            Text(
-              "Açıklama",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
+            Text("Açıklama", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
             const SizedBox(height: 8),
-            Text(
-              description,
-              style: const TextStyle(fontSize: 16, color: AppTheme.textMuted, height: 1.5),
-            ),
+            Text(description, style: const TextStyle(fontSize: 16, color: AppTheme.textMuted, height: 1.5)),
             const SizedBox(height: 48),
+
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isJoined
-                      ? AppTheme.destructiveColor
-                      : AppTheme.primaryColor,
+                  backgroundColor: isJoined ? AppTheme.destructiveColor : AppTheme.primaryColor,
                 ),
                 onPressed: () {
-                  final alreadyJoined =
-                  context.read<JoinedEventsProvider>().isJoined(event.id);
-
-                  context.read<JoinedEventsProvider>().toggleJoin(event.id);
+                  final alreadyJoined = context.read<JoinedEventsProvider>().isJoined(eventId);
+                  context.read<JoinedEventsProvider>().toggleJoin(eventId);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        alreadyJoined
-                            ? "Etkinlik kaydın iptal edildi."
-                            : "Etkinliğe katıldın. Artık Etkinliklerim bölümünde görünüyor.",
-                      ),
+                      content: Text(alreadyJoined ? "Etkinlik kaydın iptal edildi." : "Etkinliğe katıldın. Artık Etkinliklerim bölümünde görünüyor."),
                     ),
                   );
                 },
-                icon: Icon(
-                  isJoined ? Icons.event_busy : Icons.event_available,
-                ),
+                icon: Icon(isJoined ? Icons.event_busy : Icons.event_available),
                 label: Text(
                   isJoined ? "Katılımı İptal Et" : "Etkinliğe Katıl",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
             const SizedBox(height: 12),
+
             SizedBox(
               width: double.infinity,
               height: 50,
               child: OutlinedButton.icon(
-                onPressed: () => context.read<FavoritesProvider>().toggleFavorite("evt_${eventData['id']}"),
+                onPressed: () => context.read<FavoritesProvider>().toggleFavorite("evt_$eventId"),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textColor,
                   side: BorderSide(color: Theme.of(context).dividerColor),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 icon: Icon(
                   isFav ? Icons.star : Icons.star_border,
-                  color: isFav
-                      ? AppTheme.warningColor
-                      : textColor,
+                  color: isFav ? AppTheme.warningColor : textColor,
                 ),
-                label: Text(
-                  isFav ? "Favorilerden Çıkar" : "Favorilere Ekle",
-                  style: const TextStyle(fontSize: 16),
-                ),
+                label: Text(isFav ? "Favorilerden Çıkar" : "Favorilere Ekle", style: const TextStyle(fontSize: 16)),
               ),
             ),
           ],
@@ -186,50 +144,26 @@ class EventDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(
-      BuildContext context,
-      IconData icon,
-      String label,
-      String value,
-      ) {
+  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-    final boxColor = isDark
-        ? Colors.white.withOpacity(0.06)
-        : AppTheme.backgroundColor;
+    final boxColor = isDark ? Colors.white.withOpacity(0.06) : AppTheme.backgroundColor;
 
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: boxColor,
-            borderRadius: BorderRadius.circular(8),
-          ),
+          decoration: BoxDecoration(color: boxColor, borderRadius: BorderRadius.circular(8)),
           child: Icon(icon, color: AppTheme.primaryColor),
         ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: mutedColor,
-                fontSize: 12,
-              ),
-            ),
+            Text(label, style: TextStyle(color: mutedColor, fontSize: 12)),
             const SizedBox(height: 2),
-            Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: textColor,
-              ),
-            ),
+            Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: textColor)),
           ],
         )
       ],
