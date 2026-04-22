@@ -27,12 +27,19 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Koyu tema açık mı kontrol ediyoruz
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Temaya göre çizgi ve arkaplan renklerini belirliyoruz
+    final borderColor = isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
+    final navBackgroundColor = isDark ? AppTheme.darkCardColor : Colors.white;
+
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(color: AppTheme.borderColor, width: 1),
+            top: BorderSide(color: borderColor, width: 1), // Çizgi rengi dinamik oldu
           ),
         ),
         child: BottomNavigationBar(
@@ -43,9 +50,9 @@ class _MainScreenState extends State<MainScreen> {
             });
           },
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: AppTheme.textMuted,
+          backgroundColor: navBackgroundColor, // Arkaplan rengi dinamik oldu
+          selectedItemColor: isDark ? AppTheme.primaryLight : AppTheme.primaryColor, // Seçili ikon rengi
+          unselectedItemColor: isDark ? AppTheme.darkTextMuted : AppTheme.textMuted, // Seçilmeyen ikon rengi
           elevation: 0,
           items: const [
             BottomNavigationBarItem(
@@ -56,7 +63,7 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.business_outlined),
               activeIcon: Icon(Icons.business),
-              label: "Kampüs Rehber",
+              label: "Kampüs", // "Kampüs Rehber" yazısı taşıp taşmadığına göre kısaltılabilir
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.restaurant_outlined),

@@ -18,23 +18,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   late TabController _tabController;
   late Future<Map<String, dynamic>> _databaseFuture;
 
+  // TAB İSMİ DEĞİŞTİ: Binalar -> Birimler
   final List<String> _tabs = [
-    "Genel", "Binalar", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane", "Fiyatlar", "Sorunlar", "Öğrenciler"
+    "Genel", "Birimler", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane", "Fiyatlar", "Sorunlar", "Öğrenciler"
   ];
 
   final Map<int, TextEditingController> _searchControllers = {
-    1: TextEditingController(),
-    2: TextEditingController(),
-    3: TextEditingController(),
-    4: TextEditingController(),
-    5: TextEditingController(),
-    6: TextEditingController(),
-    7: TextEditingController(),
-    8: TextEditingController(),
-    9: TextEditingController(), // Controller for Öğrenciler
+    1: TextEditingController(), 2: TextEditingController(), 3: TextEditingController(),
+    4: TextEditingController(), 5: TextEditingController(), 6: TextEditingController(),
+    7: TextEditingController(), 8: TextEditingController(), 9: TextEditingController(),
   };
 
-  // Mock prices
   final List<Map<String, String>> _mockPrices = [
     {"name": "Çay", "price": "₺3", "category": "Çay/Kahve"},
     {"name": "Türk Kahvesi", "price": "₺12", "category": "Çay/Kahve"},
@@ -43,32 +37,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     {"name": "Öğle Menüsü", "price": "₺35", "category": "Yemek"},
   ];
 
-  // Mock issues reported by students
   final List<Map<String, dynamic>> _mockIssues = [
     {
-      "id": 1, "category": "Altyapı Sorunu", "priority": "Yüksek",
-      "subject": "Sınıfta projeksiyon çalışmıyor", "location": "MF-101",
+      "id": 1, "category": "Altyapı Sorunu", "priority": "Yüksek", "subject": "Sınıfta projeksiyon çalışmıyor", "location": "MF-101",
       "description": "Bilgisayarı bağladığımızda görüntü gelmiyor, kablo kopuk olabilir.", "date": "Bugün 10:30"
     },
     {
-      "id": 2, "category": "Temizlik", "priority": "Orta",
-      "subject": "Lavabolarda sabun bitti", "location": "İİBF 2. Kat",
+      "id": 2, "category": "Temizlik", "priority": "Orta", "subject": "Lavabolarda sabun bitti", "location": "İİBF 2. Kat",
       "description": "Erkekler tuvaletindeki sıvı sabunluklar tamamen boşalmış.", "date": "Dün 14:15"
-    },
-    {
-      "id": 3, "category": "Teknik Sorun", "priority": "Düşük",
-      "subject": "Wi-Fi bağlantısı kopuyor", "location": "Kütüphane Çalışma Salonu",
-      "description": "Özellikle akşam saatlerinde eduroam ağına bağlanırken sürekli kopmalar yaşanıyor.", "date": "17 Nisan 2026"
     },
   ];
 
-  // Mock students
   final List<Map<String, String>> _mockStudents = [
     {"name": "Ahmet Yılmaz", "no": "20210001234", "email": "ahmet@uni.edu.tr", "grade": "3. Sınıf"},
     {"name": "Ayşe Demir", "no": "20220005678", "email": "ayse@uni.edu.tr", "grade": "2. Sınıf"},
-    {"name": "Mehmet Kaya", "no": "20200009012", "email": "mehmet@uni.edu.tr", "grade": "4. Sınıf"},
-    {"name": "Zeynep Çelik", "no": "20230003456", "email": "zeynep@uni.edu.tr", "grade": "1. Sınıf"},
-    {"name": "Can Özkan", "no": "20190007890", "email": "can@uni.edu.tr", "grade": "Mezun"},
   ];
 
   @override
@@ -86,9 +68,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   void dispose() {
-    for (var controller in _searchControllers.values) {
-      controller.dispose();
-    }
+    for (var controller in _searchControllers.values) { controller.dispose(); }
     _tabController.dispose();
     super.dispose();
   }
@@ -98,22 +78,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     context.go('/login');
   }
 
-  void _switchTab(int index) {
-    _tabController.animateTo(index);
-  }
+  void _switchTab(int index) { _tabController.animateTo(index); }
 
   String _normalizeForSearch(String text) {
-    return text.toLowerCase()
-        .replaceAll('i̇', 'i')
-        .replaceAll('ı', 'i')
-        .replaceAll('ğ', 'g')
-        .replaceAll('ü', 'u')
-        .replaceAll('ş', 's')
-        .replaceAll('ö', 'o')
-        .replaceAll('ç', 'c');
+    return text.toLowerCase().replaceAll('i̇', 'i').replaceAll('ı', 'i').replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c');
   }
-  
-  // Ortak Silme Fonksiyonu
+
   void _showDeleteDialog(String collectionKey, int index) {
     showDialog(
       context: context,
@@ -126,7 +97,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () async {
                 var box = Hive.box('campusDataBox');
                 List currentList = List.from(box.get(collectionKey, defaultValue: []));
-
                 currentList.removeAt(index);
                 await box.put(collectionKey, currentList);
 
@@ -171,11 +141,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   Widget _buildTextField(String label, {bool isNumber = false, int lines = 1, bool isPassword = false}) {
     return TextField(
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      maxLines: lines,
-      obscureText: isPassword,
+      maxLines: lines, obscureText: isPassword,
       decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
     );
@@ -184,8 +152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   Widget _buildDropdown(String label, List<String> options) {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
@@ -195,173 +162,108 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
-    final filteredBuildings = MockData.buildings.where((b) =>
-    _normalizeForSearch(b.name).contains(sq1) || _normalizeForSearch(b.location).contains(sq1) || _normalizeForSearch(b.abbr).contains(sq1)
-    ).toList();
-
-    final sq2 = _normalizeForSearch(_searchControllers[2]!.text);
-    final filteredClassrooms = MockData.classrooms.where((c) =>
-    _normalizeForSearch(c.name).contains(sq2) || _normalizeForSearch(c.building).contains(sq2)
-    ).toList();
-
-    final sq3 = _normalizeForSearch(_searchControllers[3]!.text);
-    final filteredInstructors = MockData.instructors.where((i) =>
-    _normalizeForSearch(i.name).contains(sq3) || _normalizeForSearch(i.department).contains(sq3) || _normalizeForSearch(i.title).contains(sq3)
-    ).toList();
-
-    final sq4 = _normalizeForSearch(_searchControllers[4]!.text);
-    final filteredEvents = MockData.events.where((e) =>
-    _normalizeForSearch(e.title).contains(sq4) || _normalizeForSearch(e.date).contains(sq4)
-    ).toList();
-
-    final sq5 = _normalizeForSearch(_searchControllers[5]!.text);
-    final filteredAnnouncements = MockData.announcements.where((a) =>
-    _normalizeForSearch(a.title).contains(sq5) || _normalizeForSearch(a.date).contains(sq5)
-    ).toList();
-
-    final sq6 = _normalizeForSearch(_searchControllers[6]!.text);
-    final filteredMenus = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"].where((d) =>
-        _normalizeForSearch(d).contains(sq6)
-    ).toList();
-
-    final sq7 = _normalizeForSearch(_searchControllers[7]!.text);
-    final filteredPrices = _mockPrices.where((p) =>
-    _normalizeForSearch(p["name"]!).contains(sq7) || _normalizeForSearch(p["category"]!).contains(sq7)
-    ).toList();
-
-    final sq8 = _normalizeForSearch(_searchControllers[8]!.text);
-    final filteredIssues = _mockIssues.where((iss) =>
-    _normalizeForSearch(iss["subject"]).contains(sq8) || _normalizeForSearch(iss["category"]).contains(sq8) || _normalizeForSearch(iss["location"]).contains(sq8)
-    ).toList();
-
-    final sq9 = _normalizeForSearch(_searchControllers[9]!.text);
-    final filteredStudents = _mockStudents.where((s) =>
-    _normalizeForSearch(s["name"]!).contains(sq9) || _normalizeForSearch(s["no"]!).contains(sq9)
-    ).toList();
-
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.admin_panel_settings, color: AppTheme.primaryColor),
-            SizedBox(width: 8),
-            Text("Yönetici Paneli"),
-          ],
-        ),
+        title: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.admin_panel_settings, color: AppTheme.primaryColor), SizedBox(width: 8), Text("Yönetici Paneli")]),
         centerTitle: false,
-        actions: [
-          IconButton(icon: const Icon(Icons.logout, color: AppTheme.destructiveColor), onPressed: _logout)
-        ],
+        actions: [IconButton(icon: const Icon(Icons.logout, color: AppTheme.destructiveColor), onPressed: _logout)],
         bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: AppTheme.textMuted,
-          indicatorColor: AppTheme.primaryColor,
+          controller: _tabController, isScrollable: true,
+          labelColor: AppTheme.primaryColor, unselectedLabelColor: AppTheme.textMuted, indicatorColor: AppTheme.primaryColor,
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _databaseFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Veri yüklenemedi: ${snapshot.error}"));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Gösterilecek veri bulunamadı."));
-          }
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Gösterilecek veri bulunamadı."));
 
           final data = snapshot.data!;
-          final buildings = data['buildings'] as List<dynamic>? ?? [];
-          final classrooms = data['classrooms'] as List<dynamic>? ?? [];
-          final instructors = data['instructors'] as List<dynamic>? ?? [];
-          final events = data['events'] as List<dynamic>? ?? [];
-          final announcements = data['announcements'] as List<dynamic>? ?? [];
+          final allBuildings = data['buildings'] as List<dynamic>? ?? [];
+          final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
+          final allInstructors = data['instructors'] as List<dynamic>? ?? [];
+          final allEvents = data['events'] as List<dynamic>? ?? [];
+          final allAnnouncements = data['announcements'] as List<dynamic>? ?? [];
 
-          // Yemekhane verilerini çözümleme
+          final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
+          final filteredBuildings = allBuildings.where((b) => _normalizeForSearch(b['name'] ?? '').contains(sq1) || _normalizeForSearch(b['location'] ?? '').contains(sq1)).toList();
+
+          final sq2 = _normalizeForSearch(_searchControllers[2]!.text);
+          final filteredClassrooms = allClassrooms.where((c) => _normalizeForSearch(c['name'] ?? '').contains(sq2) || _normalizeForSearch(c['building'] ?? '').contains(sq2)).toList();
+
+          final sq3 = _normalizeForSearch(_searchControllers[3]!.text);
+          final filteredInstructors = allInstructors.where((i) => _normalizeForSearch(i['name'] ?? '').contains(sq3) || _normalizeForSearch(i['department'] ?? '').contains(sq3)).toList();
+
+          final sq4 = _normalizeForSearch(_searchControllers[4]!.text);
+          final filteredEvents = allEvents.where((e) => _normalizeForSearch(e['title'] ?? '').contains(sq4) || _normalizeForSearch(e['date'] ?? '').contains(sq4)).toList();
+
+          final sq5 = _normalizeForSearch(_searchControllers[5]!.text);
+          final filteredAnnouncements = allAnnouncements.where((a) => _normalizeForSearch(a['title'] ?? '').contains(sq5) || _normalizeForSearch(a['date'] ?? '').contains(sq5)).toList();
+
           final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
           final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
           final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ["Kahvaltı", "Öğle", "Akşam"];
+
+          final sq6 = _normalizeForSearch(_searchControllers[6]!.text);
+          final filteredMeals = mealTypes.where((m) => _normalizeForSearch(m).contains(sq6)).toList();
+
+          final sq7 = _normalizeForSearch(_searchControllers[7]!.text);
+          final filteredPrices = _mockPrices.where((p) => _normalizeForSearch(p["name"]!).contains(sq7) || _normalizeForSearch(p["category"]!).contains(sq7)).toList();
+
+          final sq8 = _normalizeForSearch(_searchControllers[8]!.text);
+          final filteredIssues = _mockIssues.where((iss) => _normalizeForSearch(iss["subject"]).contains(sq8) || _normalizeForSearch(iss["category"]).contains(sq8) || _normalizeForSearch(iss["location"]).contains(sq8)).toList();
+
+          final sq9 = _normalizeForSearch(_searchControllers[9]!.text);
+          final filteredStudents = _mockStudents.where((s) => _normalizeForSearch(s["name"]!).contains(sq9) || _normalizeForSearch(s["no"]!).contains(sq9)).toList();
 
           return TabBarView(
             controller: _tabController,
             children: [
               _buildGenelTab(data),
-
-              // 1. BİNALAR
               _buildManagementTab(
-                title: "Binalar",
-                count: buildings.length,
-                items: buildings.asMap().entries.map((e) => _buildListItem(
-                    e.value['name'] ?? '', e.value['location'] ?? '',
-                        () => _openBuildingForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('buildings', e.key)
-                )).toList(),
+                title: "Kampüs Birimleri", count: filteredBuildings.length, searchController: _searchControllers[1]!,
+                items: filteredBuildings.asMap().entries.map((e) => _buildListItem(e.value['name'] ?? '', e.value['location'] ?? '', () => _openBuildingForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('buildings', e.key))).toList(),
                 onAdd: () => _openBuildingForm(isEdit: false),
               ),
-
-              // 2. DERSLİKLER
               _buildManagementTab(
-                title: "Derslikler",
-                count: classrooms.length,
-                items: classrooms.asMap().entries.map((e) => _buildListItem(
-                    e.value['name'] ?? '', e.value['building'] ?? '',
-                        () => _openClassroomForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('classrooms', e.key)
-                )).toList(),
+                title: "Derslikler", count: filteredClassrooms.length, searchController: _searchControllers[2]!,
+                items: filteredClassrooms.asMap().entries.map((e) => _buildListItem(e.value['name'] ?? '', e.value['building'] ?? '', () => _openClassroomForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('classrooms', e.key))).toList(),
                 onAdd: () => _openClassroomForm(isEdit: false),
               ),
-
-              // 3. HOCALAR
               _buildManagementTab(
-                title: "Hocalar",
-                count: instructors.length,
-                items: instructors.asMap().entries.map((e) => _buildListItem(
-                    e.value['name'] ?? '', e.value['department'] ?? '',
-                        () => _openInstructorForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('instructors', e.key)
-                )).toList(),
+                title: "Hocalar", count: filteredInstructors.length, searchController: _searchControllers[3]!,
+                items: filteredInstructors.asMap().entries.map((e) => _buildListItem(e.value['name'] ?? '', e.value['department'] ?? '', () => _openInstructorForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('instructors', e.key))).toList(),
                 onAdd: () => _openInstructorForm(isEdit: false),
               ),
-
-              // 4. ETKİNLİKLER
               _buildManagementTab(
-                title: "Etkinlikler",
-                count: events.length,
-                items: events.asMap().entries.map((e) => _buildListItem(
-                    e.value['title'] ?? '', "${e.value['date']} - ${e.value['location']}",
-                        () => _openEventForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('events', e.key)
-                )).toList(),
+                title: "Etkinlikler", count: filteredEvents.length, searchController: _searchControllers[4]!,
+                items: filteredEvents.asMap().entries.map((e) => _buildListItem(e.value['title'] ?? '', "${e.value['date']} - ${e.value['location']}", () => _openEventForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('events', e.key))).toList(),
                 onAdd: () => _openEventForm(isEdit: false),
               ),
-
-              // 5. DUYURULAR
               _buildManagementTab(
-                title: "Duyurular",
-                count: announcements.length,
-                items: announcements.asMap().entries.map((e) => _buildListItem(
-                    e.value['title'] ?? '', e.value['date'] ?? '',
-                        () => _openAnnouncementForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('announcements', e.key)
-                )).toList(),
+                title: "Duyurular", count: filteredAnnouncements.length, searchController: _searchControllers[5]!,
+                items: filteredAnnouncements.asMap().entries.map((e) => _buildListItem(e.value['title'] ?? '', e.value['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('announcements', e.key))).toList(),
                 onAdd: () => _openAnnouncementForm(isEdit: false),
               ),
-
-              // 6. YEMEKHANE (Özel Yapı)
               _buildManagementTab(
-                title: "Yemekhane Menüleri",
-                count: mealTypes.length,
-                items: mealTypes.map((meal) {
+                title: "Yemekhane Menüleri", count: filteredMeals.length, searchController: _searchControllers[6]!,
+                items: filteredMeals.map((meal) {
                   final menu = menus[meal] ?? {};
-                  return _buildListItem(
-                      meal,
-                      "Saat: ${menu['time'] ?? '-'} | Fiyat: ${menu['price'] ?? '-'}",
-                          () => _openMenuForm(mealName: meal, item: menu, fullCafeteriaData: cafeteriaData),
-                      null // Yemekhane öğünleri silinmez, sadece güncellenir
-                  );
+                  return _buildListItem(meal, "Saat: ${menu['time'] ?? '-'} | Fiyat: ${menu['price'] ?? '-'}", () => _openMenuForm(mealName: meal, item: menu, fullCafeteriaData: cafeteriaData), null);
                 }).toList(),
                 onAdd: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Yeni öğün eklenemez, mevcutları düzenleyin."))),
+              ),
+              _buildManagementTab(
+                title: "Fiyatlar", count: filteredPrices.length, searchController: _searchControllers[7]!,
+                items: filteredPrices.map((p) => _buildListItem(p["name"]!, "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true), null)).toList(),
+                onAdd: () => _openPriceForm(isEdit: false),
+              ),
+              _buildIssuesTab(filteredIssues, _searchControllers[8]!),
+              _buildManagementTab(
+                title: "Öğrenciler", count: filteredStudents.length, searchController: _searchControllers[9]!,
+                items: filteredStudents.map((s) => _buildListItem(s["name"]!, "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true), null)).toList(),
+                onAdd: () => _openStudentForm(isEdit: false),
               ),
             ],
           );
@@ -370,14 +272,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // --- SEKME İÇERİKLERİ ---
-
   Widget _buildGenelTab(Map<String, dynamic> data) {
     final bCount = (data['buildings'] as List?)?.length ?? 0;
     final cCount = (data['classrooms'] as List?)?.length ?? 0;
     final iCount = (data['instructors'] as List?)?.length ?? 0;
-    final eCount = (data['events'] as List?)?.length ?? 0;
-    final aCount = (data['announcements'] as List?)?.length ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -391,61 +289,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               children: [
                 Icon(Icons.check_circle, color: AppTheme.successColor),
                 SizedBox(width: 12),
-                Expanded(child: Text("Yerel Veritabanı (Hive) Aktif ve Bağlı", style: TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold))),
+                Expanded(child: Text("Yerel Veritabanı (Hive) Aktif", style: TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold))),
               ],
             ),
           ),
           const SizedBox(height: 24),
           GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 1.25,
+            crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 1.25,
             children: [
-              _buildStatCard(Icons.business, "Binalar", bCount.toString(), 1),
+              _buildStatCard(Icons.business, "Birimler", bCount.toString(), 1), // İsmi Binalar yerine Birimler oldu
               _buildStatCard(Icons.meeting_room, "Derslikler", cCount.toString(), 2),
               _buildStatCard(Icons.people, "Hocalar", iCount.toString(), 3),
-              _buildStatCard(Icons.event, "Etkinlikler", eCount.toString(), 4),
-              _buildStatCard(Icons.campaign, "Duyurular", aCount.toString(), 5),
-              _buildStatCard(Icons.restaurant, "Menü", "Güncel", 6),
-              _buildStatCard(Icons.attach_money, "Fiyatlar", _mockPrices.length.toString(), 7),
+              _buildStatCard(Icons.event, "Etkinlikler", ((data['events'] as List?)?.length ?? 0).toString(), 4),
               _buildStatCard(Icons.report_problem, "Sorunlar", _mockIssues.length.toString(), 8),
-              _buildStatCard(Icons.person, "Öğrenciler", _mockStudents.length.toString(), 9), // Students Stat Card
+              _buildStatCard(Icons.person, "Öğrenciler", _mockStudents.length.toString(), 9),
             ],
           ),
-          const SizedBox(height: 32),
-
-          const Text("Hızlı Yönetim", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-          const SizedBox(height: 12),
-          Card(
-            child: Column(
-              children: [
-                _buildQuickRow(Icons.business, "Binaları Yönet", 1),
-                const Divider(height: 1),
-                _buildQuickRow(Icons.meeting_room, "Derslikleri Yönet", 2),
-                const Divider(height: 1),
-                _buildQuickRow(Icons.people, "Hocaları Yönet", 3),
-                const Divider(height: 1),
-                _buildQuickRow(Icons.report_problem, "Gelen Sorunları İncele", 8),
-                const Divider(height: 1),
-                _buildQuickRow(Icons.person, "Öğrencileri Yönet", 9), // Students Quick Row
-              ],
-            ),
-          )
         ],
       ),
     );
   }
 
   Widget _buildStatCard(IconData icon, String label, String value, int tabIndex) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => _switchTab(tabIndex),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.borderColor)),
+        decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              // Sınır çizgisini de karanlık moda uyumlu hale getirelim
+                color: isDark ? Colors.white.withOpacity(0.1) : AppTheme.borderColor
+            )
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -463,16 +343,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildQuickRow(IconData icon, String label, int tabIndex) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.textMuted),
-      title: Text(label),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => _switchTab(tabIndex),
-    );
-  }
-
-  Widget _buildManagementTab({required String title, required int count, required List<Widget> items, required VoidCallback onAdd}) {
+  Widget _buildManagementTab({required String title, required int count, required List<Widget> items, required VoidCallback onAdd, required TextEditingController searchController}) {
     return Column(
       children: [
         Padding(
@@ -482,9 +353,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             children: [
               Text("$title ($count)", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text("Ekle"),
+                onPressed: onAdd, icon: const Icon(Icons.add, size: 18), label: const Text("Ekle"),
                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
               )
             ],
@@ -493,18 +362,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: AppSearchBar(
-            controller: searchController,
-            placeholder: "Ara...",
-            onChanged: (val) => setState(() {}),
+            controller: searchController, placeholder: "Ara...", onChanged: (val) => setState(() {}),
           ),
         ),
         const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(),
-            itemBuilder: (context, index) => items[index],
+            itemCount: items.length, separatorBuilder: (_, __) => const Divider(), itemBuilder: (context, index) => items[index],
           ),
         )
       ],
@@ -536,20 +401,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Gelen Sorunlar (${issues.length})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Gelen Sorunlar (${issues.length})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppSearchBar(
-            controller: searchController,
-            placeholder: "Konu veya konum ara...",
-            onChanged: (val) => setState(() {}),
-          ),
+          child: AppSearchBar(controller: searchController, placeholder: "Konu veya konum ara...", onChanged: (val) => setState(() {})),
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -559,10 +415,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (context, index) {
               final issue = issues[index];
-              Color priorityColor;
-              if (issue["priority"] == "Yüksek") priorityColor = AppTheme.destructiveColor;
-              else if (issue["priority"] == "Orta") priorityColor = AppTheme.warningColor;
-              else priorityColor = AppTheme.successColor;
+              Color priorityColor = issue["priority"] == "Yüksek" ? AppTheme.destructiveColor : (issue["priority"] == "Orta" ? AppTheme.warningColor : AppTheme.successColor);
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -577,27 +430,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     Expanded(child: Text(issue["subject"], style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
                   ],
                 ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text("${issue["category"]} • ${issue["location"]}\n${issue["date"]}", style: const TextStyle(color: AppTheme.textMuted)),
-                ),
+                subtitle: Padding(padding: const EdgeInsets.only(top: 4.0), child: Text("${issue["category"]} • ${issue["location"]}\n${issue["date"]}", style: const TextStyle(color: AppTheme.textMuted))),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryLight),
-                      tooltip: "İncele",
-                      onPressed: () => _openIssueDetailsDialog(issue),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: AppTheme.destructiveColor),
-                      tooltip: "Sil",
-                      onPressed: _showDeleteDialog,
-                    ),
+                    IconButton(icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryLight), onPressed: () => _openIssueDetailsDialog(issue)),
                   ],
                 ),
-                isThreeLine: true,
-                onTap: () => _openIssueDetailsDialog(issue),
               );
             },
           ),
@@ -620,27 +459,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               const SizedBox(height: 12),
               Text("Kategori: ${issue["category"]}", style: const TextStyle(color: AppTheme.textMuted)),
               const SizedBox(height: 4),
-              Text("Öncelik: ${issue["priority"]}", style: const TextStyle(color: AppTheme.textMuted)),
-              const SizedBox(height: 4),
               Text("Konum: ${issue["location"]}", style: const TextStyle(color: AppTheme.textMuted)),
-              const SizedBox(height: 4),
-              Text("Tarih: ${issue["date"]}", style: const TextStyle(color: AppTheme.textMuted)),
               const Divider(height: 24),
-              const Text("Açıklama:", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
               Text(issue["description"], style: const TextStyle(height: 1.4)),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Kapat", style: TextStyle(color: AppTheme.textMuted))),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Kapat")),
           ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sorun çözüldü olarak işaretlendi!")));
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text("Çözüldü İşaretle", style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Çözüldü işaretlendi."))); },
+            icon: const Icon(Icons.check, size: 18), label: const Text("Çözüldü"),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor, foregroundColor: Colors.white),
           ),
         ],
@@ -648,66 +477,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // --- FORM MODALS ---
-
-  void _openBuildingForm({required bool isEdit}) {
+  void _openStudentForm({required bool isEdit}) {
     _showFormDialog(
-        title: isEdit ? "Düzenle — Bina" : "Yeni Bina Ekle",
+        title: isEdit ? "Düzenle — Öğrenci" : "Yeni Öğrenci Ekle",
         fields: [
-          _buildTextField("Bina Adı"), _buildTextField("Kısaltma"),
-          _buildTextField("Kat Sayısı", isNumber: true), _buildTextField("Oda Sayısı", isNumber: true),
-          _buildDropdown("Tür", ["Akademik", "İdari", "Sosyal"]), _buildTextField("Konum"),
-        ]
-    );
-  }
-
-  void _openClassroomForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Derslik" : "Yeni Derslik Ekle",
-        fields: [
-          _buildTextField("Derslik Adı"), _buildDropdown("Bina", ["Mühendislik Fakültesi", "İİBF", "Fen Edebiyat"]),
-          _buildTextField("Kapasite", isNumber: true), _buildDropdown("Tür", ["Derslik", "Amfi", "Laboratuvar", "Seminer Salonu"]),
-          _buildTextField("Kat", isNumber: true),
-        ]
-    );
-  }
-
-  void _openInstructorForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Hoca" : "Yeni Hoca Ekle",
-        fields: [
-          _buildTextField("Ad Soyad"), _buildDropdown("Unvan", ["Profesör", "Doçent", "Dr. Öğretim Üyesi", "Arş. Gör."]),
-          _buildTextField("Bölüm"), _buildTextField("Ofis"),
-        ]
-    );
-  }
-
-  void _openEventForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Etkinlik" : "Yeni Etkinlik Ekle",
-        fields: [
-          _buildTextField("Etkinlik Adı"), _buildTextField("Tarih"), _buildTextField("Saat"),
-          _buildTextField("Konum"), _buildDropdown("Kategori", ["Akademik", "Kültürel", "Spor", "Sosyal"]),
-        ]
-    );
-  }
-
-  void _openAnnouncementForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Duyuru" : "Yeni Duyuru Ekle",
-        fields: [
-          _buildTextField("Başlık"), _buildDropdown("Kategori", ["Genel", "Akademik", "İdari", "Burs"]),
-          _buildTextField("Tarih"), _buildTextField("İçerik", lines: 4),
-        ]
-    );
-  }
-
-  void _openMenuForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Menüyü Düzenle" : "Menü Ekle",
-        fields: [
-          _buildDropdown("Gün", ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]),
-          _buildDropdown("Öğün", ["Kahvaltı", "Öğle", "Akşam"]), _buildTextField("Yemekler (Virgül ile ayırın)", lines: 3),
+          _buildTextField("Ad Soyad"), _buildTextField("Öğrenci No", isNumber: true),
+          _buildTextField("E-posta"), _buildTextField("Şifre", isPassword: true),
+          _buildDropdown("Sınıf", ["Hazırlık", "1. Sınıf", "2. Sınıf", "3. Sınıf", "4. Sınıf", "Mezun"]),
         ]
     );
   }
@@ -722,19 +498,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // New modal for managing students/users
-  void _openStudentForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Öğrenci" : "Yeni Öğrenci Ekle",
-        fields: [
-          _buildTextField("Ad Soyad"),
-          _buildTextField("Öğrenci No", isNumber: true),
-          _buildTextField("E-posta"),
-          _buildTextField("Şifre", isPassword: true), // Masks the text for password fields
-          _buildDropdown("Sınıf", ["Hazırlık", "1. Sınıf", "2. Sınıf", "3. Sınıf", "4. Sınıf", "Mezun"]),
-        ]
-  // --- GERÇEK VERİTABANI FORMLARI ---
-
+  // BİNALAR FORMU ARTIK BİRİMLER FORMU OLDU (Gereksiz inputlar silindi)
   void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
     final nameCtrl = TextEditingController(text: item?['name']);
     final locCtrl = TextEditingController(text: item?['location']);
@@ -742,13 +506,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isEdit ? "Düzenle: Bina" : "Yeni Bina", style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(isEdit ? "Düzenle: Birim/Alan" : "Yeni Birim Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Bina Adı")),
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Birim Adı (Örn: Hukuk Fakültesi)")),
             const SizedBox(height: 12),
-            TextField(controller: locCtrl, decoration: const InputDecoration(labelText: "Konum")),
+            TextField(controller: locCtrl, decoration: const InputDecoration(labelText: "Kampüs & Konum (Örn: Ataköy, 3. Kat)")),
           ],
         ),
         actions: [
@@ -757,17 +521,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () async {
                 var box = Hive.box('campusDataBox');
                 List list = List.from(box.get('buildings', defaultValue: []));
-
                 Map<String, dynamic> newData = {
                   'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
                   'name': nameCtrl.text,
                   'location': locCtrl.text,
                   'abbr': item?['abbr'] ?? 'YENİ',
-                  'floors': item?['floors'] ?? 1,
-                  'rooms': item?['rooms'] ?? 10,
-                  'type': item?['type'] ?? 'academic'
+                  'type': item?['type'] ?? 'faculty' // Varsayılan değer
                 };
-
                 if (isEdit) { list[index!] = newData; } else { list.add(newData); }
                 await box.put('buildings', list);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
@@ -792,7 +552,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           children: [
             TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Derslik Adı")),
             const SizedBox(height: 12),
-            TextField(controller: buildCtrl, decoration: const InputDecoration(labelText: "Bağlı Olduğu Bina")),
+            TextField(controller: buildCtrl, decoration: const InputDecoration(labelText: "Bağlı Olduğu Kampüs/Birim")),
           ],
         ),
         actions: [
@@ -801,16 +561,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () async {
                 var box = Hive.box('campusDataBox');
                 List list = List.from(box.get('classrooms', defaultValue: []));
-
                 Map<String, dynamic> newData = {
                   'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'name': nameCtrl.text,
-                  'building': buildCtrl.text,
-                  'capacity': item?['capacity'] ?? 40,
-                  'type': item?['type'] ?? 'Derslik',
-                  'floor': item?['floor'] ?? 1
+                  'name': nameCtrl.text, 'building': buildCtrl.text,
+                  'capacity': item?['capacity'] ?? 40, 'type': item?['type'] ?? 'Derslik', 'floor': item?['floor'] ?? 1
                 };
-
                 if (isEdit) { list[index!] = newData; } else { list.add(newData); }
                 await box.put('classrooms', list);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
@@ -844,16 +599,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () async {
                 var box = Hive.box('campusDataBox');
                 List list = List.from(box.get('instructors', defaultValue: []));
-
                 Map<String, dynamic> newData = {
                   'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'name': nameCtrl.text,
-                  'department': deptCtrl.text,
-                  'title': item?['title'] ?? 'Öğretim Üyesi',
-                  'office': item?['office'] ?? 'Bilinmiyor',
-                  'filter': item?['filter'] ?? 'engineering'
+                  'name': nameCtrl.text, 'department': deptCtrl.text,
+                  'title': item?['title'] ?? 'Öğretim Üyesi', 'office': item?['office'] ?? 'Bilinmiyor', 'filter': item?['filter'] ?? 'engineering'
                 };
-
                 if (isEdit) { list[index!] = newData; } else { list.add(newData); }
                 await box.put('instructors', list);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
@@ -890,16 +640,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () async {
                 var box = Hive.box('campusDataBox');
                 List list = List.from(box.get('events', defaultValue: []));
-
                 Map<String, dynamic> newData = {
                   'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'title': titleCtrl.text,
-                  'date': dateCtrl.text,
-                  'location': locCtrl.text,
-                  'category': item?['category'] ?? 'Genel',
-                  'description': item?['description'] ?? 'Detay girilmedi.'
+                  'title': titleCtrl.text, 'date': dateCtrl.text, 'location': locCtrl.text,
+                  'category': item?['category'] ?? 'Genel', 'description': item?['description'] ?? 'Detay girilmedi.'
                 };
-
                 if (isEdit) { list[index!] = newData; } else { list.add(newData); }
                 await box.put('events', list);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
@@ -936,15 +681,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () async {
                 var box = Hive.box('campusDataBox');
                 List list = List.from(box.get('announcements', defaultValue: []));
-
                 Map<String, dynamic> newData = {
                   'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'title': titleCtrl.text,
-                  'date': dateCtrl.text,
-                  'content': contentCtrl.text,
-                  'category': item?['category'] ?? 'Genel'
+                  'title': titleCtrl.text, 'date': dateCtrl.text, 'content': contentCtrl.text, 'category': item?['category'] ?? 'Genel'
                 };
-
                 if (isEdit) { list[index!] = newData; } else { list.add(newData); }
                 await box.put('announcements', list);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
@@ -959,7 +699,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void _openMenuForm({required String mealName, required Map<dynamic, dynamic> item, required Map<dynamic, dynamic> fullCafeteriaData}) {
     final timeCtrl = TextEditingController(text: item['time']);
     final priceCtrl = TextEditingController(text: item['price']);
-    // Liste olan yemekleri text'e çevirip virgülle ayırıyoruz
     final itemsListText = (item['items'] as List<dynamic>? ?? []).join(", ");
     final itemsCtrl = TextEditingController(text: itemsListText);
 
@@ -974,31 +713,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             const SizedBox(height: 12),
             TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Fiyat (Örn: ₺35)")),
             const SizedBox(height: 12),
-            TextField(
-              controller: itemsCtrl,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: "Yemekler (Virgülle ayırın)", hintText: "Çorba, Pilav, Salata"),
-            ),
+            TextField(controller: itemsCtrl, maxLines: 3, decoration: const InputDecoration(labelText: "Yemekler (Virgülle ayırın)", hintText: "Çorba, Pilav, Salata")),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
           ElevatedButton(
               onPressed: () async {
-                // Virgülle ayrılmış yazıyı tekrar listeye çeviriyoruz
                 List<String> newItems = itemsCtrl.text.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-
-                // Sadece ilgili öğünü (Örn: Öğle) güncelliyoruz
                 fullCafeteriaData['menus'][mealName] = {
-                  'time': timeCtrl.text,
-                  'price': priceCtrl.text,
-                  'items': newItems,
-                  'isChips': item['isChips'] ?? false,
+                  'time': timeCtrl.text, 'price': priceCtrl.text, 'items': newItems, 'isChips': item['isChips'] ?? false,
                 };
-
                 var box = Hive.box('campusDataBox');
-                await box.put('cafeteria', fullCafeteriaData); // Tüm menüyü tekrar kaydediyoruz
-
+                await box.put('cafeteria', fullCafeteriaData);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
               },
               child: const Text("Kaydet")
