@@ -8,6 +8,8 @@ class InfoCard extends StatelessWidget {
   final Widget? badge;
   final bool showChevron;
   final VoidCallback? onTap;
+  // KRİTİK EKLEME: Sol taraftaki görsel (leading) için alan açıyoruz
+  final Widget? leading;
 
   const InfoCard({
     Key? key,
@@ -17,6 +19,7 @@ class InfoCard extends StatelessWidget {
     this.badge,
     this.showChevron = true,
     this.onTap,
+    this.leading, // Yapıcıya ekledik
   }) : super(key: key);
 
   @override
@@ -37,6 +40,11 @@ class InfoCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
+              // YENİ: Eğer leading (fotoğraf) gönderilmişse Row'un başına ekle
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 16), // Fotoğraf ile yazı arasındaki boşluk
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

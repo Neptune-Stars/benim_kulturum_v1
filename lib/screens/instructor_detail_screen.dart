@@ -31,6 +31,8 @@ class InstructorDetailScreen extends StatelessWidget {
     final String department = instructorData['department'] ?? '';
     final String office = instructorData['office'] ?? 'Bilinmiyor';
     final String email = instructorData['email'] ?? 'iletisim@iku.edu.tr';
+    // Yeni: Fotoğraf yolu veritabanından çekiliyor
+    final String? imageUrl = instructorData['imageUrl'];
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
@@ -59,10 +61,17 @@ class InstructorDetailScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 48,
                     backgroundColor: AppTheme.primaryLight.withOpacity(0.18),
-                    child: Text(
+                    // YENİ: Fotoğraf varsa backgroundImage olarak ata
+                    backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                        ? AssetImage(imageUrl)
+                        : null,
+                    // YENİ: Eğer fotoğraf yoksa harfleri göster, varsa boş bırak
+                    child: imageUrl == null || imageUrl.isEmpty
+                        ? Text(
                       getInitials(name),
                       style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                    ),
+                    )
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   AppBadge(label: title, backgroundColor: AppTheme.primaryColor, textColor: Colors.white),
