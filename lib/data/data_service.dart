@@ -29,14 +29,20 @@ class DataService {
 
     // 2. ADIM: Artık veriyi JSON'dan değil, kalıcı Hive veritabanından çekip gönderiyoruz
     return {
-      'buildings': box.get('buildings', defaultValue: []),
-      'classrooms': box.get('classrooms', defaultValue: []),
-      'instructors': box.get('instructors', defaultValue: []),
-      'events': box.get('events', defaultValue: []),
-      'announcements': box.get('announcements', defaultValue: []),
-      'cafeteria': box.get('cafeteria', defaultValue: {}),
-      'campusPrices': box.get('campusPrices', defaultValue: {}),
+      'buildings': _safeCastList(box.get('buildings', defaultValue: [])),
+      'classrooms': _safeCastList(box.get('classrooms', defaultValue: [])),
+      'instructors': _safeCastList(box.get('instructors', defaultValue: [])),
+      'events': _safeCastList(box.get('events', defaultValue: [])),
+      'announcements': _safeCastList(box.get('announcements', defaultValue: [])),
+      'cafeteria': Map<String, dynamic>.from(box.get('cafeteria', defaultValue: {})),
+      'campusPrices': Map<String, dynamic>.from(box.get('campusPrices', defaultValue: {})),
     };
+  }
+
+  // Listeler içindeki elemanları Map<String, dynamic> tipine güvenli şekilde dönüştürür
+  static List<Map<String, dynamic>> _safeCastList(dynamic data) {
+    if (data == null || data is! List) return [];
+    return data.map((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   // Adminler için Yemek Menüsü Güncelleme Fonksiyonu

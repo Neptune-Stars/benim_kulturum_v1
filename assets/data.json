@@ -174,7 +174,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-Dekanlık",
       "title": "Profesör (Dekan)",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/cemile_gokyayla.jpg"
     },
     {
       "id": 2,
@@ -182,7 +183,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-201",
       "title": "Doçent",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/mustafa_aytac_ozelci.jpg"
     },
     {
       "id": 3,
@@ -190,7 +192,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-202",
       "title": "Doçent",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/fatih_gundogdu.jpg"
     },
     {
       "id": 4,
@@ -198,7 +201,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-203",
       "title": "Doçent",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/gizem_percin.jpg"
     },
     {
       "id": 5,
@@ -206,7 +210,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-105",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/sakine_nilufer_bilgin.jpg"
     },
     {
       "id": 6,
@@ -214,7 +219,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-106",
       "title": "Araştırma Görevlisi",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/merve_akbulut.jpg"
     },
     {
       "id": 7,
@@ -222,7 +228,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-301",
       "title": "Profesör",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/profile.jpg"
     },
     {
       "id": 8,
@@ -230,7 +237,8 @@
       "department": "Hukuk Fakültesi",
       "office": "Hukuk-302",
       "title": "Profesör",
-      "filter": "law"
+      "filter": "law",
+      "imageUrl": "assets/instructors/profile.jpg"
     },
     {
       "id": 9,
@@ -238,7 +246,8 @@
       "department": "Elektrik-Elektronik Müh.",
       "office": "MF-101",
       "title": "Doçent (Bölüm Başkanı)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/esra_saatci.jpg"
     },
     {
       "id": 10,
@@ -246,7 +255,8 @@
       "department": "Elektrik-Elektronik Müh.",
       "office": "MF-102",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/berrak_ozturk_simsek.jpg"
     },
     {
       "id": 11,
@@ -254,7 +264,8 @@
       "department": "Elektrik-Elektronik Müh.",
       "office": "MF-103",
       "title": "Profesör",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/mehmet_oruc_bilgic.jpg"
     },
     {
       "id": 12,
@@ -262,7 +273,8 @@
       "department": "Elektrik-Elektronik Müh.",
       "office": "MF-104",
       "title": "Profesör",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/metin_sengul.jpg"
     },
     {
       "id": 13,
@@ -270,7 +282,8 @@
       "department": "Elektrik-Elektronik Müh.",
       "office": "MF-105",
       "title": "Profesör",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/atilla_ozmen.jpg"
     },
     {
       "id": 14,
@@ -278,7 +291,8 @@
       "department": "Elektrik-Elektronik Müh.",
       "office": "MF-106",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/ertugrul_saatci.jpg"
     },
     {
       "id": 15,
@@ -286,7 +300,8 @@
       "department": "Bilgisayar Mühendisliği",
       "office": "MF-201",
       "title": "Profesör (Bölüm Başkanı)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/akhan_akbulut.jpg"
     },
     {
       "id": 16,
@@ -294,7 +309,8 @@
       "department": "Bilgisayar Mühendisliği",
       "office": "MF-202",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/oznur_sengel.jpg"
     },
     {
       "id": 17,
@@ -302,7 +318,8 @@
       "department": "Bilgisayar Mühendisliği",
       "office": "MF-203",
       "title": "Profesör",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/murat_tayli.jpg"
     },
     {
       "id": 18,
@@ -310,7 +327,8 @@
       "department": "Bilgisayar Mühendisliği",
       "office": "MF-204",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/canan_akkoyunlu.jpg"
     },
     {
       "id": 19,
@@ -318,7 +336,8 @@
       "department": "Bilgisayar Mühendisliği",
       "office": "MF-205",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/profile.jpg"
     },
     {
       "id": 20,
@@ -326,7 +345,8 @@
       "department": "Bilgisayar Mühendisliği",
       "office": "MF-206",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/necip_gokhan_kasapoglu.jpg"
     },
     {
       "id": 21,
@@ -334,7 +354,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-301",
       "title": "Profesör (Bölüm Başkanı)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/ahmet_murat_turk.jpg"
     },
     {
       "id": 22,
@@ -342,7 +363,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-302",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/edip_seckin.jpg"
     },
     {
       "id": 23,
@@ -350,7 +372,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-303",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/nazife_ozge_fercan.jpg"
     },
     {
       "id": 24,
@@ -358,7 +381,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-304",
       "title": "Profesör",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/turgut_uzel.jpg"
     },
     {
       "id": 25,
@@ -366,7 +390,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-305",
       "title": "Doçent",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/mehmet_nurettin_ugural.jpg"
     },
     {
       "id": 26,
@@ -374,7 +399,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-306",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/mustafa_comert.jpg"
     },
     {
       "id": 27,
@@ -382,7 +408,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-307",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/sead_ahmed_salih.jpg"
     },
     {
       "id": 28,
@@ -390,7 +417,8 @@
       "department": "İnşaat Mühendisliği",
       "office": "MF-308",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "engineering"
+      "filter": "engineering",
+      "imageUrl": "assets/instructors/fatma_sevil_malcioglu.jpg"
     },
     {
       "id": 29,
@@ -398,7 +426,8 @@
       "department": "Psikoloji",
       "office": "FEF-101",
       "title": "Doçent (Bölüm Başkanı)",
-      "filter": "psychology"
+      "filter": "psychology",
+      "imageUrl": "assets/instructors/ayhan_erbay.jpg"
     },
     {
       "id": 30,
@@ -406,7 +435,8 @@
       "department": "Psikoloji",
       "office": "FEF-102",
       "title": "Doçent (Bşk. Yrd.)",
-      "filter": "psychology"
+      "filter": "psychology",
+      "imageUrl": "assets/instructors/burcu_turk.jpg"
     },
     {
       "id": 31,
@@ -414,7 +444,8 @@
       "department": "Psikoloji",
       "office": "FEF-103",
       "title": "Profesör",
-      "filter": "psychology"
+      "filter": "psychology",
+      "imageUrl": "assets/instructors/melis_seray_ozden_yildirim.jpg"
     },
     {
       "id": 32,
@@ -422,7 +453,8 @@
       "department": "Psikoloji",
       "office": "FEF-104",
       "title": "Profesör",
-      "filter": "psychology"
+      "filter": "psychology",
+      "imageUrl": "assets/instructors/profile.jpg"
     },
     {
       "id": 33,
@@ -430,7 +462,8 @@
       "department": "Psikoloji",
       "office": "FEF-105",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "psychology"
+      "filter": "psychology",
+      "imageUrl": "assets/instructors/ezgi_ozkan.jpg"
     },
     {
       "id": 34,
@@ -438,7 +471,8 @@
       "department": "Mimarlık",
       "office": "MİM-101",
       "title": "Profesör (Bölüm Başkanı)",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/evren_burak_enginoz.jpg"
     },
     {
       "id": 35,
@@ -446,7 +480,8 @@
       "department": "Mimarlık",
       "office": "MİM-102",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/nevzat_omer_saatcioglu.jpg"
     },
     {
       "id": 36,
@@ -454,7 +489,8 @@
       "department": "Mimarlık",
       "office": "MİM-103",
       "title": "Profesör",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/esra_bostancioglu.jpg"
     },
     {
       "id": 37,
@@ -462,7 +498,8 @@
       "department": "Mimarlık",
       "office": "MİM-104",
       "title": "Profesör",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/esin_kasapoglu.jpg"
     },
     {
       "id": 38,
@@ -470,7 +507,8 @@
       "department": "Mimarlık",
       "office": "MİM-105",
       "title": "Profesör",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/neslihan_dostoglu.jpg"
     },
     {
       "id": 39,
@@ -478,7 +516,8 @@
       "department": "İç Mimarlık ve Çevre Tasarımı",
       "office": "MİM-201",
       "title": "Profesör (Bölüm Başkanı)",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/rana_kutlu.jpg"
     },
     {
       "id": 40,
@@ -486,7 +525,8 @@
       "department": "İç Mimarlık ve Çevre Tasarımı",
       "office": "MİM-202",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/arzu_ercetin.jpg"
     },
     {
       "id": 41,
@@ -494,7 +534,8 @@
       "department": "İç Mimarlık ve Çevre Tasarımı",
       "office": "MİM-203",
       "title": "Profesör",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/yasemin_erkan_yazici.jpg"
     },
     {
       "id": 42,
@@ -502,7 +543,8 @@
       "department": "İç Mimarlık ve Çevre Tasarımı",
       "office": "MİM-204",
       "title": "Profesör",
-      "filter": "architecture"
+      "filter": "architecture",
+      "imageUrl": "assets/instructors/gulay_usta.jpg"
     },
     {
       "id": 43,
@@ -510,7 +552,8 @@
       "department": "İşletme",
       "office": "İİBF-101",
       "title": "Profesör (Bölüm Başkanı V.)",
-      "filter": "economics"
+      "filter": "economics",
+      "imageUrl": "assets/instructors/nebile_korucu_gumusoglu.jpg"
     },
     {
       "id": 44,
@@ -518,7 +561,8 @@
       "department": "İşletme",
       "office": "İİBF-102",
       "title": "Dr. Öğr. Üyesi (Bşk. Yrd.)",
-      "filter": "economics"
+      "filter": "economics",
+      "imageUrl": "assets/instructors/mustafa_bekmezci.jpg"
     },
     {
       "id": 45,
@@ -526,7 +570,8 @@
       "department": "İşletme",
       "office": "İİBF-103",
       "title": "Profesör",
-      "filter": "economics"
+      "filter": "economics",
+      "imageUrl": "assets/instructors/peyami_sefa_carikcioglu.jpg"
     },
     {
       "id": 46,
@@ -534,7 +579,8 @@
       "department": "İşletme",
       "office": "İİBF-104",
       "title": "Profesör",
-      "filter": "economics"
+      "filter": "economics",
+      "imageUrl": "assets/instructors/mahmut_paksoy.jpg"
     },
     {
       "id": 47,
@@ -542,7 +588,8 @@
       "department": "Fizik",
       "office": "FEF-201",
       "title": "Profesör (Bölüm Başkanı)",
-      "filter": "science"
+      "filter": "science",
+      "imageUrl": "assets/instructors/sevim_akyuz.jpg"
     },
     {
       "id": 48,
@@ -550,7 +597,8 @@
       "department": "Fizik",
       "office": "FEF-202",
       "title": "Profesör",
-      "filter": "science"
+      "filter": "science",
+      "imageUrl": "assets/instructors/mehmet_ozer.jpg"
     },
     {
       "id": 49,
@@ -558,7 +606,8 @@
       "department": "Fizik",
       "office": "FEF-203",
       "title": "Profesör",
-      "filter": "science"
+      "filter": "science",
+      "imageUrl": "assets/instructors/gulce_ogruc_ildiz.jpg"
     },
     {
       "id": 50,
@@ -566,7 +615,8 @@
       "department": "Fizik",
       "office": "FEF-204",
       "title": "Profesör",
-      "filter": "science"
+      "filter": "science",
+      "imageUrl": "assets/instructors/dursun_kocer.jpg"
     },
     {
       "id": 51,
@@ -574,7 +624,8 @@
       "department": "İngiliz Dili ve Edebiyatı",
       "office": "FEF-301",
       "title": "Profesör (Bölüm Başkanı)",
-      "filter": "literature"
+      "filter": "literature",
+      "imageUrl": "assets/instructors/zekiye_antakyalioglu_er.jpg"
     },
     {
       "id": 52,
@@ -582,7 +633,8 @@
       "department": "İngiliz Dili ve Edebiyatı",
       "office": "FEF-302",
       "title": "Profesör",
-      "filter": "literature"
+      "filter": "literature",
+      "imageUrl": "assets/instructors/gillian_mary_elizabeth_alban.jpg"
     },
     {
       "id": 53,
@@ -590,7 +642,8 @@
       "department": "İngiliz Dili ve Edebiyatı",
       "office": "FEF-303",
       "title": "Doçent",
-      "filter": "literature"
+      "filter": "literature",
+      "imageUrl": "assets/instructors/sultan_komut_bakinc.jpg"
     },
     {
       "id": 54,
@@ -598,7 +651,8 @@
       "department": "İngiliz Dili ve Edebiyatı",
       "office": "FEF-304",
       "title": "Dr. Öğr. Üyesi",
-      "filter": "literature"
+      "filter": "literature",
+      "imageUrl": "assets/instructors/ozlem_gulgun_guner.jpg"
     }
   ],
   "events": [

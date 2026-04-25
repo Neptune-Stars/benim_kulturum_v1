@@ -110,7 +110,21 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                       // HATA ÇÖZÜMÜ: Map türünü güvenli bir şekilde String key'lere dönüştürüyoruz (Casting)
                       final Map<String, dynamic> safeInstructorData = Map<String, dynamic>.from(instructor as Map);
 
+                      // YENİ: Fotoğraf verisini çekiyoruz
+                      final String? imageUrl = safeInstructorData['imageUrl'];
+
                       return InfoCard(
+                        // YENİ: InfoCard içine hocanın profil fotoğrafını ekliyoruz
+                        leading: CircleAvatar(
+                          radius: 25,
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+                              ? AssetImage(imageUrl)
+                              : null,
+                          child: imageUrl == null || imageUrl.isEmpty
+                              ? const Icon(Icons.person, color: AppTheme.primaryColor)
+                              : null,
+                        ),
                         title: safeInstructorData['name'] ?? '',
                         subtitle: safeInstructorData['department'] ?? '',
                         metadata: "Ofis: ${safeInstructorData['office']}",

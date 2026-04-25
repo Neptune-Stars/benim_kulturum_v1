@@ -7,7 +7,8 @@ import '../providers/favorites_provider.dart';
 import '../providers/joined_events_provider.dart';
 
 class EventDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> eventData;
+  // Hata çözümü için veri tipi Map<dynamic, dynamic> olarak esnetildi
+  final Map<dynamic, dynamic> eventData;
 
   const EventDetailScreen({Key? key, required this.eventData}) : super(key: key);
 
@@ -23,18 +24,22 @@ class EventDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Veriyi güvenli bir şekilde String anahtarlı Map'e çeviriyoruz (Casting)
+    final data = Map<String, dynamic>.from(eventData);
+
     final favProvider = context.watch<FavoritesProvider>();
     final joinedProvider = context.watch<JoinedEventsProvider>();
 
-    final eventId = eventData['id'];
+    // ID'nin int olduğundan emin olmak için güvenli dönüşüm yapıyoruz
+    final eventId = data['id'] is int ? data['id'] : int.tryParse(data['id'].toString()) ?? 0;
     final isFav = favProvider.isFavorite("evt_$eventId");
 
-    final String title = eventData['title'] ?? 'Etkinlik';
-    final String category = eventData['category'] ?? '';
-    final String date = eventData['date'] ?? '';
-    final String time = eventData['time'] ?? '';
-    final String location = eventData['location'] ?? '';
-    final String description = eventData['description'] ?? '';
+    final String title = data['title'] ?? 'Etkinlik';
+    final String category = data['category'] ?? '';
+    final String date = data['date'] ?? '';
+    final String time = data['time'] ?? '';
+    final String location = data['location'] ?? '';
+    final String description = data['description'] ?? '';
 
     // Hata düzeltildi: event.id yerine eventId kullanılıyor
     final isJoined = joinedProvider.isJoined(eventId);
