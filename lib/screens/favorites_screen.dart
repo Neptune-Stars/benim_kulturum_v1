@@ -71,28 +71,37 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 List<Widget> favoriteCards = [];
 
                 for (String id in favIds) {
+                  // Derslikler
                   if (id.startsWith("class_") && (_selectedFilter == "Tümü" || _selectedFilter == "Derslikler")) {
                     final classId = int.parse(id.split("_")[1]);
-                    final c = (data['classrooms'] as List).firstWhere((x) => x['id'] == classId, orElse: () => null);
-                    if (c != null) {
+                    // YENİ GÜVENLİ KONTROL: orElse yerine where().isNotEmpty kullanıyoruz
+                    final matches = (data['classrooms'] as List).where((x) => x['id'] == classId);
+                    if (matches.isNotEmpty) {
+                      final c = matches.first;
                       favoriteCards.add(InfoCard(
                         title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Derslik"),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))),
                       ));
                     }
-                  } else if (id.startsWith("inst_") && (_selectedFilter == "Tümü" || _selectedFilter == "Hocalar")) {
+                  }
+                  // Hocalar
+                  else if (id.startsWith("inst_") && (_selectedFilter == "Tümü" || _selectedFilter == "Hocalar")) {
                     final instId = int.parse(id.split("_")[1]);
-                    final i = (data['instructors'] as List).firstWhere((x) => x['id'] == instId, orElse: () => null);
-                    if (i != null) {
+                    final matches = (data['instructors'] as List).where((x) => x['id'] == instId);
+                    if (matches.isNotEmpty) {
+                      final i = matches.first;
                       favoriteCards.add(InfoCard(
                         title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Hoca"),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: i))),
                       ));
                     }
-                  } else if (id.startsWith("evt_") && (_selectedFilter == "Tümü" || _selectedFilter == "Etkinlikler")) {
+                  }
+                  // Etkinlikler
+                  else if (id.startsWith("evt_") && (_selectedFilter == "Tümü" || _selectedFilter == "Etkinlikler")) {
                     final evtId = int.parse(id.split("_")[1]);
-                    final e = (data['events'] as List).firstWhere((x) => x['id'] == evtId, orElse: () => null);
-                    if (e != null) {
+                    final matches = (data['events'] as List).where((x) => x['id'] == evtId);
+                    if (matches.isNotEmpty) {
+                      final e = matches.first;
                       favoriteCards.add(InfoCard(
                         title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Etkinlik"),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e))),

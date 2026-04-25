@@ -22,7 +22,7 @@ import 'event_detail_screen.dart';
 import 'building_detail_screen.dart';
 import 'instructor_detail_screen.dart';
 import 'classroom_detail_screen.dart';
-import 'notifications_screen.dart'; // BİLDİRİMLER SAYFASI EKLENDİ
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -75,16 +75,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 "price": lunchMenu['price']?.toString() ?? "-",
               };
 
-              // YENİ BİLDİRİMLERİ SAYIYORUZ ("isNew" özelliği true olanlar)
-              final int unreadCount = announcements.where((a) => a['isNew'] == true).length;
+              // YENİ: Firebase'deki yeni duyuruları ve bu telefonda okunanları karşılaştır
+              var userBox = Hive.box('userBox');
+              List readIds = List.from(userBox.get('readAnnouncements', defaultValue: []));
+
+              final int unreadCount = announcements.where(
+                      (a) => a['isNew'] == true && !readIds.contains(a['id'])
+              ).length;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // SAYILAN BİLDİRİMLERİ HEADER'A GÖNDERİYORUZ
-                    _buildHeader(context, unreadCount),
+                    _buildHeader(context, unreadCount, announcements, readIds),
                     const SizedBox(height: 18),
 
                     if (_searchQuery.isEmpty) ...[
@@ -102,7 +106,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, int unreadCount) {
+  // YENİ: Header artık announcements ve readIds verilerini de alıyor
+  Widget _buildHeader(BuildContext context, int unreadCount, List<dynamic> announcements, List readIds) {
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
 
     return Container(
@@ -118,31 +123,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold)
                   )
               ),
-              // GÜNCELLENEN AKILLI ZİL BUTONU
               IconButton(
                 onPressed: () async {
-                  // 1. Eğer okunmamış bildirim varsa veritabanını güncelle
+                  // YENİ: Zile tıklandığında, Firebase'i değiştirmek yerine
+                  // bu kullanıcının "okudu" listesini Hive'a kaydediyoruz.
                   if (unreadCount > 0) {
-                    var box = Hive.box('campusDataBox');
-                    List announcements = List.from(box.get('announcements', defaultValue: []));
-
-                    // Tüm duyuruları gez ve "Yeni" olanları "Okundu" (false) yap
-                    for (int i = 0; i < announcements.length; i++) {
-                      if (announcements[i]['isNew'] == true) {
-                        announcements[i]['isNew'] = false;
+                    var userBox = Hive.box('userBox');
+                    for (var a in announcements) {
+                      if (a['isNew'] == true && !readIds.contains(a['id'])) {
+                        readIds.add(a['id']);
                       }
                     }
+                    await userBox.put('readAnnouncements', readIds);
 
-                    // Güncel listeyi veritabanına kaydet
-                    await box.put('announcements', announcements);
-
-                    // Ana ekranı yenile ki kırmızı nokta anında kaybolsun
-                    setState(() {
-                      _databaseFuture = DataService.loadDatabase();
-                    });
+                    setState(() {}); // Kırmızı noktayı hemen kaldırmak için ekranı yenile
                   }
 
-                  // 2. Bildirimler sayfasına yönlendir
                   if (context.mounted) {
                     Navigator.push(
                       context,

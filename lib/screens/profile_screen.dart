@@ -19,7 +19,6 @@ import 'report_issue_screen.dart';
 import 'favorites_screen.dart';
 import 'events_screen.dart';
 import 'privacy_policy_screen.dart';
-
 import 'help_support_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -133,7 +132,14 @@ class ProfileScreen extends StatelessWidget {
     final favCount = context.watch<FavoritesProvider>().favorites.length;
     final joinedCount = context.watch<JoinedEventsProvider>().joinedCount;
 
-    // DÜZELTME: Tema renkleri dinamik olarak çekiliyor
+    // YENİ: AuthProvider'dan giriş yapan kullanıcının verisini çekiyoruz
+    final authProvider = context.watch<AuthProvider>();
+    final userData = authProvider.userData ?? {};
+
+    final String userName = userData['name'] ?? 'İsimsiz Kullanıcı';
+    final String userNo = userData['no'] ?? 'Numara Yok';
+    final String userGrade = userData['grade'] ?? 'Bilgi Yok';
+
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
@@ -145,30 +151,29 @@ class ProfileScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                // Arka planı tamamen kaldırdık, sayfanın doğal rengini (Açık veya Koyu) alacak
                 child: Column(
                   children: [
                     _buildProfileAvatar(context),
                     const SizedBox(height: 16),
                     Text(
-                      "Öğrenci Adı",
+                      userName,
                       style: TextStyle(
-                        color: textColor, // Artık temaya göre siyah veya beyaz
+                        color: textColor,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "20210001234",
+                      userNo,
                       style: TextStyle(
-                        color: mutedColor, // Artık temaya göre gri tonları
+                        color: mutedColor,
                         fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 12),
                     AppBadge(
-                      label: "3. Sınıf",
+                      label: userGrade,
                       backgroundColor: AppTheme.primaryLight.withOpacity(0.1),
                       textColor: AppTheme.primaryColor,
                     ),

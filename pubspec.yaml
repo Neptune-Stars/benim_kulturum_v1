@@ -20,6 +20,10 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
+  # YENI: Firebase eklentileri (LAB 08'e uygun)
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.14.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

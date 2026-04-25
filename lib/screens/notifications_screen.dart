@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart'; // YENİ: Hive import edildi
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/section_header.dart';
@@ -31,12 +32,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // YENİ: Ekran açıldığında Hive'a bak, eğer daha önce okundu işaretlendiyse hepsini okundu yap.
+    bool isAlreadyRead = Hive.box('userBox').get('mockNotificationsRead', defaultValue: false);
+    if (isAlreadyRead) {
+      for (var n in _notifications) {
+        n["isRead"] = true;
+      }
+    }
+  }
+
   void _markAllAsRead() {
     setState(() {
       for (var n in _notifications) {
         n["isRead"] = true;
       }
     });
+    // YENİ: Çift tike basıldığında bu durumu Hive'a kalıcı olarak kaydet
+    Hive.box('userBox').put('mockNotificationsRead', true);
   }
 
   @override

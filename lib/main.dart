@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // HIVE IMPORTU EKLENDİ
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_core/firebase_core.dart'; // YENİ: Firebase importu
 
 import 'theme/app_theme.dart';
 
@@ -17,21 +18,28 @@ import 'screens/main_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 
 import 'providers/profile_provider.dart';
-
 import 'providers/notification_provider.dart';
 
 void main() async {
-  // 1. Flutter'ın çizim motorunu başlatıyoruz (Asenkron işlemler için şart)
+  // 1. Flutter'ın çizim motorunu başlatıyoruz
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Hive yerel veritabanını cihazda başlatıyoruz
-  await Hive.initFlutter();
+  // 2. YENİ: Firebase Başlatma (Kendi SDK şifrelerinizi buraya yapıştırın)
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyAAfFBFWu6DBLChKVZ30opP4L7z2vra1dA",
+      appId: "1:181125991671:web:fcf82bea37442181c597f2",
+      messagingSenderId: "181125991671",
+      projectId: "benim-kulturum",
+    ),
+  );
 
-  // 3. İhtiyacımız olan veritabanı kutularını (tablolarını) açıyoruz
+  // 3. Hive yerel veritabanını başlatıyoruz (Sadece favoriler ve lokal ayarlar için kalacak)
+  await Hive.initFlutter();
   await Hive.openBox('favoritesBox');   // Favori ID'lerini tutacak
   await Hive.openBox('reportsBox');     // Gönderilen sorun bildirimlerini tutacak
-  await Hive.openBox('userBox');        // Giriş yapan kullanıcının bilgilerini (Admin mi Öğrenci mi) tutacak
-  await Hive.openBox('campusDataBox');  // Binalar, Hocalar, Menüler gibi ana verileri tutacak
+  await Hive.openBox('userBox');        // Giriş yapan kullanıcının bilgilerini tutacak
+  await Hive.openBox('campusDataBox');  // Admin panelini Phase 2'de düzeltene kadar çökmemesi için geçici olarak açık bırakıyoruz.
 
   runApp(
     MultiProvider(
@@ -44,7 +52,6 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => ProfileProvider()..loadProfileImage(),
         ),
-
       ],
       child: const BenimKulturumApp(),
     ),

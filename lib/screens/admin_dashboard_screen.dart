@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../data/data_service.dart';
@@ -18,7 +18,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   late TabController _tabController;
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  // TAB İSMİ DEĞİŞTİ: Binalar -> Birimler
   final List<String> _tabs = [
     "Genel", "Birimler", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane", "Fiyatlar", "Sorunlar", "Öğrenciler"
   ];
@@ -28,30 +27,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     4: TextEditingController(), 5: TextEditingController(), 6: TextEditingController(),
     7: TextEditingController(), 8: TextEditingController(), 9: TextEditingController(),
   };
-
-  final List<Map<String, String>> _mockPrices = [
-    {"name": "Çay", "price": "₺3", "category": "Çay/Kahve"},
-    {"name": "Türk Kahvesi", "price": "₺12", "category": "Çay/Kahve"},
-    {"name": "Ayran", "price": "₺5", "category": "İçecekler"},
-    {"name": "Tost", "price": "₺15", "category": "Atıştırmalıklar"},
-    {"name": "Öğle Menüsü", "price": "₺35", "category": "Yemek"},
-  ];
-
-  final List<Map<String, dynamic>> _mockIssues = [
-    {
-      "id": 1, "category": "Altyapı Sorunu", "priority": "Yüksek", "subject": "Sınıfta projeksiyon çalışmıyor", "location": "MF-101",
-      "description": "Bilgisayarı bağladığımızda görüntü gelmiyor, kablo kopuk olabilir.", "date": "Bugün 10:30"
-    },
-    {
-      "id": 2, "category": "Temizlik", "priority": "Orta", "subject": "Lavabolarda sabun bitti", "location": "İİBF 2. Kat",
-      "description": "Erkekler tuvaletindeki sıvı sabunluklar tamamen boşalmış.", "date": "Dün 14:15"
-    },
-  ];
-
-  final List<Map<String, String>> _mockStudents = [
-    {"name": "Ahmet Yılmaz", "no": "20210001234", "email": "ahmet@uni.edu.tr", "grade": "3. Sınıf"},
-    {"name": "Ayşe Demir", "no": "20220005678", "email": "ayse@uni.edu.tr", "grade": "2. Sınıf"},
-  ];
 
   @override
   void initState() {
@@ -85,7 +60,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         .replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c');
   }
 
-  void _showDeleteDialog(String collectionKey, int index) {
+  void _showDeleteDialog(String collectionKey, String docId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -95,14 +70,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal", style: TextStyle(color: AppTheme.textMuted))),
           TextButton(
               onPressed: () async {
-                var box = Hive.box('campusDataBox');
-                List currentList = List.from(box.get(collectionKey, defaultValue: []));
-                currentList.removeAt(index);
-                await box.put(collectionKey, currentList);
-
+                await FirebaseFirestore.instance.collection(collectionKey).doc(docId).delete();
                 if (context.mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt veritabanından silindi.")));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt bulut veritabanından silindi.")));
                   _loadData();
                 }
               },
@@ -113,33 +84,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _showFormDialog({required String title, required List<Widget> fields}) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: fields.map((f) => Padding(padding: const EdgeInsets.only(bottom: 12), child: f)).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal", style: TextStyle(color: AppTheme.textMuted))),
-          ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kaydedildi (Demo)")));
-              },
-              child: const Text("Kaydet")
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, {bool isNumber = false, int lines = 1, bool isPassword = false}) {
+  Widget _buildTextField(String label, {bool isNumber = false, int lines = 1, bool isPassword = false, TextEditingController? controller}) {
     return TextField(
+      controller: controller,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       maxLines: lines, obscureText: isPassword,
       decoration: InputDecoration(
@@ -187,6 +134,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           final allEvents = data['events'] as List<dynamic>? ?? [];
           final allAnnouncements = data['announcements'] as List<dynamic>? ?? [];
 
+          // NEW: Reading fully from Firebase now
+          final allPrices = data['prices'] as List<dynamic>? ?? [];
+          final allIssues = data['issues'] as List<dynamic>? ?? [];
+          final allStudents = data['students'] as List<dynamic>? ?? [];
+
+          final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
+          final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
+          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ["Kahvaltı", "Öğle", "Akşam"];
+
           final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
           final filteredBuildings = allBuildings.where((b) => _normalizeForSearch(b['name'] ?? '').contains(sq1) || _normalizeForSearch(b['location'] ?? '').contains(sq1)).toList();
 
@@ -202,21 +158,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           final sq5 = _normalizeForSearch(_searchControllers[5]!.text);
           final filteredAnnouncements = allAnnouncements.where((a) => _normalizeForSearch(a['title'] ?? '').contains(sq5) || _normalizeForSearch(a['date'] ?? '').contains(sq5)).toList();
 
-          final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
-          final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
-          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ["Kahvaltı", "Öğle", "Akşam"];
-
           final sq6 = _normalizeForSearch(_searchControllers[6]!.text);
           final filteredMeals = mealTypes.where((m) => _normalizeForSearch(m).contains(sq6)).toList();
 
           final sq7 = _normalizeForSearch(_searchControllers[7]!.text);
-          final filteredPrices = _mockPrices.where((p) => _normalizeForSearch(p["name"]!).contains(sq7) || _normalizeForSearch(p["category"]!).contains(sq7)).toList();
+          final filteredPrices = allPrices.where((p) => _normalizeForSearch(p["name"] ?? '').contains(sq7) || _normalizeForSearch(p["category"] ?? '').contains(sq7)).toList();
 
           final sq8 = _normalizeForSearch(_searchControllers[8]!.text);
-          final filteredIssues = _mockIssues.where((iss) => _normalizeForSearch(iss["subject"]).contains(sq8) || _normalizeForSearch(iss["category"]).contains(sq8) || _normalizeForSearch(iss["location"]).contains(sq8)).toList();
+          final filteredIssues = allIssues.where((iss) => _normalizeForSearch(iss["subject"] ?? '').contains(sq8) || _normalizeForSearch(iss["category"] ?? '').contains(sq8)).toList();
 
           final sq9 = _normalizeForSearch(_searchControllers[9]!.text);
-          final filteredStudents = _mockStudents.where((s) => _normalizeForSearch(s["name"]!).contains(sq9) || _normalizeForSearch(s["no"]!).contains(sq9)).toList();
+          final filteredStudents = allStudents.where((s) => _normalizeForSearch(s["name"] ?? '').contains(sq9) || _normalizeForSearch(s["no"] ?? '').contains(sq9)).toList();
 
           return TabBarView(
             controller: _tabController,
@@ -224,27 +176,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               _buildGenelTab(data),
               _buildManagementTab(
                 title: "Kampüs Birimleri", count: filteredBuildings.length, searchController: _searchControllers[1]!,
-                items: filteredBuildings.asMap().entries.map((e) => _buildListItem(e.value['name'] ?? '', e.value['location'] ?? '', () => _openBuildingForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('buildings', e.key))).toList(),
+                items: filteredBuildings.map((e) => _buildListItem(e['name'] ?? '', e['location'] ?? '', () => _openBuildingForm(isEdit: true, item: e), () => _showDeleteDialog('buildings', e['id'].toString()))).toList(),
                 onAdd: () => _openBuildingForm(isEdit: false),
               ),
               _buildManagementTab(
                 title: "Derslikler", count: filteredClassrooms.length, searchController: _searchControllers[2]!,
-                items: filteredClassrooms.asMap().entries.map((e) => _buildListItem(e.value['name'] ?? '', e.value['building'] ?? '', () => _openClassroomForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('classrooms', e.key))).toList(),
+                items: filteredClassrooms.map((e) => _buildListItem(e['name'] ?? '', e['building'] ?? '', () => _openClassroomForm(isEdit: true, item: e), () => _showDeleteDialog('classrooms', e['id'].toString()))).toList(),
                 onAdd: () => _openClassroomForm(isEdit: false),
               ),
               _buildManagementTab(
                 title: "Hocalar", count: filteredInstructors.length, searchController: _searchControllers[3]!,
-                items: filteredInstructors.asMap().entries.map((e) => _buildListItem(e.value['name'] ?? '', e.value['department'] ?? '', () => _openInstructorForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('instructors', e.key))).toList(),
+                items: filteredInstructors.map((e) => _buildListItem(e['name'] ?? '', e['department'] ?? '', () => _openInstructorForm(isEdit: true, item: e), () => _showDeleteDialog('instructors', e['id'].toString()))).toList(),
                 onAdd: () => _openInstructorForm(isEdit: false),
               ),
               _buildManagementTab(
                 title: "Etkinlikler", count: filteredEvents.length, searchController: _searchControllers[4]!,
-                items: filteredEvents.asMap().entries.map((e) => _buildListItem(e.value['title'] ?? '', "${e.value['date']} - ${e.value['location']}", () => _openEventForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('events', e.key))).toList(),
+                items: filteredEvents.map((e) => _buildListItem(e['title'] ?? '', "${e['date']} - ${e['location']}", () => _openEventForm(isEdit: true, item: e), () => _showDeleteDialog('events', e['id'].toString()))).toList(),
                 onAdd: () => _openEventForm(isEdit: false),
               ),
               _buildManagementTab(
                 title: "Duyurular", count: filteredAnnouncements.length, searchController: _searchControllers[5]!,
-                items: filteredAnnouncements.asMap().entries.map((e) => _buildListItem(e.value['title'] ?? '', e.value['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e.value, index: e.key), () => _showDeleteDialog('announcements', e.key))).toList(),
+                items: filteredAnnouncements.map((e) => _buildListItem(e['title'] ?? '', e['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e), () => _showDeleteDialog('announcements', e['id'].toString()))).toList(),
                 onAdd: () => _openAnnouncementForm(isEdit: false),
               ),
               _buildManagementTab(
@@ -257,13 +209,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
               _buildManagementTab(
                 title: "Fiyatlar", count: filteredPrices.length, searchController: _searchControllers[7]!,
-                items: filteredPrices.map((p) => _buildListItem(p["name"]!, "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true), null)).toList(),
+                items: filteredPrices.map((p) => _buildListItem(p["name"] ?? '', "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true, item: p), () => _showDeleteDialog('prices', p['id'].toString()))).toList(),
                 onAdd: () => _openPriceForm(isEdit: false),
               ),
               _buildIssuesTab(filteredIssues, _searchControllers[8]!),
               _buildManagementTab(
                 title: "Öğrenciler", count: filteredStudents.length, searchController: _searchControllers[9]!,
-                items: filteredStudents.map((s) => _buildListItem(s["name"]!, "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true), null)).toList(),
+                items: filteredStudents.map((s) => _buildListItem(s["name"] ?? '', "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true, item: s), () => _showDeleteDialog('students', s['id'].toString()))).toList(),
                 onAdd: () => _openStudentForm(isEdit: false),
               ),
             ],
@@ -285,12 +237,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppTheme.successColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.successColor.withOpacity(0.3))),
+            decoration: BoxDecoration(color: AppTheme.primaryLight.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3))),
             child: const Row(
               children: [
-                Icon(Icons.check_circle, color: AppTheme.successColor),
+                Icon(Icons.cloud_done, color: AppTheme.primaryColor),
                 SizedBox(width: 12),
-                Expanded(child: Text("Yerel Veritabanı (Hive) Aktif", style: TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold))),
+                Expanded(child: Text("Google Firebase Cloud Aktif", style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold))),
               ],
             ),
           ),
@@ -299,12 +251,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 1.25,
             children: [
-              _buildStatCard(Icons.business, "Birimler", bCount.toString(), 1), // İsmi Binalar yerine Birimler oldu
+              _buildStatCard(Icons.business, "Birimler", bCount.toString(), 1),
               _buildStatCard(Icons.meeting_room, "Derslikler", cCount.toString(), 2),
               _buildStatCard(Icons.people, "Hocalar", iCount.toString(), 3),
               _buildStatCard(Icons.event, "Etkinlikler", ((data['events'] as List?)?.length ?? 0).toString(), 4),
-              _buildStatCard(Icons.report_problem, "Sorunlar", _mockIssues.length.toString(), 8),
-              _buildStatCard(Icons.person, "Öğrenciler", _mockStudents.length.toString(), 9),
+              _buildStatCard(Icons.report_problem, "Sorunlar", ((data['issues'] as List?)?.length ?? 0).toString(), 8),
+              _buildStatCard(Icons.person, "Öğrenciler", ((data['students'] as List?)?.length ?? 0).toString(), 9),
             ],
           ),
         ],
@@ -322,10 +274,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              // Sınır çizgisini de karanlık moda uyumlu hale getirelim
-                color: isDark ? Colors.white.withOpacity(0.1) : AppTheme.borderColor
-            )
+            border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : AppTheme.borderColor)
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,9 +311,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppSearchBar(
-            controller: searchController, placeholder: "Ara...", onChanged: (val) => setState(() {}),
-          ),
+          child: AppSearchBar(controller: searchController, placeholder: "Ara...", onChanged: (val) => setState(() {})),
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -397,7 +344,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildIssuesTab(List<Map<String, dynamic>> issues, TextEditingController searchController) {
+  Widget _buildIssuesTab(List<dynamic> issues, TextEditingController searchController) {
     return Column(
       children: [
         Padding(
@@ -425,10 +372,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(color: priorityColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                      child: Text(issue["priority"], style: TextStyle(color: priorityColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: Text(issue["priority"] ?? '', style: TextStyle(color: priorityColor, fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(issue["subject"], style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Expanded(child: Text(issue["subject"] ?? '', style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
                   ],
                 ),
                 subtitle: Padding(padding: const EdgeInsets.only(top: 4.0), child: Text("${issue["category"]} • ${issue["location"]}\n${issue["date"]}", style: const TextStyle(color: AppTheme.textMuted))),
@@ -436,6 +383,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryLight), onPressed: () => _openIssueDetailsDialog(issue)),
+                    IconButton(icon: const Icon(Icons.delete, color: AppTheme.destructiveColor), onPressed: () => _showDeleteDialog('issues', issue['id'].toString())),
                   ],
                 ),
               );
@@ -446,7 +394,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openIssueDetailsDialog(Map<String, dynamic> issue) {
+  void _openIssueDetailsDialog(Map<dynamic, dynamic> issue) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -462,14 +410,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               const SizedBox(height: 4),
               Text("Konum: ${issue["location"]}", style: const TextStyle(color: AppTheme.textMuted)),
               const Divider(height: 24),
-              Text(issue["description"], style: const TextStyle(height: 1.4)),
+              Text(issue["description"] ?? '', style: const TextStyle(height: 1.4)),
             ],
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Kapat")),
           ElevatedButton.icon(
-            onPressed: () { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Çözüldü işaretlendi."))); },
+            onPressed: () async {
+              // Delete issue when resolved
+              await FirebaseFirestore.instance.collection('issues').doc(issue['id'].toString()).delete();
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Çözüldü işaretlendi ve kaldırıldı.")));
+                _loadData();
+              }
+            },
             icon: const Icon(Icons.check, size: 18), label: const Text("Çözüldü"),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor, foregroundColor: Colors.white),
           ),
@@ -478,36 +434,116 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openStudentForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Öğrenci" : "Yeni Öğrenci Ekle",
-        fields: [
-          _buildTextField("Ad Soyad"), _buildTextField("Öğrenci No", isNumber: true),
-          _buildTextField("E-posta"), _buildTextField("Şifre", isPassword: true),
-          _buildDropdown("Sınıf", ["Hazırlık", "1. Sınıf", "2. Sınıf", "3. Sınıf", "4. Sınıf", "Mezun"]),
-        ]
-    );
-  }
-
-  void _openPriceForm({required bool isEdit}) {
-    _showFormDialog(
-        title: isEdit ? "Düzenle — Fiyat" : "Yeni Fiyat Ekle",
-        fields: [
-          _buildDropdown("Kategori", ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"]),
-          _buildTextField("Ürün Adı"), _buildTextField("Fiyat (₺)", isNumber: true),
-        ]
-    );
-  }
-
-  // BİNALAR FORMU ARTIK BİRİMLER FORMU OLDU (Dropdown desteği eklendi)
-  void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+  void _openStudentForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final nameCtrl = TextEditingController(text: item?['name']);
+    final noCtrl = TextEditingController(text: item?['no']);
+    final emailCtrl = TextEditingController(text: item?['email']);
+    // YENİ: Veritabanından şifreyi çekiyoruz (veya yeni kayıt için boş bırakıyoruz)
+    final passCtrl = TextEditingController(text: item?['password']);
 
-    // Kampüs ve Konum listeleri
+    final List<String> gradeOptions = ["Hazırlık", "1. Sınıf", "2. Sınıf", "3. Sınıf", "4. Sınıf", "Mezun"];
+    String? selectedGrade = item?['grade'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEdit ? "Düzenle — Öğrenci" : "Yeni Öğrenci Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTextField("Ad Soyad", controller: nameCtrl),
+                    const SizedBox(height: 12),
+                    _buildTextField("Öğrenci No", isNumber: true, controller: noCtrl),
+                    const SizedBox(height: 12),
+                    _buildTextField("E-posta", controller: emailCtrl),
+                    const SizedBox(height: 12),
+                    // YENİ: Şifre alanı her zaman görünür, böylece Admin şifreyi değiştirebilir
+                    _buildTextField("Şifre", controller: passCtrl),
+                    const SizedBox(height: 12),
+                    _buildDropdown("Sınıf", gradeOptions, value: gradeOptions.contains(selectedGrade) ? selectedGrade : null, onChanged: (val) => setDialogState(() => selectedGrade = val)),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+                ElevatedButton(
+                    onPressed: () async {
+                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
+                      Map<String, dynamic> newData = {
+                        'id': docId,
+                        'name': nameCtrl.text,
+                        'no': noCtrl.text,
+                        'email': emailCtrl.text,
+                        'password': passCtrl.text, // YENİ: Şifreyi Firebase'e kaydediyoruz
+                        'grade': selectedGrade ?? '1. Sınıf'
+                      };
+                      await FirebaseFirestore.instance.collection('students').doc(docId.toString()).set(newData);
+                      if (context.mounted) { Navigator.pop(context); _loadData(); }
+                    },
+                    child: const Text("Kaydet")
+                )
+              ],
+            );
+          }
+      ),
+    );
+  }
+
+  void _openPriceForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
+    final nameCtrl = TextEditingController(text: item?['name']);
+    final priceCtrl = TextEditingController(text: item?['price']?.replaceAll('₺', ''));
+
+    final List<String> catOptions = ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"];
+    String? selectedCat = item?['category'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEdit ? "Düzenle — Fiyat" : "Yeni Fiyat Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDropdown("Kategori", catOptions, value: catOptions.contains(selectedCat) ? selectedCat : null, onChanged: (val) => setDialogState(() => selectedCat = val)),
+                    const SizedBox(height: 12),
+                    _buildTextField("Ürün Adı", controller: nameCtrl),
+                    const SizedBox(height: 12),
+                    _buildTextField("Fiyat", isNumber: true, controller: priceCtrl),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+                ElevatedButton(
+                    onPressed: () async {
+                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
+                      Map<String, dynamic> newData = {
+                        'id': docId,
+                        'name': nameCtrl.text,
+                        'price': "₺${priceCtrl.text}",
+                        'category': selectedCat ?? 'Çay/Kahve'
+                      };
+                      await FirebaseFirestore.instance.collection('prices').doc(docId.toString()).set(newData);
+                      if (context.mounted) { Navigator.pop(context); _loadData(); }
+                    },
+                    child: const Text("Kaydet")
+                )
+              ],
+            );
+          }
+      ),
+    );
+  }
+
+  void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
+    final nameCtrl = TextEditingController(text: item?['name']);
     final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
     final List<String> locationOptions = ["Zemin Kat", "1. Kat", "2. Kat", "3. Kat", "4. Kat", "5. Kat", "Bodrum Kat", "Bahçe"];
-
-    // Mevcut veriyi parçalayalım: "Ataköy, 3. Kat" -> "Ataköy" ve "3. Kat"
     String? selectedCampus;
     String? selectedLocation;
 
@@ -517,9 +553,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         var parts = loc.split(',');
         selectedCampus = parts[0].trim();
         selectedLocation = parts[1].trim();
-      } else {
-        selectedCampus = loc;
-      }
+      } else { selectedCampus = loc; }
     }
 
     showDialog(
@@ -534,21 +568,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Birim Adı (Örn: Hukuk Fakültesi)")),
                   const SizedBox(height: 12),
-                  // Kampüs Seçimi
-                  _buildDropdown(
-                    "Kampüs Seçin",
-                    campusOptions,
-                    value: campusOptions.contains(selectedCampus) ? selectedCampus : null,
-                    onChanged: (val) => setDialogState(() => selectedCampus = val),
-                  ),
+                  _buildDropdown("Kampüs Seçin", campusOptions, value: campusOptions.contains(selectedCampus) ? selectedCampus : null, onChanged: (val) => setDialogState(() => selectedCampus = val)),
                   const SizedBox(height: 12),
-                  // Konum Seçimi
-                  _buildDropdown(
-                    "Konum/Kat Seçin",
-                    locationOptions,
-                    value: locationOptions.contains(selectedLocation) ? selectedLocation : null,
-                    onChanged: (val) => setDialogState(() => selectedLocation = val),
-                  ),
+                  _buildDropdown("Konum/Kat Seçin", locationOptions, value: locationOptions.contains(selectedLocation) ? selectedLocation : null, onChanged: (val) => setDialogState(() => selectedLocation = val)),
                 ],
               ),
             ),
@@ -556,21 +578,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
               ElevatedButton(
                   onPressed: () async {
-                    var box = Hive.box('campusDataBox');
-                    List list = List.from(box.get('buildings', defaultValue: []));
-
-                    // Kampüs ve Konumu birleştirerek kaydediyoruz
                     String finalLocation = "${selectedCampus ?? 'Belirtilmedi'}, ${selectedLocation ?? 'Belirtilmedi'}";
-
+                    int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
                     Map<String, dynamic> newData = {
-                      'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                      'name': nameCtrl.text,
-                      'location': finalLocation,
-                      'abbr': item?['abbr'] ?? 'YENİ',
-                      'type': item?['type'] ?? 'faculty' // Varsayılan değer
+                      'id': docId, 'name': nameCtrl.text, 'location': finalLocation,
+                      'abbr': item?['abbr'] ?? 'YENİ', 'type': item?['type'] ?? 'faculty'
                     };
-                    if (isEdit) { list[index!] = newData; } else { list.add(newData); }
-                    await box.put('buildings', list);
+                    await FirebaseFirestore.instance.collection('buildings').doc(docId.toString()).set(newData);
                     if (context.mounted) { Navigator.pop(context); _loadData(); }
                   },
                   child: const Text("Kaydet")
@@ -582,27 +596,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // DERSLİKLER FORMU GÜNCELLEMESİ (Kampüs ve Kat için Dropdown eklendi)
-  void _openClassroomForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+  void _openClassroomForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final nameCtrl = TextEditingController(text: item?['name']);
-
-    // Kampüs ve Kat seçenekleri
     final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
     final List<String> floorOptions = ["Zemin Kat", "1. Kat", "2. Kat", "3. Kat", "4. Kat", "5. Kat", "Bodrum Kat"];
-
     String? selectedCampus;
     String? selectedFloor;
 
-    // Düzenleme modunda mevcut "Kampüs, Kat" verisini ayrıştıralım
     if (item != null && item['building'] != null) {
       String buildingData = item['building'].toString();
       if (buildingData.contains(',')) {
         var parts = buildingData.split(',');
         selectedCampus = parts[0].trim();
         selectedFloor = parts[1].trim();
-      } else {
-        selectedCampus = buildingData;
-      }
+      } else { selectedCampus = buildingData; }
     }
 
     showDialog(
@@ -617,21 +624,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   children: [
                     TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Derslik Adı")),
                     const SizedBox(height: 12),
-                    // Kampüs Seçimi
-                    _buildDropdown(
-                      "Kampüs Seçin",
-                      campusOptions,
-                      value: campusOptions.contains(selectedCampus) ? selectedCampus : null,
-                      onChanged: (val) => setDialogState(() => selectedCampus = val),
-                    ),
+                    _buildDropdown("Kampüs Seçin", campusOptions, value: campusOptions.contains(selectedCampus) ? selectedCampus : null, onChanged: (val) => setDialogState(() => selectedCampus = val)),
                     const SizedBox(height: 12),
-                    // Kat Seçimi
-                    _buildDropdown(
-                      "Kat/Konum Seçin",
-                      floorOptions,
-                      value: floorOptions.contains(selectedFloor) ? selectedFloor : null,
-                      onChanged: (val) => setDialogState(() => selectedFloor = val),
-                    ),
+                    _buildDropdown("Kat/Konum Seçin", floorOptions, value: floorOptions.contains(selectedFloor) ? selectedFloor : null, onChanged: (val) => setDialogState(() => selectedFloor = val)),
                   ],
                 ),
               ),
@@ -639,22 +634,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
                 ElevatedButton(
                     onPressed: () async {
-                      var box = Hive.box('campusDataBox');
-                      List list = List.from(box.get('classrooms', defaultValue: []));
-
-                      // Kampüs ve katı tek bir string olarak birleştiriyoruz
                       String finalBuilding = "${selectedCampus ?? 'Belirtilmedi'}, ${selectedFloor ?? 'Belirtilmedi'}";
-
+                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
                       Map<String, dynamic> newData = {
-                        'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                        'name': nameCtrl.text,
-                        'building': finalBuilding,
-                        'capacity': item?['capacity'] ?? 40,
-                        'type': item?['type'] ?? 'Derslik',
-                        'floor': selectedFloor ?? '1'
+                        'id': docId, 'name': nameCtrl.text, 'building': finalBuilding,
+                        'capacity': item?['capacity'] ?? 40, 'type': item?['type'] ?? 'Derslik', 'floor': selectedFloor ?? '1'
                       };
-                      if (isEdit) { list[index!] = newData; } else { list.add(newData); }
-                      await box.put('classrooms', list);
+                      await FirebaseFirestore.instance.collection('classrooms').doc(docId.toString()).set(newData);
                       if (context.mounted) { Navigator.pop(context); _loadData(); }
                     },
                     child: const Text("Kaydet")
@@ -666,11 +652,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // HOCALAR FORMU GÜNCELLENDİ: FOTOĞRAF ALANI EKLENDİ
-  void _openInstructorForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+  void _openInstructorForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final nameCtrl = TextEditingController(text: item?['name']);
     final deptCtrl = TextEditingController(text: item?['department']);
-    // Yeni: Fotoğraf yolu için controller
     final photoCtrl = TextEditingController(text: item?['imageUrl'] ?? '');
 
     showDialog(
@@ -684,37 +668,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             const SizedBox(height: 12),
             TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
             const SizedBox(height: 12),
-            // Yeni: Fotoğraf yolu girişi
-            TextField(
-                controller: photoCtrl,
-                decoration: const InputDecoration(
-                    labelText: "Fotoğraf Yolu (Örn: assets/instructors/hoca.jpg)",
-                    hintText: "assets/instructors/varsayilan.jpg"
-                )
-            ),
+            TextField(controller: photoCtrl, decoration: const InputDecoration(labelText: "Fotoğraf Yolu (Örn: assets/instructors/hoca.jpg)", hintText: "assets/instructors/varsayilan.jpg")),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
           ElevatedButton(
               onPressed: () async {
-                var box = Hive.box('campusDataBox');
-                List list = List.from(box.get('instructors', defaultValue: []));
-
-                // newData içine imageUrl alanını dahil ediyoruz
+                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
                 Map<String, dynamic> newData = {
-                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'name': nameCtrl.text,
-                  'department': deptCtrl.text,
-                  'imageUrl': photoCtrl.text, // Fotoğraf verisi burada kaydediliyor
-                  'title': item?['title'] ?? 'Öğretim Üyesi',
-                  'office': item?['office'] ?? 'Bilinmiyor',
-                  'filter': item?['filter'] ?? 'engineering',
-                  'email': item?['email'] ?? 'iletisim@uni.edu.tr'
+                  'id': docId, 'name': nameCtrl.text, 'department': deptCtrl.text, 'imageUrl': photoCtrl.text,
+                  'title': item?['title'] ?? 'Öğretim Üyesi', 'office': item?['office'] ?? 'Bilinmiyor',
+                  'filter': item?['filter'] ?? 'engineering', 'email': item?['email'] ?? 'iletisim@uni.edu.tr'
                 };
-
-                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
-                await box.put('instructors', list);
+                await FirebaseFirestore.instance.collection('instructors').doc(docId.toString()).set(newData);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
               },
               child: const Text("Kaydet")
@@ -724,7 +691,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openEventForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+  void _openEventForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final titleCtrl = TextEditingController(text: item?['title']);
     final dateCtrl = TextEditingController(text: item?['date']);
     final locCtrl = TextEditingController(text: item?['location']);
@@ -747,15 +714,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
           ElevatedButton(
               onPressed: () async {
-                var box = Hive.box('campusDataBox');
-                List list = List.from(box.get('events', defaultValue: []));
+                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
                 Map<String, dynamic> newData = {
-                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'title': titleCtrl.text, 'date': dateCtrl.text, 'location': locCtrl.text,
+                  'id': docId, 'title': titleCtrl.text, 'date': dateCtrl.text, 'location': locCtrl.text,
                   'category': item?['category'] ?? 'Genel', 'description': item?['description'] ?? 'Detay girilmedi.'
                 };
-                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
-                await box.put('events', list);
+                await FirebaseFirestore.instance.collection('events').doc(docId.toString()).set(newData);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
               },
               child: const Text("Kaydet")
@@ -765,7 +729,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openAnnouncementForm({required bool isEdit, Map<dynamic, dynamic>? item, int? index}) {
+  void _openAnnouncementForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final titleCtrl = TextEditingController(text: item?['title']);
     final dateCtrl = TextEditingController(text: item?['date']);
     final contentCtrl = TextEditingController(text: item?['content']);
@@ -788,14 +752,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
           ElevatedButton(
               onPressed: () async {
-                var box = Hive.box('campusDataBox');
-                List list = List.from(box.get('announcements', defaultValue: []));
+                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
                 Map<String, dynamic> newData = {
-                  'id': isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch,
-                  'title': titleCtrl.text, 'date': dateCtrl.text, 'content': contentCtrl.text, 'category': item?['category'] ?? 'Genel'
+                  'id': docId, 'title': titleCtrl.text, 'date': dateCtrl.text, 'content': contentCtrl.text, 'category': item?['category'] ?? 'Genel'
                 };
-                if (isEdit) { list[index!] = newData; } else { list.add(newData); }
-                await box.put('announcements', list);
+                await FirebaseFirestore.instance.collection('announcements').doc(docId.toString()).set(newData);
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
               },
               child: const Text("Kaydet")
@@ -833,8 +794,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 fullCafeteriaData['menus'][mealName] = {
                   'time': timeCtrl.text, 'price': priceCtrl.text, 'items': newItems, 'isChips': item['isChips'] ?? false,
                 };
-                var box = Hive.box('campusDataBox');
-                await box.put('cafeteria', fullCafeteriaData);
+                await FirebaseFirestore.instance.collection('settings').doc('cafeteria').set(Map<String, dynamic>.from(fullCafeteriaData));
                 if (context.mounted) { Navigator.pop(context); _loadData(); }
               },
               child: const Text("Kaydet")

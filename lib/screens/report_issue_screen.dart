@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // YENİ: Firebase eklendi
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 
@@ -62,14 +63,39 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  void _submit() {
+  // YENİ: Gerçek Firebase Kayıt İşlemi
+  Future<void> _submit() async {
     FocusScope.of(context).unfocus();
 
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = Theme.of(context).brightness == Brightness.dark
-        ? AppTheme.darkTextMuted
-        : AppTheme.textMuted;
+    // 1. O anki zamanı id ve tarih yazısı olarak al
+    int docId = DateTime.now().millisecondsSinceEpoch;
+    DateTime now = DateTime.now();
+    String formattedDate = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+    // 2. Veriyi haritala
+    Map<String, dynamic> issueData = {
+      "id": docId,
+      "category": _selectedCategory ?? "Diğer",
+      "priority": _selectedPriority,
+      "subject": _subjectController.text.trim(),
+      "location": _locationController.text.trim().isEmpty ? "Belirtilmedi" : _locationController.text.trim(),
+      "description": _descController.text.trim(),
+      "date": formattedDate,
+    };
+
+    // 3. Firebase'e gönder (LAB 08 Mantığı)
+    try {
+      await FirebaseFirestore.instance.collection('issues').doc(docId.toString()).set(issueData);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gönderilirken bir hata oluştu.")));
+      return;
+    }
+
+    // 4. Başarı ekranını göster
+    if (!mounted) return;
+
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     showDialog(
       context: context,
@@ -107,9 +133,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       ),
     );
 
+    // 2 saniye sonra otomatik kapat
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.of(context).pop();
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop(); // Dialog'u kapat
+        Navigator.of(context).pop(); // Ekranı kapatıp geri dön
+      }
     });
   }
 
@@ -244,7 +273,9 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     borderRadius: BorderRadius.circular(26),
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Demo: Fotoğraf yükleme özelliği şu an aktif değil.")));
+                },
                 icon: Icon(Icons.camera_alt, color: mutedColor),
                 label: Text(
                   "Fotoğraf Ekle (İsteğe Bağlı)",
