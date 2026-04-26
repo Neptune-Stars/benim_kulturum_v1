@@ -10,14 +10,11 @@ import '../widgets/badge_widget.dart';
 import '../data/data_service.dart';
 
 import 'classrooms_screen.dart';
-import 'buildings_screen.dart';
 import 'instructors_screen.dart';
 import 'office_hours_screen.dart';
-import 'cafeteria_menu_screen.dart';
 import 'campus_prices_screen.dart';
 import 'events_screen.dart';
 import 'report_issue_screen.dart';
-import 'announcements_screen.dart';
 import 'event_detail_screen.dart';
 import 'building_detail_screen.dart';
 import 'instructor_detail_screen.dart';
@@ -25,7 +22,9 @@ import 'classroom_detail_screen.dart';
 import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  final Function(int) onSwitchTab;
+
+  const HomeScreen({Key? key, required this.onSwitchTab}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -47,6 +46,19 @@ class _HomeScreenState extends State<HomeScreen> {
         .replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c');
   }
 
+  String _getTodayString() {
+    int weekday = DateTime.now().weekday;
+    if (weekday == 6 || weekday == 7) return "Hafta Sonu";
+    switch (weekday) {
+      case 1: return "Pazartesi";
+      case 2: return "Salı";
+      case 3: return "Çarşamba";
+      case 4: return "Perşembe";
+      case 5: return "Cuma";
+      default: return "Pazartesi";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,23 +71,86 @@ class _HomeScreenState extends State<HomeScreen> {
               }
 
               final data = snapshot.data ?? {};
-
               final events = data['events'] as List<dynamic>? ?? [];
               final announcements = data['announcements'] as List<dynamic>? ?? [];
+
+              // SADECE ATAKÖY VERİSİ
               final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
               final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
-              final lunchMenu = menus['Öğle'] ?? {};
-              final lunchItems = (lunchMenu['items'] as List<dynamic>? ?? []).join(", ");
+              final atakoyMenus = menus['Ataköy'] as Map<dynamic, dynamic>? ?? {};
 
-              final Map<String, String> todayMenu = {
-                "title": "Günün Menüsü",
-                "meal": "Öğle Menüsü",
-                "desc": lunchItems.isNotEmpty ? lunchItems : "Menü bilgisi bulunamadı",
-                "time": lunchMenu['time']?.toString() ?? "-",
-                "price": lunchMenu['price']?.toString() ?? "-",
+              final String todayStr = _getTodayString();
+              final todayMeals = atakoyMenus[todayStr] as Map<dynamic, dynamic>? ?? {};
+
+              // YENİ: Saate ve varoluş durumuna göre sıkı filtreleme
+              int currentHour = DateTime.now().hour;
+              String activeMealName = "Menü Bulunamadı";
+              Map<dynamic, dynamic> activeMenu = {};
+
+              if (currentHour < 11 && todayMeals.containsKey('Kahvaltı')) {
+                activeMealName = 'Kahvaltı';
+                activeMenu = todayMeals['Kahvaltı'];
+              }
+              else if (currentHour >= 11 && currentHour < 15 && todayMeals.containsKey('Öğle')) {
+                activeMealName = 'Öğle Menüsü';
+                activeMenu = todayMeals['Öğle'];
+              }
+              else if (currentHour >= 15 && currentHour < 19 && todayMeals.containsKey('Akşam')) {
+                activeMealName = 'Akşam Menüsü';
+                activeMenu = todayMeals['Akşam'];
+              }
+              else if (todayMeals.containsKey('Fast Food')) {
+                // Eğer Akşam yemeği yoksa veya saat çok geçse, otomatik Fast Food'a düşer
+                activeMealName = 'Fast Food Menüsü';
+                activeMenu = todayMeals['Fast Food'];
+              }
+              else if (todayMeals.isNotEmpty) {
+                activeMealName = todayMeals.keys.first.toString();
+                activeMenu = todayMeals[activeMealName];
+              }
+
+              // Metin ve Fiyat Ayrıştırma
+              String menuDesc = "Bugün için menü bilgisi bulunamadı.";
+              String priceDisplay = "-";
+              String timeDisplay = "-";
+
+              if (activeMenu.isNotEmpty) {
+                timeDisplay = activeMenu['time']?.toString() ?? "-";
+                final bool isAlaCarte = activeMenu['isAlaCarte'] == true;
+                final itemsList = activeMenu['items'] as List<dynamic>? ?? [];
+
+                if (isAlaCarte) {
+                  menuDesc = itemsList.map((e) => (e as Map)['name'].toString()).join(", ");
+
+                  List<int> prices = [];
+                  for (var item in itemsList) {
+                    if (item is Map && item['price'] != null) {
+                      int? p = int.tryParse(item['price'].toString().replaceAll(RegExp(r'[^0-9]'), ''));
+                      if (p != null) prices.add(p);
+                    }
+                  }
+
+                  if (prices.isNotEmpty) {
+                    prices.sort();
+                    priceDisplay = prices.first == prices.last ? "₺${prices.first}" : "₺${prices.first} - ₺${prices.last}";
+                  } else {
+                    priceDisplay = "Değişken Fiyat";
+                  }
+
+                } else {
+                  menuDesc = itemsList.join(", ");
+                  priceDisplay = activeMenu['price']?.toString() ?? "-";
+                }
+              }
+
+              final Map<String, String> todayMenuDisplay = {
+                "title": "Günün Menüsü ($todayStr)",
+                "meal": activeMealName,
+                "desc": menuDesc,
+                "time": timeDisplay,
+                "price": priceDisplay,
               };
 
-              // YENİ: Firebase'deki yeni duyuruları ve bu telefonda okunanları karşılaştır
               var userBox = Hive.box('userBox');
               List readIds = List.from(userBox.get('readAnnouncements', defaultValue: []));
 
@@ -92,9 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 18),
 
                     if (_searchQuery.isEmpty) ...[
-                      _buildDefaultHomeContent(context, todayMenu, announcements, events),
-                    ]
-                    else ...[
+                      _buildDefaultHomeContent(context, todayMenuDisplay, announcements, events),
+                    ] else ...[
                       _buildSearchResults(context, data),
                     ]
                   ],
@@ -106,10 +180,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // YENİ: Header artık announcements ve readIds verilerini de alıyor
   Widget _buildHeader(BuildContext context, int unreadCount, List<dynamic> announcements, List readIds) {
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
@@ -117,54 +189,25 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              Expanded(
-                  child: Text(
-                      "Merhaba, Öğrenci 👋",
-                      style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold)
-                  )
-              ),
+              Expanded(child: Text("Merhaba, Öğrenci 👋", style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold))),
               IconButton(
                 onPressed: () async {
-                  // YENİ: Zile tıklandığında, Firebase'i değiştirmek yerine
-                  // bu kullanıcının "okudu" listesini Hive'a kaydediyoruz.
                   if (unreadCount > 0) {
                     var userBox = Hive.box('userBox');
                     for (var a in announcements) {
-                      if (a['isNew'] == true && !readIds.contains(a['id'])) {
-                        readIds.add(a['id']);
-                      }
+                      if (a['isNew'] == true && !readIds.contains(a['id'])) readIds.add(a['id']);
                     }
                     await userBox.put('readAnnouncements', readIds);
-
-                    setState(() {}); // Kırmızı noktayı hemen kaldırmak için ekranı yenile
+                    setState(() {});
                   }
-
-                  if (context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                    );
-                  }
+                  if (context.mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
                 },
-                icon: Badge(
-                  isLabelVisible: unreadCount > 0,
-                  label: Text(unreadCount.toString()),
-                  backgroundColor: AppTheme.destructiveColor,
-                  child: Icon(Icons.notifications_none, color: textColor, size: 28),
-                ),
+                icon: Badge(isLabelVisible: unreadCount > 0, label: Text(unreadCount.toString()), backgroundColor: AppTheme.destructiveColor, child: Icon(Icons.notifications_none, color: textColor, size: 28)),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          AppSearchBar(
-            placeholder: "Birim, hoca, derslik ara...",
-            readOnly: false,
-            onChanged: (val) {
-              setState(() {
-                _searchQuery = val;
-              });
-            },
-          ),
+          AppSearchBar(placeholder: "Birim, hoca, derslik ara...", readOnly: false, onChanged: (val) => setState(() => _searchQuery = val)),
         ],
       ),
     );
@@ -172,7 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchResults(BuildContext context, Map<String, dynamic> data) {
     final sq = _normalizeForSearch(_searchQuery);
-
     final allUnits = data['buildings'] as List<dynamic>? ?? [];
     final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
     final allInstructors = data['instructors'] as List<dynamic>? ?? [];
@@ -181,44 +223,26 @@ class _HomeScreenState extends State<HomeScreen> {
     List<Map<String, dynamic>> results = [];
 
     for (var u in allUnits) {
-      if (_normalizeForSearch(u['name']?.toString() ?? '').contains(sq) || _normalizeForSearch(u['location']?.toString() ?? '').contains(sq)) {
-        results.add({...u as Map, 'searchType': 'Kampüs Alanı'});
-      }
+      if (_normalizeForSearch(u['name']?.toString() ?? '').contains(sq) || _normalizeForSearch(u['location']?.toString() ?? '').contains(sq)) results.add({...u as Map, 'searchType': 'Kampüs Alanı'});
     }
     for (var i in allInstructors) {
-      if (_normalizeForSearch(i['name']?.toString() ?? '').contains(sq) || _normalizeForSearch(i['department']?.toString() ?? '').contains(sq)) {
-        results.add({...i as Map, 'searchType': 'Hoca'});
-      }
+      if (_normalizeForSearch(i['name']?.toString() ?? '').contains(sq) || _normalizeForSearch(i['department']?.toString() ?? '').contains(sq)) results.add({...i as Map, 'searchType': 'Hoca'});
     }
     for (var c in allClassrooms) {
-      if (_normalizeForSearch(c['name']?.toString() ?? '').contains(sq)) {
-        results.add({...c as Map, 'searchType': 'Derslik'});
-      }
+      if (_normalizeForSearch(c['name']?.toString() ?? '').contains(sq)) results.add({...c as Map, 'searchType': 'Derslik'});
     }
     for (var e in allEvents) {
-      if (_normalizeForSearch(e['title']?.toString() ?? '').contains(sq)) {
-        results.add({...e as Map, 'searchType': 'Etkinlik'});
-      }
+      if (_normalizeForSearch(e['title']?.toString() ?? '').contains(sq)) results.add({...e as Map, 'searchType': 'Etkinlik'});
     }
 
-    if (results.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32.0),
-        child: Center(
-          child: Text("Sonuç bulunamadı.", style: TextStyle(color: AppTheme.textMuted, fontSize: 16)),
-        ),
-      );
-    }
+    if (results.isEmpty) return const Padding(padding: EdgeInsets.all(32.0), child: Center(child: Text("Sonuç bulunamadı.", style: TextStyle(color: AppTheme.textMuted, fontSize: 16))));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
-            child: Text("${results.length} sonuç bulundu", style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
-          ),
+          Padding(padding: const EdgeInsets.only(bottom: 16.0, top: 8.0), child: Text("${results.length} sonuç bulundu", style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textMuted))),
           ...results.map((item) {
             String title = item['name'] ?? item['title'] ?? 'İsimsiz';
             String subtitle = item['department'] ?? item['location'] ?? item['building'] ?? '';
@@ -227,19 +251,13 @@ class _HomeScreenState extends State<HomeScreen> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10.0),
               child: InfoCard(
-                title: title,
-                subtitle: subtitle,
+                title: title, subtitle: subtitle,
                 badge: AppBadge(label: type, backgroundColor: AppTheme.primaryLight.withOpacity(0.1), textColor: AppTheme.primaryColor),
                 onTap: () {
-                  if (type == 'Kampüs Alanı') {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: item)));
-                  } else if (type == 'Hoca') {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: item)));
-                  } else if (type == 'Derslik') {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: item)));
-                  } else if (type == 'Etkinlik') {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: item)));
-                  }
+                  if (type == 'Kampüs Alanı') Navigator.push(context, MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: item)));
+                  else if (type == 'Hoca') Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: item)));
+                  else if (type == 'Derslik') Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: item)));
+                  else if (type == 'Etkinlik') Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: item)));
                 },
               ),
             );
@@ -256,22 +274,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text("Hızlı Erişim", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-        ),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text("Hızlı Erişim", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))),
         const SizedBox(height: 14),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: GridView.count(
-            crossAxisCount: 4, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12, crossAxisSpacing: 8, childAspectRatio: 0.72,
+            crossAxisCount: 3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12, crossAxisSpacing: 8, childAspectRatio: 0.85,
             children: [
               QuickActionCard(icon: Icons.meeting_room_outlined, title: "Derslikler", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClassroomsScreen()))),
-              QuickActionCard(icon: Icons.business, title: "Kampüs\nRehberi", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BuildingsScreen()))),
               QuickActionCard(icon: Icons.groups_outlined, title: "Hocalar", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InstructorsScreen()))),
               QuickActionCard(icon: Icons.access_time_outlined, title: "Ofis Saatleri", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OfficeHoursScreen()))),
-              QuickActionCard(icon: Icons.restaurant_menu, title: "Menü", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen()))),
               QuickActionCard(icon: Icons.attach_money, title: "Fiyatlar", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampusPricesScreen()))),
               QuickActionCard(icon: Icons.event_note_outlined, title: "Etkinlikler", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventsScreen()))),
               QuickActionCard(icon: Icons.report_problem_outlined, title: "Sorun Bildir", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportIssueScreen()))),
@@ -281,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 18),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SectionHeader(title: "Bugünün Menüsü", actionLabel: "Tümünü Gör", onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen()))),
+          child: SectionHeader(title: todayMenu["title"]!, actionLabel: "Tümünü Gör", onAction: () => widget.onSwitchTab(2)),
         ),
         const SizedBox(height: 10),
         Padding(
@@ -289,42 +302,28 @@ class _HomeScreenState extends State<HomeScreen> {
           child: _buildTodayMenuCard(context, meal: todayMenu["meal"]!, desc: todayMenu["desc"]!, time: todayMenu["time"]!, price: todayMenu["price"]!),
         ),
         const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: const SectionHeader(title: "Son Duyurular"),
-        ),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: const SectionHeader(title: "Son Duyurular")),
         const SizedBox(height: 10),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: announcements.take(2).map((announcement) {
-              final isNew = announcement['isNew'] == true;
               return InfoCard(
-                title: announcement['title']?.toString() ?? '',
-                subtitle: announcement['date']?.toString() ?? '',
-                metadata: announcement['content']?.toString() ?? '',
-                badge: isNew ? const AppBadge(label: "Yeni") : null,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen())),
+                title: announcement['title']?.toString() ?? '', subtitle: announcement['date']?.toString() ?? '', metadata: announcement['content']?.toString() ?? '',
+                badge: announcement['isNew'] == true ? const AppBadge(label: "Yeni") : null,
+                onTap: () => widget.onSwitchTab(3),
               );
             }).toList(),
           ),
         ),
         const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SectionHeader(title: "Yaklaşan Etkinlikler", actionLabel: "Tümünü Gör", onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventsScreen()))),
-        ),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: SectionHeader(title: "Yaklaşan Etkinlikler", actionLabel: "Tümünü Gör", onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventsScreen())))),
         const SizedBox(height: 10),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: events.take(2).map((event) {
-              return InfoCard(
-                title: event['title']?.toString() ?? '',
-                subtitle: "${event['date']} • ${event['time']}",
-                metadata: event['location']?.toString() ?? '',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: event))),
-              );
+              return InfoCard(title: event['title']?.toString() ?? '', subtitle: "${event['date']} • ${event['time']}", metadata: event['location']?.toString() ?? '', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: event))));
             }).toList(),
           ),
         ),
@@ -342,10 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen())),
+      onTap: () => widget.onSwitchTab(2),
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        width: double.infinity, padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: dividerColor)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

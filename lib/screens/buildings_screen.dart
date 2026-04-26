@@ -124,7 +124,8 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Kampüs Rehberi", showBack: true),
+      // FIXED: showBack is now permanently false to prevent the black screen
+      appBar: const CustomAppBar(title: "Kampüs Rehberi", showBack: false),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
@@ -152,10 +153,8 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
               return matchesSearch && matchesFilter;
             }).toList();
 
-            // Sayfanın TAMAMI artık tek bir kaydırılabilir yapı içinde (CustomScrollView)
             return CustomScrollView(
               slivers: [
-                // 1. Kısım: Arama Çubuğu
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -165,8 +164,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                     ),
                   ),
                 ),
-
-                // 2. Kısım: Filtre Butonları
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: 40,
@@ -185,8 +182,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                     ),
                   ),
                 ),
-
-                // 3. Kısım: Harita Kartı (Binalarla Birlikte Kayacak)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -253,8 +248,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                     ),
                   ),
                 ),
-
-                // 4. Kısım: Binaların Listesi (Eğer Boşsa)
                 if (filteredBuildings.isEmpty)
                   const SliverToBoxAdapter(
                     child: Padding(
@@ -268,8 +261,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                       ),
                     ),
                   ),
-
-                // 5. Kısım: Binaların Listesi (Doluysa)
                 if (filteredBuildings.isNotEmpty)
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -277,14 +268,13 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                       delegate: SliverChildBuilderDelegate(
                             (context, index) {
                           final b = filteredBuildings[index];
-                          // Özel bir meta data oluştur. (Örn: Sadece 1 katlı kafeler için kat bilgisi yazmasın)
                           String metadata = "";
                           if (b['type'] == "faculty" || b['type'] == "admin") {
                             metadata = "${b['floors'] ?? 1} kat • ${b['rooms'] ?? 10} alan";
                           }
 
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0), // Kartlar arası boşluk
+                            padding: const EdgeInsets.only(bottom: 12.0),
                             child: InfoCard(
                               title: b['name']?.toString() ?? "",
                               subtitle: b['location']?.toString() ?? "",

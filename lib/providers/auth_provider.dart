@@ -1,24 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthProvider extends ChangeNotifier {
-  String? role; // "student" or "admin"
+  Map<String, dynamic>? _studentData;
+  bool _isAdmin = false;
 
-  // YENİ: Giriş yapan kullanıcının tüm bilgilerini tutacak obje
-  Map<String, dynamic>? userData;
+  Map<String, dynamic>? get studentData => _studentData;
+  bool get isAdmin => _isAdmin;
 
-  bool get isLoggedIn => role != null;
-  bool get isAdmin => role == 'admin';
-
-  // YENİ: Giriş yaparken artık kullanıcı verisini de alıyoruz
-  void login(String r, {Map<String, dynamic>? data}) {
-    role = r;
-    userData = data;
+  // Login logic (Update this based on your existing login)
+  void login(Map<String, dynamic> data, bool adminStatus) {
+    _studentData = data;
+    _isAdmin = adminStatus;
     notifyListeners();
   }
 
   void logout() {
-    role = null;
-    userData = null; // Çıkış yapınca veriyi temizle
+    _studentData = null;
+    _isAdmin = false;
     notifyListeners();
+  }
+
+  // YENİ: Firebase'den güncel veriyi çekme (Profil resmi vb. için)
+  Future<void> refreshStudentData() async {
+    if (_studentData == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('students')
+        .doc(_studentData!['id'].toString())
+        .get();
+
+    if (doc.exists) {
+      _studentData = doc.data();
+      notifyListeners();
+    }
   }
 }

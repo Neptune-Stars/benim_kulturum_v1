@@ -17,70 +17,59 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    BuildingsScreen(),
-    CafeteriaMenuScreen(),
-    AnnouncementsScreen(),
-    ProfileScreen(),
-  ];
+  // YENİ: HomeScreen'e göndereceğimiz sekme değiştirme fonksiyonu
+  void _switchTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Koyu tema açık mı kontrol ediyoruz
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Ekranları buraya taşıdık ki _switchTab fonksiyonunu HomeScreen'e aktarabilelim
+    final List<Widget> screens = [
+      HomeScreen(onSwitchTab: _switchTab), // YENİ: Uzaktan kumanda fonksiyonunu verdik!
+      const BuildingsScreen(),
+      const CafeteriaMenuScreen(),
+      const AnnouncementsScreen(),
+      const ProfileScreen(),
+    ];
 
-    // Temaya göre çizgi ve arkaplan renklerini belirliyoruz
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
     final navBackgroundColor = isDark ? AppTheme.darkCardColor : Colors.white;
 
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: borderColor, width: 1), // Çizgi rengi dinamik oldu
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          setState(() {
+            _currentIndex = 0;
+          });
+        }
+      },
+      child: Scaffold(
+        body: screens[_currentIndex],
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: borderColor, width: 1)),
           ),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: navBackgroundColor, // Arkaplan rengi dinamik oldu
-          selectedItemColor: isDark ? AppTheme.primaryLight : AppTheme.primaryColor, // Seçili ikon rengi
-          unselectedItemColor: isDark ? AppTheme.darkTextMuted : AppTheme.textMuted, // Seçilmeyen ikon rengi
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: "Anasayfa",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.business_outlined),
-              activeIcon: Icon(Icons.business),
-              label: "Kampüs", // "Kampüs Rehber" yazısı taşıp taşmadığına göre kısaltılabilir
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.restaurant_outlined),
-              activeIcon: Icon(Icons.restaurant),
-              label: "Yemek",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.campaign_outlined),
-              activeIcon: Icon(Icons.campaign),
-              label: "Duyurular",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: "Profil",
-            ),
-          ],
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _switchTab, // YENİ: Alt barda tıklanınca da aynı fonksiyon çalışır
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: navBackgroundColor,
+            selectedItemColor: isDark ? AppTheme.primaryLight : AppTheme.primaryColor,
+            unselectedItemColor: isDark ? AppTheme.darkTextMuted : AppTheme.textMuted,
+            elevation: 0,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: "Anasayfa"),
+              BottomNavigationBarItem(icon: Icon(Icons.business_outlined), activeIcon: Icon(Icons.business), label: "Kampüs"),
+              BottomNavigationBarItem(icon: Icon(Icons.restaurant_outlined), activeIcon: Icon(Icons.restaurant), label: "Yemek"),
+              BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), activeIcon: Icon(Icons.campaign), label: "Duyurular"),
+              BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: "Profil"),
+            ],
+          ),
         ),
       ),
     );

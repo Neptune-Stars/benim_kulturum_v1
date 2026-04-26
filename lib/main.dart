@@ -76,8 +76,7 @@ class BenimKulturumApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/login',
-          builder: (context, state) => const LoginScreen(),
-        ),
+          builder: (context, state) => LoginScreen(),        ),
         GoRoute(
           path: '/main',
           builder: (context, state) => const MainScreen(),

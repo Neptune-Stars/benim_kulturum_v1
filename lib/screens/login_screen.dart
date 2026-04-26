@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // YENİ: Firebase Firestore importu eklendi
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -15,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isStudent = true;
   bool _obscureText = true;
-  bool _isLoading = false; // YENİ: Yükleniyor durumu eklendi
+  bool _isLoading = false;
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -34,7 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  // YENİ: GERÇEK ZAMANLI FİREBASE GİRİŞ SORGUSU
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -50,22 +49,19 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // YÖNETİCİ GİRİŞİ
       if (!_isStudent) {
         if (email == "admin@uni.edu.tr" && password == "admin123") {
-          // Admin için sahte (mock) bir kullanıcı profili oluşturuyoruz
-          context.read<AuthProvider>().login("admin", data: {
+          // FIXED: Mapping the data directly and passing 'true' for isAdmin
+          context.read<AuthProvider>().login({
             "name": "Sistem Yöneticisi",
             "no": "Admin",
             "grade": "Personel"
-          });
+          }, true);
           context.go('/admin');
         } else {
           setState(() => _errorMessage = "Yönetici e-posta veya şifresi hatalı.");
         }
-      }
-      // ÖĞRENCİ GİRİŞİ
-      else {
+      } else {
         var querySnapshot = await FirebaseFirestore.instance
             .collection('students')
             .where('email', isEqualTo: email)
@@ -73,11 +69,10 @@ class _LoginScreenState extends State<LoginScreen> {
             .get();
 
         if (querySnapshot.docs.isNotEmpty) {
-          // YENİ: Öğrencinin Firebase'deki tüm verisini al
           final studentData = querySnapshot.docs.first.data();
 
-          // YENİ: Veriyi AuthProvider'a göndererek giriş yap
-          context.read<AuthProvider>().login("student", data: studentData);
+          // FIXED: Passing the Map directly and 'false' because they are not an admin
+          context.read<AuthProvider>().login(studentData, false);
           context.go('/main');
         } else {
           setState(() => _errorMessage = "Kayıtlı öğrenci bulunamadı veya şifre hatalı.");
@@ -132,7 +127,6 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               Text("Giriş Yap", textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 32),
-
               Row(
                 children: [
                   Expanded(
@@ -163,7 +157,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 16),
@@ -176,7 +169,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-
               TextField(
                 controller: _emailController, keyboardType: TextInputType.emailAddress, style: TextStyle(color: textColor),
                 decoration: _inputDecoration(context, label: "E-posta", icon: Icons.email_outlined),
@@ -193,7 +185,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
               SizedBox(
                 height: 56,
                 child: ElevatedButton(
@@ -204,7 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 36),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.04) : AppTheme.primaryLight.withOpacity(0.05), borderRadius: BorderRadius.circular(14), border: Border.all(color: borderColor)),

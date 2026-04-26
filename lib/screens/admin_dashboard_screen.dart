@@ -199,13 +199,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 items: filteredAnnouncements.map((e) => _buildListItem(e['title'] ?? '', e['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e), () => _showDeleteDialog('announcements', e['id'].toString()))).toList(),
                 onAdd: () => _openAnnouncementForm(isEdit: false),
               ),
-              _buildManagementTab(
-                title: "Yemekhane Menüleri", count: filteredMeals.length, searchController: _searchControllers[6]!,
-                items: filteredMeals.map((meal) {
-                  final menu = menus[meal] ?? {};
-                  return _buildListItem(meal, "Saat: ${menu['time'] ?? '-'} | Fiyat: ${menu['price'] ?? '-'}", () => _openMenuForm(mealName: meal, item: menu, fullCafeteriaData: cafeteriaData), null);
-                }).toList(),
-                onAdd: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Yeni öğün eklenemez, mevcutları düzenleyin."))),
+              // YENİ YEMEKHANE YÖNETİMİ
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Yemekhane Menü Yönetimi", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    const Text("Öğrenciler kampüs ve gün bazlı farklı menüler görürler. Menüleri düzenlemek için aşağıdan seçim yapın.", style: TextStyle(color: AppTheme.textMuted)),
+                    const SizedBox(height: 16),
+                    ...["Ataköy", "Şirinevler", "İncirli", "Basın Ekspres"].map((campus) {
+                      return ExpansionTile(
+                        title: Text("$campus Kampüsü", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        children: ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Hafta Sonu"].map((day) {
+                          final campusData = (cafeteriaData['menus'] as Map?)?[campus] as Map?;
+                          final dayData = (campusData?[day] as Map?) ?? {};
+
+                          return ListTile(
+                            title: Text(day),
+                            subtitle: Text("${dayData.keys.length} Öğün Kayıtlı"),
+                            trailing: const Icon(Icons.edit, color: AppTheme.primaryColor, size: 20),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$campus - $day Düzenleme Modülü Yakında Eklenecek!")));
+                            },
+                          );
+                        }).toList(),
+                      );
+                    }).toList()
+                  ],
+                ),
               ),
               _buildManagementTab(
                 title: "Fiyatlar", count: filteredPrices.length, searchController: _searchControllers[7]!,
@@ -598,18 +621,44 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   void _openClassroomForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final nameCtrl = TextEditingController(text: item?['name']);
-    final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
-    final List<String> floorOptions = ["Zemin Kat", "1. Kat", "2. Kat", "3. Kat", "4. Kat", "5. Kat", "Bodrum Kat"];
-    String? selectedCampus;
-    String? selectedFloor;
+    final floorCtrl = TextEditingController(text: item?['floor']?.toString() ?? '');
+    final capacityCtrl = TextEditingController(text: item?['capacity']?.toString() ?? '40');
 
+    // İKÜ'nün GERÇEK BİNALARI
+    List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
+    List<String> locationOptions = [
+      "Ana Bina",
+      "A Blok",
+      "B Blok",
+      "C Blok",
+      "Hukuk Binası",
+      "Sağlık Bilimleri Binası",
+      "Hazırlık Binası"
+    ];
+    List<String> typeOptions = ["Derslik", "Amfi", "Laboratuvar", "Stüdyo", "Toplantı Odası"];
+
+    String? selectedCampus;
+    String? selectedLocation;
+    String? selectedType = (item != null && typeOptions.contains(item['type'])) ? item['type'] : "Derslik";
+
+    // Veritabanındaki "Kampüs, Blok" formatını ayırma
     if (item != null && item['building'] != null) {
       String buildingData = item['building'].toString();
       if (buildingData.contains(',')) {
         var parts = buildingData.split(',');
         selectedCampus = parts[0].trim();
-        selectedFloor = parts[1].trim();
-      } else { selectedCampus = buildingData; }
+        selectedLocation = parts[1].trim();
+      } else {
+        selectedCampus = buildingData;
+        selectedLocation = "Ana Bina"; // ESKİ VERİLERDE BLOK YOKSA ANA BİNA VARSAY
+      }
+    }
+
+    if (selectedCampus != null && !campusOptions.contains(selectedCampus)) {
+      campusOptions.add(selectedCampus!);
+    }
+    if (selectedLocation != null && !locationOptions.contains(selectedLocation)) {
+      locationOptions.add(selectedLocation!);
     }
 
     showDialog(
@@ -617,31 +666,69 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       builder: (context) => StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isEdit ? "Düzenle: Derslik" : "Yeni Derslik", style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(isEdit ? "Düzenle: Derslik" : "Yeni Derslik Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Derslik Adı")),
+                    _buildTextField("Derslik Adı (Örn: 1A01)", controller: nameCtrl),
                     const SizedBox(height: 12),
-                    _buildDropdown("Kampüs Seçin", campusOptions, value: campusOptions.contains(selectedCampus) ? selectedCampus : null, onChanged: (val) => setDialogState(() => selectedCampus = val)),
+
+                    _buildDropdown("Kampüs Seçin", campusOptions,
+                        value: selectedCampus,
+                        onChanged: (val) => setDialogState(() => selectedCampus = val)),
                     const SizedBox(height: 12),
-                    _buildDropdown("Kat/Konum Seçin", floorOptions, value: floorOptions.contains(selectedFloor) ? selectedFloor : null, onChanged: (val) => setDialogState(() => selectedFloor = val)),
+
+                    _buildDropdown("Konum/Blok Seçin", locationOptions,
+                        value: selectedLocation,
+                        onChanged: (val) => setDialogState(() => selectedLocation = val)),
+                    const SizedBox(height: 12),
+
+                    _buildTextField("Kat (Örn: 1, 2, -1)", controller: floorCtrl, isNumber: true),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(child: _buildTextField("Kapasite", controller: capacityCtrl, isNumber: true)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: _buildDropdown("Tip", typeOptions,
+                              value: selectedType,
+                              onChanged: (val) => setDialogState(() => selectedType = val)),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal", style: TextStyle(color: AppTheme.textMuted))),
                 ElevatedButton(
                     onPressed: () async {
-                      String finalBuilding = "${selectedCampus ?? 'Belirtilmedi'}, ${selectedFloor ?? 'Belirtilmedi'}";
+                      if (nameCtrl.text.isEmpty || selectedCampus == null || floorCtrl.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lütfen Derslik adı, Kampüs ve Kat bilgilerini doldurun.")));
+                        return;
+                      }
+
+                      String finalBuilding = "$selectedCampus, ${selectedLocation ?? 'Ana Bina'}";
                       int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
+
                       Map<String, dynamic> newData = {
-                        'id': docId, 'name': nameCtrl.text, 'building': finalBuilding,
-                        'capacity': item?['capacity'] ?? 40, 'type': item?['type'] ?? 'Derslik', 'floor': selectedFloor ?? '1'
+                        'id': docId,
+                        'name': nameCtrl.text,
+                        'building': finalBuilding,
+                        'capacity': int.tryParse(capacityCtrl.text) ?? 40,
+                        'type': selectedType ?? 'Derslik',
+                        'floor': int.tryParse(floorCtrl.text) ?? 1
                       };
+
                       await FirebaseFirestore.instance.collection('classrooms').doc(docId.toString()).set(newData);
-                      if (context.mounted) { Navigator.pop(context); _loadData(); }
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        _loadData();
+                      }
                     },
                     child: const Text("Kaydet")
                 )

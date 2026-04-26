@@ -15,37 +15,25 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor =
-        Theme.of(context).textTheme.titleMedium?.color ?? AppTheme.textPrimary;
-    final actionColor = isDark ? Colors.white : AppTheme.primaryColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // YENİ: Expanded ekledik ki yazı uzunsa taşıp sarı/siyah hata vermesin
+        Expanded(
+          child: Text(
             title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: titleColor,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+            overflow: TextOverflow.ellipsis, // Sığmazsa sonuna ... ekler
           ),
-          if (actionLabel != null && onAction != null)
-            TextButton(
-              onPressed: onAction,
-              child: Text(
-                actionLabel!,
-                style: TextStyle(
-                  color: actionColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
+        ),
+        if (actionLabel != null && onAction != null)
+          TextButton(
+            onPressed: onAction,
+            child: Text(actionLabel!, style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+          ),
+      ],
     );
   }
 }
