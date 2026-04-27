@@ -34,7 +34,30 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
     _databaseFuture = DataService.loadDatabase();
   }
 
-  String _floorLabel(dynamic floor) => "$floor. Kat";
+  String _floorLabel(dynamic floor) {
+    final text = floor?.toString().trim() ?? "";
+
+    if (text.isEmpty) return "Kat Bilgisi Yok";
+    if (text.contains("Kat")) return text;
+
+    final number = int.tryParse(text);
+
+    if (number == -1) return "Bodrum Kat";
+    if (number == 0) return "Zemin Kat";
+    if (number != null) return "$number. Kat";
+
+    return text;
+  }
+
+  int _floorOrder(String label) {
+    if (label == "Bodrum Kat") return -1;
+    if (label == "Zemin Kat") return 0;
+
+    final match = RegExp(r'(\d+)').firstMatch(label);
+    if (match == null) return 999;
+
+    return int.tryParse(match.group(1) ?? "999") ?? 999;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,17 +75,18 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
 
             final allClassrooms = snapshot.data!['classrooms'] as List<dynamic>? ?? [];
 
-            // Dinamik Kat Filtresi Oluşturma
+            final floorSet = <String>{};
+
+            for (final c in allClassrooms) {
+              floorSet.add(_floorLabel(c['floorLabel'] ?? c['floor']));
+            }
+
+            final sortedFloors = floorSet.toList()
+              ..sort((a, b) => _floorOrder(a).compareTo(_floorOrder(b)));
+
             final floorFilters = [
               "Tüm Katlar",
-              ...{...allClassrooms.map((c) => _floorLabel(c['floor'] ?? 1))}.toList()
-                ..sort((a, b) {
-                  if (a == "Tüm Katlar") return -1;
-                  if (b == "Tüm Katlar") return 1;
-                  final aNum = int.parse(a.split('.').first);
-                  final bNum = int.parse(b.split('.').first);
-                  return aNum.compareTo(bNum);
-                }),
+              ...sortedFloors,
             ];
 
             // Arama ve Filtreleme İşlemleri
@@ -70,7 +94,7 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
               final name = classroom['name']?.toString() ?? "";
               final building = classroom['building']?.toString() ?? "";
               final type = classroom['type']?.toString() ?? "";
-              final floor = classroom['floor'] ?? 1;
+              final floor = classroom['floorLabel'] ?? classroom['floor'] ?? 0;
 
               final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   building.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -156,9 +180,7 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
                       return InfoCard(
                         title: safeClassroomData['name']?.toString() ?? "",
                         subtitle: safeClassroomData['building']?.toString() ?? "",
-                        metadata: "Kapasite: ${safeClassroomData['capacity'] ?? 0} Kişi • Kat: ${safeClassroomData['floor'] ?? 1}",
-                        badge: AppBadge(label: safeClassroomData['type']?.toString() ?? ""),
-                        onTap: () => Navigator.push(
+                        metadata: "Kapasite: ${safeClassroomData['capacity'] ?? 0} Kişi • Kat: ${_floorLabel(safeClassroomData['floorLabel'] ?? safeClassroomData['floor'])}",                        onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: safeClassroomData)),
                         ),
