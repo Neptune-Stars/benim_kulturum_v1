@@ -96,16 +96,123 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildDropdown(String label, List<String> options, {String? value, Function(String?)? onChanged}) {
+  Widget _buildDropdown(
+      String label,
+      List<String> options, {
+        String? value,
+        Function(String?)? onChanged,
+      }) {
+    final safeOptions = options.toSet().toList();
+
+    final safeValue = safeOptions.contains(value) ? value : null;
+
     return DropdownButtonFormField<String>(
-      value: value,
+      value: safeValue,
+      isExpanded: true,
       decoration: InputDecoration(
-        labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        labelText: label,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       ),
-      items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
-      onChanged: onChanged ?? (val) {},
+      selectedItemBuilder: (context) {
+        return safeOptions.map((option) {
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              option,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).toList();
+      },
+      items: safeOptions.map((option) {
+        return DropdownMenuItem<String>(
+          value: option,
+          child: Text(
+            option,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+      onChanged: onChanged,
     );
+  }
+
+  List<String> _getCampusOptions(Map<String, dynamic> data) {
+    final campuses = data['campuses'] as List<dynamic>? ?? [];
+
+    final options = campuses
+        .map((campus) => (campus['displayName'] ?? campus['name'] ?? '').toString())
+        .where((name) => name.trim().isNotEmpty)
+        .toSet()
+        .toList();
+
+    options.sort();
+
+    if (options.isNotEmpty) return options;
+
+    // Fallback only if Firebase campus reference data is not loaded yet.
+    return [
+      "Ataköy Yerleşkesi",
+      "İncirli Yerleşkesi",
+      "Şirinevler / Bahçelievler Yerleşkesi",
+      "Basın Ekspres / Küçükçekmece Yerleşkesi",
+    ];
+  }
+
+  Map<String, List<String>> _getClassroomLocationsByCampus(Map<String, dynamic> data) {
+    final campuses = _getCampusOptions(data);
+    final locations = data['classroomLocations'] as List<dynamic>? ?? [];
+
+    final Map<String, Set<String>> temp = {
+      for (final campus in campuses) campus: <String>{},
+    };
+
+    for (final item in locations) {
+      final campusName = (item['campusName'] ?? '').toString();
+      final locationName = (item['name'] ?? '').toString();
+
+      if (campusName.trim().isEmpty || locationName.trim().isEmpty) continue;
+
+      temp.putIfAbsent(campusName, () => <String>{});
+      temp[campusName]!.add(locationName);
+    }
+
+    return temp.map((campus, locationSet) {
+      final list = locationSet.toList()..sort();
+
+      if (list.isEmpty) {
+        list.add("Genel Bina");
+      }
+
+      return MapEntry(campus, list);
+    });
+  }
+
+  String _floorLabelFromValue(dynamic value) {
+    final text = value?.toString().trim() ?? "";
+
+    if (text.contains("Kat")) return text;
+
+    final number = int.tryParse(text);
+
+    if (number == -1) return "Bodrum Kat";
+    if (number == 0) return "Zemin Kat";
+    if (number != null) return "$number. Kat";
+
+    return "Zemin Kat";
+  }
+
+  int _floorValueFromLabel(String label) {
+    if (label == "Bodrum Kat") return -1;
+    if (label == "Zemin Kat") return 0;
+
+    final match = RegExp(r'(\d+)').firstMatch(label);
+    if (match == null) return 0;
+
+    return int.tryParse(match.group(1) ?? "0") ?? 0;
   }
 
   @override
@@ -128,6 +235,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Gösterilecek veri bulunamadı."));
 
           final data = snapshot.data!;
+
+          final campusOptions = _getCampusOptions(data);
+          final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
+
           final allBuildings = data['buildings'] as List<dynamic>? ?? [];
           final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
           final allInstructors = data['instructors'] as List<dynamic>? ?? [];
@@ -180,9 +291,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 onAdd: () => _openBuildingForm(isEdit: false),
               ),
               _buildManagementTab(
-                title: "Derslikler", count: filteredClassrooms.length, searchController: _searchControllers[2]!,
-                items: filteredClassrooms.map((e) => _buildListItem(e['name'] ?? '', e['building'] ?? '', () => _openClassroomForm(isEdit: true, item: e), () => _showDeleteDialog('classrooms', e['id'].toString()))).toList(),
-                onAdd: () => _openClassroomForm(isEdit: false),
+                title: "Derslikler",
+                count: filteredClassrooms.length,
+                searchController: _searchControllers[2]!,
+                items: filteredClassrooms.map((e) {
+                  final subtitle = [
+                    e['campus'],
+                    e['location'],
+                    e['floorLabel'] ?? _floorLabelFromValue(e['floor']),
+                  ].where((value) => value != null && value.toString().trim().isNotEmpty).join(" • ");
+
+                  return _buildListItem(
+                    e['name'] ?? '',
+                    subtitle,
+                        () => _openClassroomForm(
+                      isEdit: true,
+                      item: e,
+                      campusOptions: campusOptions,
+                      locationsByCampus: classroomLocationsByCampus,
+                    ),
+                        () => _showDeleteDialog('classrooms', e['id'].toString()),
+                  );
+                }).toList(),
+                onAdd: () => _openClassroomForm(
+                  isEdit: false,
+                  campusOptions: campusOptions,
+                  locationsByCampus: classroomLocationsByCampus,
+                ),
               ),
               _buildManagementTab(
                 title: "Hocalar", count: filteredInstructors.length, searchController: _searchControllers[3]!,
@@ -596,58 +731,224 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openClassroomForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
-    final nameCtrl = TextEditingController(text: item?['name']);
-    final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
-    final List<String> floorOptions = ["Zemin Kat", "1. Kat", "2. Kat", "3. Kat", "4. Kat", "5. Kat", "Bodrum Kat"];
-    String? selectedCampus;
-    String? selectedFloor;
+  void _openClassroomForm({
+    required bool isEdit,
+    Map<dynamic, dynamic>? item,
+    required List<String> campusOptions,
+    required Map<String, List<String>> locationsByCampus,
+  }) {
+    final nameCtrl = TextEditingController(text: item?['name']?.toString() ?? '');
+    final capacityCtrl = TextEditingController(text: (item?['capacity'] ?? 40).toString());
 
-    if (item != null && item['building'] != null) {
-      String buildingData = item['building'].toString();
-      if (buildingData.contains(',')) {
-        var parts = buildingData.split(',');
-        selectedCampus = parts[0].trim();
-        selectedFloor = parts[1].trim();
-      } else { selectedCampus = buildingData; }
+    final List<String> floorOptions = [
+      "Bodrum Kat",
+      "Zemin Kat",
+      "1. Kat",
+      "2. Kat",
+      "3. Kat",
+      "4. Kat",
+      "5. Kat",
+      "6. Kat",
+      "7. Kat",
+      "8. Kat",
+    ];
+
+    final List<String> typeOptions = [
+      "Derslik",
+      "Amfi",
+      "Laboratuvar",
+    ];
+
+    String? selectedCampus = item?['campus']?.toString();
+    String? selectedLocation = item?['location']?.toString();
+    String? selectedFloor = item?['floorLabel']?.toString();
+    String? selectedType = item?['type']?.toString();
+
+    // Old data compatibility: previous code stored campus/floor together inside building.
+    if ((selectedCampus == null || selectedCampus.trim().isEmpty) && item?['building'] != null) {
+      final buildingText = item!['building'].toString();
+
+      if (buildingText.contains(',')) {
+        final parts = buildingText.split(',');
+        selectedCampus = parts.first.trim();
+      } else {
+        selectedCampus = buildingText.trim();
+      }
+    }
+
+    if ((selectedFloor == null || selectedFloor.trim().isEmpty) && item?['floor'] != null) {
+      selectedFloor = _floorLabelFromValue(item!['floor']);
+    }
+
+    if (selectedCampus != null && !campusOptions.contains(selectedCampus)) {
+      final match = campusOptions.where((campus) {
+        return campus.toLowerCase().contains(selectedCampus!.toLowerCase()) ||
+            selectedCampus!.toLowerCase().contains(campus.toLowerCase());
+      }).toList();
+
+      selectedCampus = match.isNotEmpty ? match.first : null;
+    }
+
+    selectedCampus ??= campusOptions.isNotEmpty ? campusOptions.first : null;
+
+    List<String> currentLocationOptions = selectedCampus == null
+        ? <String>[]
+        : (locationsByCampus[selectedCampus] ?? <String>["Genel Bina"]);
+
+    if (selectedLocation == null || !currentLocationOptions.contains(selectedLocation)) {
+      selectedLocation = currentLocationOptions.isNotEmpty ? currentLocationOptions.first : null;
+    }
+
+    if (selectedFloor == null || !floorOptions.contains(selectedFloor)) {
+      selectedFloor = "Zemin Kat";
+    }
+
+    if (selectedType == null || !typeOptions.contains(selectedType)) {
+      selectedType = "Derslik";
     }
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(isEdit ? "Düzenle: Derslik" : "Yeni Derslik", style: const TextStyle(fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Derslik Adı")),
-                    const SizedBox(height: 12),
-                    _buildDropdown("Kampüs Seçin", campusOptions, value: campusOptions.contains(selectedCampus) ? selectedCampus : null, onChanged: (val) => setDialogState(() => selectedCampus = val)),
-                    const SizedBox(height: 12),
-                    _buildDropdown("Kat/Konum Seçin", floorOptions, value: floorOptions.contains(selectedFloor) ? selectedFloor : null, onChanged: (val) => setDialogState(() => selectedFloor = val)),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
-                ElevatedButton(
-                    onPressed: () async {
-                      String finalBuilding = "${selectedCampus ?? 'Belirtilmedi'}, ${selectedFloor ?? 'Belirtilmedi'}";
-                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                      Map<String, dynamic> newData = {
-                        'id': docId, 'name': nameCtrl.text, 'building': finalBuilding,
-                        'capacity': item?['capacity'] ?? 40, 'type': item?['type'] ?? 'Derslik', 'floor': selectedFloor ?? '1'
-                      };
-                      await FirebaseFirestore.instance.collection('classrooms').doc(docId.toString()).set(newData);
-                      if (context.mounted) { Navigator.pop(context); _loadData(); }
+        builder: (context, setDialogState) {
+          currentLocationOptions = selectedCampus == null
+              ? <String>[]
+              : (locationsByCampus[selectedCampus] ?? <String>["Genel Bina"]);
+
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Düzenle: Derslik" : "Yeni Derslik",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: "Derslik Adı"),
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildDropdown(
+                    "Kampüs",
+                    campusOptions,
+                    value: campusOptions.contains(selectedCampus) ? selectedCampus : null,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedCampus = val;
+                        final nextLocations = locationsByCampus[selectedCampus] ?? <String>["Genel Bina"];
+                        selectedLocation = nextLocations.isNotEmpty ? nextLocations.first : null;
+                      });
                     },
-                    child: const Text("Kaydet")
-                )
-              ],
-            );
-          }
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildDropdown(
+                    "Konum / Bina",
+                    currentLocationOptions,
+                    value: currentLocationOptions.contains(selectedLocation) ? selectedLocation : null,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedLocation = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildDropdown(
+                    "Kat",
+                    floorOptions,
+                    value: floorOptions.contains(selectedFloor) ? selectedFloor : null,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedFloor = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildDropdown(
+                    "Derslik Türü",
+                    typeOptions,
+                    value: typeOptions.contains(selectedType) ? selectedType : null,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedType = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: capacityCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: "Kapasite"),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  final capacity = int.tryParse(capacityCtrl.text.trim()) ?? 40;
+
+                  if (name.isEmpty ||
+                      selectedCampus == null ||
+                      selectedLocation == null ||
+                      selectedFloor == null ||
+                      selectedType == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Lütfen derslik adı, kampüs, konum, kat ve tür alanlarını doldurun.")),
+                    );
+                    return;
+                  }
+
+                  final int docId = isEdit
+                      ? int.tryParse(item!['id'].toString()) ?? DateTime.now().millisecondsSinceEpoch
+                      : DateTime.now().millisecondsSinceEpoch;
+
+                  final Map<String, dynamic> newData = {
+                    'id': docId,
+                    'name': name,
+
+                    // New clean Firebase fields
+                    'campus': selectedCampus,
+                    'location': selectedLocation,
+                    'floor': _floorValueFromLabel(selectedFloor!),
+                    'floorLabel': selectedFloor,
+
+                    // Kept for old screens/detail pages that still read "building"
+                    'building': "$selectedCampus, $selectedLocation",
+
+                    'capacity': capacity,
+                    'type': selectedType,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  };
+
+                  await FirebaseFirestore.instance
+                      .collection('classrooms')
+                      .doc(docId.toString())
+                      .set(newData, SetOptions(merge: true));
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Derslik Firebase veritabanına kaydedildi.")),
+                    );
+                    _loadData();
+                  }
+                },
+                child: const Text("Kaydet"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
