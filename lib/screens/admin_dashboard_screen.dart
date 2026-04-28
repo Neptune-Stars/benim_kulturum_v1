@@ -1091,39 +1091,162 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   void _openEventForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
-    final titleCtrl = TextEditingController(text: item?['title']);
-    final dateCtrl = TextEditingController(text: item?['date']);
-    final locCtrl = TextEditingController(text: item?['location']);
+    final titleCtrl = TextEditingController(text: item?['title'] ?? '');
+    final dateCtrl = TextEditingController(text: item?['date'] ?? '');
+    final timeCtrl = TextEditingController(text: item?['time'] ?? '');
+    final locCtrl = TextEditingController(text: item?['location'] ?? '');
+    final descCtrl = TextEditingController(text: item?['description'] ?? '');
+
+    final List<String> categoryOptions = [
+      "Genel",
+      "Akademik",
+      "Kültür Sanat",
+      "Spor",
+      "Seminer",
+      "Kulüp",
+      "Kariyer",
+    ];
+
+    String? selectedCategory = item?['category'] ?? "Genel";
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEdit ? "Düzenle: Etkinlik" : "Yeni Etkinlik", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Etkinlik Başlığı")),
-            const SizedBox(height: 12),
-            TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: "Tarih (Örn: 20 Nisan, 14:00)")),
-            const SizedBox(height: 12),
-            TextField(controller: locCtrl, decoration: const InputDecoration(labelText: "Konum")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
-          ElevatedButton(
-              onPressed: () async {
-                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                Map<String, dynamic> newData = {
-                  'id': docId, 'title': titleCtrl.text, 'date': dateCtrl.text, 'location': locCtrl.text,
-                  'category': item?['category'] ?? 'Genel', 'description': item?['description'] ?? 'Detay girilmedi.'
-                };
-                await FirebaseFirestore.instance.collection('events').doc(docId.toString()).set(newData);
-                if (context.mounted) { Navigator.pop(context); _loadData(); }
-              },
-              child: const Text("Kaydet")
-          )
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Düzenle: Etkinlik" : "Yeni Etkinlik",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Etkinlik Başlığı",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: dateCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Tarih",
+                      hintText: "Örn: 28 Nisan",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: timeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Saat",
+                      hintText: "Örn: 14:00",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: locCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Konum",
+                      hintText: "Örn: Ataköy Kampüsü / Konferans Salonu",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildDropdown(
+                    "Kategori",
+                    categoryOptions,
+                    value: categoryOptions.contains(selectedCategory)
+                        ? selectedCategory
+                        : "Genel",
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedCategory = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: "Açıklama",
+                      hintText: "Etkinlik hakkında kısa açıklama girin.",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final title = titleCtrl.text.trim();
+                  final date = dateCtrl.text.trim();
+                  final time = timeCtrl.text.trim();
+                  final location = locCtrl.text.trim();
+                  final description = descCtrl.text.trim();
+
+                  if (title.isEmpty || date.isEmpty || location.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Başlık, tarih ve konum alanları zorunludur."),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final int docId = isEdit
+                      ? int.tryParse(item!['id'].toString()) ??
+                      DateTime.now().millisecondsSinceEpoch
+                      : DateTime.now().millisecondsSinceEpoch;
+
+                  final Map<String, dynamic> newData = {
+                    'id': docId,
+                    'title': title,
+                    'date': date,
+                    'time': time,
+                    'location': location,
+                    'category': selectedCategory ?? 'Genel',
+                    'description': description.isEmpty
+                        ? 'Detay girilmedi.'
+                        : description,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  };
+
+                  if (!isEdit) {
+                    newData['createdAt'] = FieldValue.serverTimestamp();
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('events')
+                      .doc(docId.toString())
+                      .set(newData, SetOptions(merge: true));
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Etkinlik Firebase veritabanına kaydedildi."),
+                      ),
+                    );
+                    _loadData();
+                  }
+                },
+                child: const Text("Kaydet"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
