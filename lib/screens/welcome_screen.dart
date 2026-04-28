@@ -42,21 +42,11 @@ class WelcomeScreen extends StatelessWidget {
                     : AppTheme.primaryLight.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.school,
+              child: Icon(
+                icon,
                 color: AppTheme.primaryColor,
-                size: 0,
+                size: 24,
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.primaryColor.withOpacity(0.20)
-                    : AppTheme.primaryLight.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: AppTheme.primaryColor, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(

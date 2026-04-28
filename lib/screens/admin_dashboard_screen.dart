@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
@@ -112,6 +113,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   void _switchTab(int index) { _tabController.animateTo(index); }
+
+  Color _adminPrimaryColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.primaryLight : AppTheme.primaryColor;
+  }
+
+  Color _adminTextPrimaryColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
+  }
+
+  Color _adminTextMutedColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+  }
+
+  Color _adminBorderColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
+  }
 
   String _normalizeForSearch(String text) {
     return text.toLowerCase().replaceAll('i̇', 'i').replaceAll('ı', 'i').replaceAll('ğ', 'g')
@@ -277,12 +298,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.admin_panel_settings, color: AppTheme.primaryColor), SizedBox(width: 8), Text("Yönetici Paneli")]),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _switchTab(0),
+              child:  Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.admin_panel_settings,
+                  color: _adminPrimaryColor(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text("Yönetici Paneli"),
+          ],
+        ),
         centerTitle: false,
-        actions: [IconButton(icon: const Icon(Icons.logout, color: AppTheme.destructiveColor), onPressed: _logout)],
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              return IconButton(
+                tooltip: themeProvider.isDarkMode
+                    ? "Aydınlık moda geç"
+                    : "Karanlık moda geç",
+                icon: Icon(
+                  themeProvider.isDarkMode
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+                onPressed: () {
+                  context.read<ThemeProvider>().toggleTheme();
+                },
+              );
+            },
+          ),
+          IconButton(
+            tooltip: "Çıkış yap",
+            icon: const Icon(
+              Icons.logout,
+              color: AppTheme.destructiveColor,
+            ),
+            onPressed: _logout,
+          ),
+        ],
         bottom: TabBar(
-          controller: _tabController, isScrollable: true,
-          labelColor: AppTheme.primaryColor, unselectedLabelColor: AppTheme.textMuted, indicatorColor: AppTheme.primaryColor,
+          controller: _tabController,
+          isScrollable: true,
+          labelColor: _adminPrimaryColor(),
+          unselectedLabelColor: _adminTextMutedColor(),
+          indicatorColor: _adminPrimaryColor(),
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
@@ -478,16 +545,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   const SizedBox(height: 6),
                   Text(
                     "${DataService.formatDisplayDate(_cafeteriaWeekStart)} - ${DataService.formatDisplayDate(weekEnd)}",
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
+                    style: TextStyle(
+                      color: _adminTextMutedColor(),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Gün tikini kapatırsanız öğrenciler o gün için yemek olmadığını görür. Gün açıkken o güne ait Kahvaltı, Yemek ve Fast Food içeriklerini düzenleyebilirsiniz.",
                     style: TextStyle(
-                      color: AppTheme.textMuted,
+                      color: _adminTextMutedColor(),
                       height: 1.35,
                     ),
                   ),
@@ -516,8 +583,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final isDayActive = day['isDayActive'] != false;
 
     final titleColor = !isDayActive
-        ? AppTheme.textMuted
-        : (isWeekend ? AppTheme.primaryColor : AppTheme.textPrimary);
+        ? _adminTextMutedColor()
+        : (isWeekend ? _adminPrimaryColor() : _adminTextPrimaryColor());
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -531,9 +598,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: !isDayActive
-                ? AppTheme.textMuted.withOpacity(0.35)
+                ? _adminTextMutedColor().withOpacity(0.35)
                 : (isWeekend
-                ? AppTheme.primaryColor.withOpacity(0.35)
+                ? _adminPrimaryColor().withOpacity(0.35)
                 : Theme.of(context).dividerColor),
           ),
         ),
@@ -559,9 +626,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     day['displayDate']?.toString() ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 12,
+                    style: TextStyle(
+                      color: _adminTextMutedColor(), fontSize: 12,
                     ),
                   ),
                 ],
@@ -573,7 +639,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               onPressed: () => _toggleCafeteriaDayActive(date, !isDayActive),
               icon: Icon(
                 isDayActive ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: isDayActive ? AppTheme.successColor : AppTheme.textMuted,
+                color: isDayActive ? _adminPrimaryColor() : _adminTextMutedColor(),
                 size: 20,
               ),
             ),
@@ -584,7 +650,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               icon: Icon(
                 Icons.edit,
                 size: 18,
-                color: isDayActive ? AppTheme.primaryLight : AppTheme.textMuted,
+                color: isDayActive ? _adminPrimaryColor() : _adminTextMutedColor(),
               ),
             ),
           ],
@@ -674,9 +740,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             "Gün tikini tekrar açarsanız öğrenciler bu günü görebilir ve menüler tekrar düzenlenebilir.",
-                            style: TextStyle(color: AppTheme.textMuted, height: 1.35),
+                            style: TextStyle(color: _adminTextMutedColor(), height: 1.35),
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
@@ -1099,16 +1165,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildStatCard(IconData icon, String label, String value, int tabIndex) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => _switchTab(tabIndex),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : AppTheme.borderColor)
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _adminBorderColor()),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1116,11 +1181,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Icon(icon, color: AppTheme.primaryColor), const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20)],
+              children: [
+                Icon(
+                  icon,
+                  color: _adminPrimaryColor(),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: _adminTextMutedColor(),
+                  size: 20,
+                ),
+              ],
             ),
             const Spacer(),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: _adminTextPrimaryColor(),
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: _adminTextMutedColor(),
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
@@ -1158,22 +1246,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildListItem(String title, String subtitle, VoidCallback onEdit, VoidCallback? onDelete) {
+  Widget _buildListItem(
+      String title,
+      String subtitle,
+      VoidCallback onEdit,
+      VoidCallback? onDelete,
+      ) {
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: _adminTextPrimaryColor(),
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle, style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: _adminTextMutedColor(),
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ),
-        IconButton(icon: const Icon(Icons.edit, color: AppTheme.primaryLight), onPressed: onEdit),
+        IconButton(
+          icon: Icon(
+            Icons.edit,
+            color: _adminPrimaryColor(),
+          ),
+          onPressed: onEdit,
+        ),
         if (onDelete != null)
-          IconButton(icon: const Icon(Icons.delete, color: AppTheme.destructiveColor), onPressed: onDelete),
+          IconButton(
+            icon: const Icon(
+              Icons.delete,
+              color: AppTheme.destructiveColor,
+            ),
+            onPressed: onDelete,
+          ),
       ],
     );
   }
@@ -1290,7 +1408,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   padding: const EdgeInsets.only(top: 4.0),
                   child: Text(
                     "${issue["category"]} • ${issue["location"]}\n${issue["date"]}",
-                    style: const TextStyle(color: AppTheme.textMuted),
+                    style: TextStyle(color: _adminTextMutedColor()),
                   ),
                 ),
                 trailing: Row(
@@ -2318,10 +2436,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           color: AppTheme.primaryColor.withOpacity(0.2),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Fast Food ürünleri ürün bazlı fiyatlandırılır.",
                         style: TextStyle(
-                          color: AppTheme.textMuted,
+                          color: _adminTextMutedColor(),
                           fontSize: 13,
                         ),
                       ),
