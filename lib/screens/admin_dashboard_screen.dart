@@ -1288,6 +1288,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       .doc(docId.toString())
                       .set(newData, SetOptions(merge: true));
 
+
+                  if (!isEdit) {
+                    await FirebaseFirestore.instance
+                        .collection('notifications')
+                        .doc('event_$docId')
+                        .set({
+                      'id': 'event_$docId',
+                      'title': title,
+                      'subtitle': "$date ${time.isNotEmpty ? '• $time' : ''} • $location",
+                      'type': 'event',
+                      'isRead': false,
+                      'createdAt': FieldValue.serverTimestamp(),
+                      'sourceCollection': 'events',
+                      'sourceId': docId.toString(),
+                    });
+                  }
+
+
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1506,6 +1524,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       .collection('announcements')
                       .doc(docId.toString())
                       .set(newData, SetOptions(merge: true));
+
+                  if (!isEdit) {
+                    await FirebaseFirestore.instance
+                        .collection('notifications')
+                        .doc('announcement_$docId')
+                        .set({
+                      'id': 'announcement_$docId',
+                      'title': title,
+                      'subtitle': content,
+                      'type': 'announcement',
+                      'isRead': false,
+                      'createdAt': FieldValue.serverTimestamp(),
+                      'sourceCollection': 'announcements',
+                      'sourceId': docId.toString(),
+                    });
+                  }
 
                   if (context.mounted) {
                     Navigator.pop(context);
