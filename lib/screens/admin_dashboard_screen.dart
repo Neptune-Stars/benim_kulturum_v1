@@ -554,10 +554,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ElevatedButton.icon(
             onPressed: () async {
               // Delete issue when resolved
-              await FirebaseFirestore.instance.collection('issues').doc(issue['id'].toString()).delete();
+              // Mark issue as resolved instead of deleting it
+              await FirebaseFirestore.instance
+                  .collection('issues')
+                  .doc(issue['id'].toString())
+                  .update({
+                "status": "Çözüldü",
+                "resolvedAt": FieldValue.serverTimestamp(),
+              });
               if (context.mounted) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Çözüldü işaretlendi ve kaldırıldı.")));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Sorun çözüldü olarak işaretlendi.")),
+                );
                 _loadData();
               }
             },

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "181125991671",
+    "project_id": "benim-kulturum",
+    "storage_bucket": "benim-kulturum.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181125991671:android:5d340021319cc6e8c597f2",
+        "android_client_info": {
+          "package_name": "com.example.benim_kulturum_v1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTznlKrR7e93gSPHKMWRE4CxTqj0tXNGY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
