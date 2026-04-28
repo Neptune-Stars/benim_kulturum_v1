@@ -25,12 +25,18 @@ class InstructorDetailScreen extends StatelessWidget {
     final favProvider = context.watch<FavoritesProvider>();
     final isFav = favProvider.isFavorite("inst_${instructorData['id']}");
 
+    // Eğer Firestore'da veri varsa onu kullan, yoksa senin istediğin varsayılanları göster
+    final List<dynamic> displayHours = (instructorData['officeHours'] is List && (instructorData['officeHours'] as List).isNotEmpty)
+        ? instructorData['officeHours']
+        : ["Pazartesi: 10:00 - 12:00", "Çarşamba: 14:00 - 16:00"];
+
     // JSON'dan güvenli okuma
     final String name = instructorData['name'] ?? 'İsimsiz';
     final String title = instructorData['title'] ?? '';
     final String department = instructorData['department'] ?? '';
     final String office = instructorData['office'] ?? 'Bilinmiyor';
     final String email = instructorData['email'] ?? 'iletisim@iku.edu.tr';
+
     // Yeni: Fotoğraf yolu veritabanından çekiliyor
     final String? imageUrl = instructorData['imageUrl'];
 
@@ -128,14 +134,26 @@ class InstructorDetailScreen extends StatelessWidget {
             const SizedBox(height: 32),
             const SectionHeader(title: "Ofis Saatleri"),
             Card(
-              child: ListView(
+              child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildOfficeHourRow(context, "Pazartesi", "10:00 - 12:00"),
-                  const Divider(height: 1),
-                  _buildOfficeHourRow(context, "Çarşamba", "14:00 - 16:00"),
-                ],
+                itemCount: displayHours.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final String hourInfo = displayHours[index].toString();
+
+                  // Görsel formatlama: "Gün: Saat" ayrımı
+                  String day = "Görüşme";
+                  String time = hourInfo;
+
+                  if (hourInfo.contains(':')) {
+                    var parts = hourInfo.split(':');
+                    day = parts[0].trim();
+                    time = parts.sublist(1).join(':').trim();
+                  }
+
+                  return _buildOfficeHourRow(context, day, time);
+                },
               ),
             ),
           ],
