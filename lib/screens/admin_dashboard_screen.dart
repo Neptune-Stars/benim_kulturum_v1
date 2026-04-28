@@ -6,6 +6,62 @@ import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
+import 'package:flutter/services.dart';
+
+
+class DateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    final limitedDigits = digits.length > 8 ? digits.substring(0, 8) : digits;
+
+    String formatted = '';
+
+    for (int i = 0; i < limitedDigits.length; i++) {
+      if (i == 2 || i == 4) {
+        formatted += '/';
+      }
+      formatted += limitedDigits[i];
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class TimeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    final limitedDigits = digits.length > 4 ? digits.substring(0, 4) : digits;
+
+    String formatted = '';
+
+    for (int i = 0; i < limitedDigits.length; i++) {
+      if (i == 2) {
+        formatted += ':';
+      }
+      formatted += limitedDigits[i];
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -1252,38 +1308,220 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   void _openAnnouncementForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
-    final titleCtrl = TextEditingController(text: item?['title']);
-    final dateCtrl = TextEditingController(text: item?['date']);
-    final contentCtrl = TextEditingController(text: item?['content']);
+    final titleCtrl = TextEditingController(text: item?['title'] ?? '');
+    final contentCtrl = TextEditingController(text: item?['content'] ?? '');
+    final publishDateCtrl = TextEditingController(
+      text: item?['publishDate'] ?? '',
+    );
+    final publishTimeCtrl = TextEditingController(
+      text: item?['publishTime'] ?? '',
+    );
+
+    final List<String> categoryOptions = [
+      "general",
+      "academic",
+      "admin",
+      "scholarship",
+    ];
+
+    String? selectedCategory = item?['category'] ?? "general";
+
+    DateTime? _tryBuildPublishDateTime(String dateText, String timeText) {
+      final dateParts = dateText.trim().split('/');
+      final timeParts = timeText.trim().split(':');
+
+      if (dateParts.length != 3 || timeParts.length != 2) return null;
+
+      final day = int.tryParse(dateParts[0]);
+      final month = int.tryParse(dateParts[1]);
+      final year = int.tryParse(dateParts[2]);
+      final hour = int.tryParse(timeParts[0]);
+      final minute = int.tryParse(timeParts[1]);
+
+      if (day == null ||
+          month == null ||
+          year == null ||
+          hour == null ||
+          minute == null) {
+        return null;
+      }
+
+      if (year < 2024 ||
+          month < 1 ||
+          month > 12 ||
+          day < 1 ||
+          day > 31 ||
+          hour < 0 ||
+          hour > 23 ||
+          minute < 0 ||
+          minute > 59) {
+        return null;
+      }
+
+      final parsedDate = DateTime(year, month, day, hour, minute);
+
+      final isSameDate =
+          parsedDate.year == year &&
+              parsedDate.month == month &&
+              parsedDate.day == day &&
+              parsedDate.hour == hour &&
+              parsedDate.minute == minute;
+
+      if (!isSameDate) return null;
+
+      return parsedDate;
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEdit ? "Düzenle: Duyuru" : "Yeni Duyuru", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Başlık")),
-            const SizedBox(height: 12),
-            TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: "Tarih (Örn: 18 Nisan)")),
-            const SizedBox(height: 12),
-            TextField(controller: contentCtrl, maxLines: 3, decoration: const InputDecoration(labelText: "İçerik")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
-          ElevatedButton(
-              onPressed: () async {
-                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                Map<String, dynamic> newData = {
-                  'id': docId, 'title': titleCtrl.text, 'date': dateCtrl.text, 'content': contentCtrl.text, 'category': item?['category'] ?? 'Genel'
-                };
-                await FirebaseFirestore.instance.collection('announcements').doc(docId.toString()).set(newData);
-                if (context.mounted) { Navigator.pop(context); _loadData(); }
-              },
-              child: const Text("Kaydet")
-          )
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Düzenle: Duyuru" : "Yeni Duyuru",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(labelText: "Başlık"),
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: publishDateCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      DateInputFormatter(),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: "Gösterilecek Tarih",
+                      hintText: "GG/AA/YYYY",
+                    ),
+                  ),
+
+                  TextField(
+                    controller: publishTimeCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      TimeInputFormatter(),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: "Gösterilecek Saat",
+                      hintText: "SS:DD",
+                    ),
+                  ),
+
+                  _buildDropdown(
+                    "Kategori",
+                    categoryOptions,
+                    value: categoryOptions.contains(selectedCategory)
+                        ? selectedCategory
+                        : "general",
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedCategory = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: contentCtrl,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: "İçerik",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final title = titleCtrl.text.trim();
+                  final content = contentCtrl.text.trim();
+                  final publishDate = publishDateCtrl.text.trim();
+                  final publishTime = publishTimeCtrl.text.trim();
+
+                  if (title.isEmpty || content.isEmpty || publishDate.isEmpty || publishTime.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Başlık, içerik, gösterilecek tarih ve saat zorunludur."),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final publishDateTime = _tryBuildPublishDateTime(publishDate, publishTime);
+
+                  if (publishDateTime == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Tarih GG/AA/YYYY, saat SS:DD formatında olmalıdır. Örn: 28/04/2026 ve 13:45"),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final int docId = isEdit
+                      ? int.tryParse(item!['id'].toString()) ??
+                      DateTime.now().millisecondsSinceEpoch
+                      : DateTime.now().millisecondsSinceEpoch;
+
+                  final Map<String, dynamic> newData = {
+                    'id': docId,
+                    'title': title,
+                    'content': content,
+                    'category': selectedCategory ?? 'general',
+
+                    // Display/scheduling fields
+                    'date': publishDate,
+                    'publishDate': publishDate,
+                    'publishTime': publishTime,
+                    'publishAt': Timestamp.fromDate(publishDateTime),
+
+                    // UI fields
+                    'isNew': true,
+
+                    // Audit fields
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  };
+
+                  if (!isEdit) {
+                    newData['createdAt'] = FieldValue.serverTimestamp();
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('announcements')
+                      .doc(docId.toString())
+                      .set(newData, SetOptions(merge: true));
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Duyuru Firebase veritabanına kaydedildi."),
+                      ),
+                    );
+                    _loadData();
+                  }
+                },
+                child: const Text("Kaydet"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

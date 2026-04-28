@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/data_service.dart'; // MOCK DATA YERİNE JSON SERVİSİ GELDİ
+import '../data/data_service.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
   const AnnouncementsScreen({Key? key}) : super(key: key);
@@ -17,15 +19,116 @@ class AnnouncementsScreen extends StatefulWidget {
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   String _searchQuery = "";
   String _selectedFilter = "Tümü";
-  late Future<Map<String, dynamic>> _databaseFuture; // JSON verisini tutacak değişken
 
-  final List<String> _filters = ["Tümü", "Akademik", "İdari", "Burs", "Genel"];
+  late Future<Map<String, dynamic>> _databaseFuture;
+
+  final List<String> _filters = [
+    "Tümü",
+    "Akademik",
+    "İdari",
+    "Burs",
+    "Genel",
+  ];
 
   @override
   void initState() {
     super.initState();
-    // Ekran açıldığında veriyi asenkron olarak çekmeye başla
     _databaseFuture = DataService.loadDatabase();
+  }
+
+  bool _isAnnouncementPublished(Map<dynamic, dynamic> announcement) {
+    final publishAt = announcement['publishAt'];
+
+    if (publishAt == null) {
+      return true;
+    }
+
+    if (publishAt is Timestamp) {
+      return !publishAt.toDate().isAfter(DateTime.now());
+    }
+
+    if (publishAt is DateTime) {
+      return !publishAt.isAfter(DateTime.now());
+    }
+
+    return true;
+  }
+
+  DateTime? _getAnnouncementDateTime(Map<dynamic, dynamic> announcement) {
+    final publishAt = announcement['publishAt'];
+    final createdAt = announcement['createdAt'];
+    final updatedAt = announcement['updatedAt'];
+
+    if (publishAt is Timestamp) return publishAt.toDate();
+    if (publishAt is DateTime) return publishAt;
+
+    if (createdAt is Timestamp) return createdAt.toDate();
+    if (createdAt is DateTime) return createdAt;
+
+    if (updatedAt is Timestamp) return updatedAt.toDate();
+    if (updatedAt is DateTime) return updatedAt;
+
+    return null;
+  }
+
+  String _formatAnnouncementMetadata(Map<dynamic, dynamic> announcement) {
+    final dateTime = _getAnnouncementDateTime(announcement);
+
+    if (dateTime == null) {
+      return announcement['date']?.toString() ?? "";
+    }
+
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return "Az önce";
+    }
+
+    if (difference.inMinutes < 60) {
+      return "${difference.inMinutes} dk önce";
+    }
+
+    if (difference.inHours < 24) {
+      return "${difference.inHours} saat önce";
+    }
+
+    if (difference.inDays == 1) {
+      return "Dün";
+    }
+
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final year = dateTime.year.toString();
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return "$day/$month/$year • $hour:$minute";
+  }
+
+  String _mapSelectedFilterToCategory(String selectedFilter) {
+    if (selectedFilter == "Akademik") return "academic";
+    if (selectedFilter == "İdari") return "admin";
+    if (selectedFilter == "Burs") return "scholarship";
+    if (selectedFilter == "Genel") return "general";
+    return "Tümü";
+  }
+
+  List<dynamic> _sortAnnouncements(List<dynamic> announcements) {
+    final sorted = List<dynamic>.from(announcements);
+
+    sorted.sort((a, b) {
+      final aDate = _getAnnouncementDateTime(a as Map<dynamic, dynamic>);
+      final bDate = _getAnnouncementDateTime(b as Map<dynamic, dynamic>);
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      return bDate.compareTo(aDate);
+    });
+
+    return sorted;
   }
 
   @override
@@ -35,41 +138,50 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       body: FutureBuilder<Map<String, dynamic>>(
         future: _databaseFuture,
         builder: (context, snapshot) {
-          // 1. Veri Yükleniyor Durumu
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Hata Durumu
           if (snapshot.hasError) {
-            return Center(child: Text("Veri yüklenemedi: ${snapshot.error}"));
+            return Center(
+              child: Text("Veri yüklenemedi: ${snapshot.error}"),
+            );
           }
 
-          // 3. Veri Boş Durumu
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Gösterilecek duyuru bulunamadı."));
+            return const Center(
+              child: Text("Gösterilecek duyuru bulunamadı."),
+            );
           }
 
-          // JSON verisinden duyurular listesini çekiyoruz
-          final allAnnouncements = snapshot.data!['announcements'] as List<dynamic>? ?? [];
+          final allAnnouncements =
+              snapshot.data!['announcements'] as List<dynamic>? ?? [];
 
-          // Arama ve filtreleme işlemini artık JSON objelerine (Map) göre yapıyoruz
-          final filteredAnnouncements = allAnnouncements.where((a) {
-            final title = a['title']?.toString() ?? "";
-            final content = a['content']?.toString() ?? "";
-            final category = a['category']?.toString() ?? "";
+          final mappedFilter = _mapSelectedFilterToCategory(_selectedFilter);
+          final normalizedSearch = _searchQuery.toLowerCase().trim();
 
-            final matchesSearch = title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                content.toLowerCase().contains(_searchQuery.toLowerCase());
+          final filteredAnnouncements = allAnnouncements.where((announcement) {
+            final a = announcement as Map<dynamic, dynamic>;
 
-            final mappedFilter = _selectedFilter == "Akademik" ? "academic" :
-            _selectedFilter == "İdari" ? "admin" :
-            _selectedFilter == "Burs" ? "scholarship" :
-            _selectedFilter == "Genel" ? "general" : "Tümü";
+            if (!_isAnnouncementPublished(a)) {
+              return false;
+            }
 
-            final matchesFilter = _selectedFilter == "Tümü" || category == mappedFilter;
+            final title = a['title']?.toString().toLowerCase() ?? "";
+            final content = a['content']?.toString().toLowerCase() ?? "";
+            final category = a['category']?.toString() ?? "general";
+
+            final matchesSearch = normalizedSearch.isEmpty ||
+                title.contains(normalizedSearch) ||
+                content.contains(normalizedSearch);
+
+            final matchesFilter =
+                _selectedFilter == "Tümü" || category == mappedFilter;
+
             return matchesSearch && matchesFilter;
           }).toList();
+
+          final sortedAnnouncements = _sortAnnouncements(filteredAnnouncements);
 
           return Column(
             children: [
@@ -77,7 +189,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: AppSearchBar(
                   placeholder: "Duyuru ara...",
-                  onChanged: (val) => setState(() => _searchQuery = val),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
                 ),
               ),
               SizedBox(
@@ -88,30 +204,46 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                   itemCount: _filters.length,
                   itemBuilder: (context, index) {
                     final filter = _filters[index];
+
                     return AppFilterChip(
                       label: filter,
                       active: _selectedFilter == filter,
-                      onTap: () => setState(() => _selectedFilter = filter),
+                      onTap: () {
+                        setState(() {
+                          _selectedFilter = filter;
+                        });
+                      },
                     );
                   },
                 ),
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: filteredAnnouncements.isEmpty
-                    ? const Center(child: Text("Aramanıza uygun duyuru bulunamadı.", style: TextStyle(color: AppTheme.textMuted)))
+                child: sortedAnnouncements.isEmpty
+                    ? const Center(
+                  child: Text(
+                    "Aramanıza uygun duyuru bulunamadı.",
+                    style: TextStyle(color: AppTheme.textMuted),
+                  ),
+                )
                     : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  itemCount: filteredAnnouncements.length,
+                  itemCount: sortedAnnouncements.length,
                   itemBuilder: (context, index) {
-                    final a = filteredAnnouncements[index];
+                    final announcement =
+                    sortedAnnouncements[index] as Map<dynamic, dynamic>;
+
                     return InfoCard(
-                      title: a['title'] ?? "",
-                      subtitle: a['content'] ?? "",
-                      metadata: a['date'] ?? "",
+                      title: announcement['title']?.toString() ?? "",
+                      subtitle: announcement['content']?.toString() ?? "",
+                      metadata: _formatAnnouncementMetadata(announcement),
                       showChevron: false,
-                      badge: a['isNew'] == true // isNew değerini JSON'dan okuyoruz
-                          ? const AppBadge(label: "Yeni", backgroundColor: AppTheme.primaryColor, textColor: Colors.white)
+                      badge: announcement['isNew'] == true
+                          ? const AppBadge(
+                        label: "Yeni",
+                        backgroundColor: AppTheme.primaryColor,
+                        textColor: Colors.white,
+                      )
                           : null,
                     );
                   },
