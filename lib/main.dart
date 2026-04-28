@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:firebase_core/firebase_core.dart'; // YENİ: Firebase importu
+import 'package:firebase_core/firebase_core.dart';
+
+import 'firebase_options.dart';
 
 import 'theme/app_theme.dart';
 
@@ -10,6 +12,8 @@ import 'providers/auth_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/joined_events_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/profile_provider.dart';
+import 'providers/notification_provider.dart';
 
 import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
@@ -17,29 +21,20 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 
-import 'providers/profile_provider.dart';
-import 'providers/notification_provider.dart';
-
 void main() async {
-  // 1. Flutter'ın çizim motorunu başlatıyoruz
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. YENİ: Firebase Başlatma (Kendi SDK şifrelerinizi buraya yapıştırın)
+  // Firebase is initialized with the local FlutterFire configuration file.
+  // Do not share firebase_options.dart in AI tools or public environments.
   await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyAAfFBFWu6DBLChKVZ30opP4L7z2vra1dA",
-      appId: "1:181125991671:web:fcf82bea37442181c597f2",
-      messagingSenderId: "181125991671",
-      projectId: "benim-kulturum",
-    ),
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 3. Hive yerel veritabanını başlatıyoruz (Sadece favoriler ve lokal ayarlar için kalacak)
+  // Hive is kept only for user-specific/local preferences.
+  // Shared app data must be stored in Cloud Firestore.
   await Hive.initFlutter();
-  await Hive.openBox('favoritesBox');   // Favori ID'lerini tutacak
-  await Hive.openBox('reportsBox');     // Gönderilen sorun bildirimlerini tutacak
-  await Hive.openBox('userBox');        // Giriş yapan kullanıcının bilgilerini tutacak
-  await Hive.openBox('campusDataBox');  // Admin panelini Phase 2'de düzeltene kadar çökmemesi için geçici olarak açık bırakıyoruz.
+  await Hive.openBox('favoritesBox');
+  await Hive.openBox('userBox');
 
   runApp(
     MultiProvider(
@@ -59,7 +54,7 @@ void main() async {
 }
 
 class BenimKulturumApp extends StatelessWidget {
-  const BenimKulturumApp({Key? key}) : super(key: key);
+  const BenimKulturumApp({super.key});
 
   @override
   Widget build(BuildContext context) {

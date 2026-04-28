@@ -78,9 +78,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       "category": _selectedCategory ?? "Diğer",
       "priority": _selectedPriority,
       "subject": _subjectController.text.trim(),
-      "location": _locationController.text.trim().isEmpty ? "Belirtilmedi" : _locationController.text.trim(),
+      "location": _locationController.text.trim().isEmpty
+          ? "Belirtilmedi"
+          : _locationController.text.trim(),
       "description": _descController.text.trim(),
       "date": formattedDate,
+
+      // Firestore status tracking
+      "status": "Açık",
+      "createdAt": FieldValue.serverTimestamp(),
+      "resolvedAt": null,
     };
 
     // 3. Firebase'e gönder (LAB 08 Mantığı)
