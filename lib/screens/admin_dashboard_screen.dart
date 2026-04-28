@@ -84,6 +84,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     7: TextEditingController(), 8: TextEditingController(), 9: TextEditingController(),
   };
 
+  DateTime _cafeteriaWeekStart = DataService.startOfWeek(DateTime.now());
+
   @override
   void initState() {
     super.initState();
@@ -308,7 +310,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
           final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
           final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
-          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ["Kahvaltı", "Öğle", "Akşam"];
+          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+              ["Kahvaltı", "Yemek", "Fast Food"];
 
           final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
           final filteredBuildings = allBuildings.where((b) => _normalizeForSearch(b['name'] ?? '').contains(sq1) || _normalizeForSearch(b['location'] ?? '').contains(sq1)).toList();
@@ -390,14 +395,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 items: filteredAnnouncements.map((e) => _buildListItem(e['title'] ?? '', e['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e), () => _showDeleteDialog('announcements', e['id'].toString()))).toList(),
                 onAdd: () => _openAnnouncementForm(isEdit: false),
               ),
-              _buildManagementTab(
-                title: "Yemekhane Menüleri", count: filteredMeals.length, searchController: _searchControllers[6]!,
-                items: filteredMeals.map((meal) {
-                  final menu = menus[meal] ?? {};
-                  return _buildListItem(meal, "Saat: ${menu['time'] ?? '-'} | Fiyat: ${menu['price'] ?? '-'}", () => _openMenuForm(mealName: meal, item: menu, fullCafeteriaData: cafeteriaData), null);
-                }).toList(),
-                onAdd: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Yeni öğün eklenemez, mevcutları düzenleyin."))),
-              ),
+              _buildCafeteriaWeekTab(),
               _buildManagementTab(
                 title: "Fiyatlar", count: filteredPrices.length, searchController: _searchControllers[7]!,
                 items: filteredPrices.map((p) => _buildListItem(p["name"] ?? '', "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true, item: p), () => _showDeleteDialog('prices', p['id'].toString()))).toList(),
@@ -408,6 +406,651 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 title: "Öğrenciler", count: filteredStudents.length, searchController: _searchControllers[9]!,
                 items: filteredStudents.map((s) => _buildListItem(s["name"] ?? '', "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true, item: s), () => _showDeleteDialog('students', s['id'].toString()))).toList(),
                 onAdd: () => _openStudentForm(isEdit: false),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCafeteriaWeekTab() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: DataService.fetchWeeklyCafeteriaMenus(
+        weekStart: _cafeteriaWeekStart,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text("Haftalık yemekhane verisi alınamadı."),
+          );
+        }
+
+        final days = snapshot.data ?? [];
+        final weekEnd = _cafeteriaWeekStart.add(const Duration(days: 6));
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Yemekhane Menüleri",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: "Önceki hafta",
+                        onPressed: () {
+                          setState(() {
+                            _cafeteriaWeekStart = _cafeteriaWeekStart.subtract(
+                              const Duration(days: 7),
+                            );
+                          });
+                        },
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      IconButton(
+                        tooltip: "Sonraki hafta",
+                        onPressed: () {
+                          setState(() {
+                            _cafeteriaWeekStart = _cafeteriaWeekStart.add(
+                              const Duration(days: 7),
+                            );
+                          });
+                        },
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "${DataService.formatDisplayDate(_cafeteriaWeekStart)} - ${DataService.formatDisplayDate(weekEnd)}",
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Gün tikini kapatırsanız öğrenciler o gün için yemek olmadığını görür. Gün açıkken o güne ait Kahvaltı, Yemek ve Fast Food içeriklerini düzenleyebilirsiniz.",
+                    style: TextStyle(
+                      color: AppTheme.textMuted,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: GridView.count(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 2.25,
+                children: days.map((day) => _buildCafeteriaDayCard(day)).toList(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCafeteriaDayCard(Map<String, dynamic> day) {
+    final date = day['date'] as DateTime;
+    final isWeekend = day['isWeekend'] == true;
+    final isDayActive = day['isDayActive'] != false;
+
+    final titleColor = !isDayActive
+        ? AppTheme.textMuted
+        : (isWeekend ? AppTheme.primaryColor : AppTheme.textPrimary);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: isDayActive ? () => _openDailyCafeteriaDialog(date) : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDayActive
+              ? Theme.of(context).cardColor
+              : Theme.of(context).cardColor.withOpacity(0.55),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: !isDayActive
+                ? AppTheme.textMuted.withOpacity(0.35)
+                : (isWeekend
+                ? AppTheme.primaryColor.withOpacity(0.35)
+                : Theme.of(context).dividerColor),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    day['weekday']?.toString() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    day['displayDate']?.toString() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: isDayActive ? "Günü kapat" : "Günü aç",
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _toggleCafeteriaDayActive(date, !isDayActive),
+              icon: Icon(
+                isDayActive ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isDayActive ? AppTheme.successColor : AppTheme.textMuted,
+                size: 20,
+              ),
+            ),
+            IconButton(
+              tooltip: isDayActive ? "Günü düzenle" : "Gün kapalı",
+              visualDensity: VisualDensity.compact,
+              onPressed: isDayActive ? () => _openDailyCafeteriaDialog(date) : null,
+              icon: Icon(
+                Icons.edit,
+                size: 18,
+                color: isDayActive ? AppTheme.primaryLight : AppTheme.textMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _toggleCafeteriaDayActive(DateTime date, bool nextValue) async {
+    await DataService.setCafeteriaDayActiveStatus(date, nextValue);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? "${DataService.weekdayName(date.weekday)} tekrar öğrencilere açıldı."
+                : "${DataService.weekdayName(date.weekday)} öğrenciler için kapatıldı.",
+          ),
+        ),
+      );
+      setState(() {});
+    }
+  }
+
+  Future<void> _toggleDailyMenuActive({
+    required DateTime date,
+    required String mealType,
+    required bool nextValue,
+    VoidCallback? onSaved,
+  }) async {
+    await DataService.setDailyMenuActiveStatus(
+      date: date,
+      mealType: mealType,
+      isActive: nextValue,
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? "$mealType öğrenciler için görünür yapıldı."
+                : "$mealType öğrencilerden gizlendi.",
+          ),
+        ),
+      );
+      onSaved?.call();
+      setState(() {});
+    }
+  }
+
+  void _openDailyCafeteriaDialog(DateTime date) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                "${DataService.weekdayName(date.weekday)} Menüsü",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: DataService.fetchCafeteriaDayStatus(date),
+                  builder: (context, daySnapshot) {
+                    if (daySnapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 120,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    final dayStatus = daySnapshot.data ?? {};
+                    final isDayActive = dayStatus['isDayActive'] != false;
+
+                    if (!isDayActive) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Bu gün öğrenciler için kapalı.",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Gün tikini tekrar açarsanız öğrenciler bu günü görebilir ve menüler tekrar düzenlenebilir.",
+                            style: TextStyle(color: AppTheme.textMuted, height: 1.35),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await DataService.setCafeteriaDayActiveStatus(date, true);
+                              setDialogState(() {});
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.check_circle),
+                            label: const Text("Günü Aç"),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return FutureBuilder<Map<String, Map<String, dynamic>>>(
+                      future: DataService.fetchDailyCafeteriaMenus(date),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 120,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        final menus = snapshot.data ?? {};
+
+                        return SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: DataService.cafeteriaMealTypes.map((mealType) {
+                              final menu = menus[mealType] ??
+                                  DataService.defaultMenuForMealType(mealType);
+                              final items = menu['items'] as List<dynamic>? ?? [];
+                              final isMenuActive = menu['isActive'] != false;
+
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                color: isMenuActive
+                                    ? Theme.of(context).cardColor
+                                    : Theme.of(context).cardColor.withOpacity(0.55),
+                                child: ListTile(
+                                  title: Text(
+                                    menu['menuName']?.toString() ?? mealType,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isMenuActive
+                                          ? AppTheme.textPrimary
+                                          : AppTheme.textMuted,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    "$mealType • ${menu['time'] ?? '-'} • ${menu['price'] ?? '-'} • ${items.length} içerik",
+                                    style: TextStyle(
+                                      color: isMenuActive
+                                          ? AppTheme.textMuted
+                                          : AppTheme.textMuted.withOpacity(0.75),
+                                    ),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: isMenuActive ? "Öğrencilerden gizle" : "Öğrencilere göster",
+                                        onPressed: () => _toggleDailyMenuActive(
+                                          date: date,
+                                          mealType: mealType,
+                                          nextValue: !isMenuActive,
+                                          onSaved: () {
+                                            setDialogState(() {});
+                                            setState(() {});
+                                          },
+                                        ),
+                                        icon: Icon(
+                                          isMenuActive
+                                              ? Icons.check_circle
+                                              : Icons.radio_button_unchecked,
+                                          color: isMenuActive
+                                              ? AppTheme.successColor
+                                              : AppTheme.textMuted,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: "Menüyü düzenle",
+                                        onPressed: () => _openDailyMenuForm(
+                                          date: date,
+                                          mealType: mealType,
+                                          item: menu,
+                                          onSaved: () {
+                                            setDialogState(() {});
+                                            setState(() {});
+                                          },
+                                        ),
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: AppTheme.primaryLight,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text("Kapat"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  void _openDailyMenuForm({
+    required DateTime date,
+    required String mealType,
+    required Map<dynamic, dynamic> item,
+    VoidCallback? onSaved,
+  }) {
+    final normalizedMealType = DataService.normalizeMealType(mealType);
+    final isFastFood = normalizedMealType == "Fast Food";
+
+    final menuNameCtrl = TextEditingController(
+      text: item['menuName']?.toString() ??
+          DataService.defaultMenuForMealType(normalizedMealType)['menuName']?.toString() ??
+          normalizedMealType,
+    );
+    final timeCtrl = TextEditingController(text: item['time']?.toString() ?? "");
+    final priceCtrl = TextEditingController(text: item['price']?.toString() ?? "");
+    final itemsListText = isFastFood ? "" : (item['items'] as List<dynamic>? ?? []).join(", ");
+    final itemsCtrl = TextEditingController(text: itemsListText);
+
+    final List<Map<String, TextEditingController>> productControllers = [];
+    if (isFastFood) {
+      final sourceItems = item['items'] as List<dynamic>? ?? [];
+      for (final product in sourceItems) {
+        if (product is Map) {
+          productControllers.add({
+            "name": TextEditingController(text: product['name']?.toString() ?? ""),
+            "price": TextEditingController(text: product['price']?.toString() ?? ""),
+          });
+        } else {
+          productControllers.add({
+            "name": TextEditingController(text: product.toString()),
+            "price": TextEditingController(text: "₺0"),
+          });
+        }
+      }
+
+      if (productControllers.isEmpty) {
+        productControllers.add({
+          "name": TextEditingController(),
+          "price": TextEditingController(),
+        });
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              "${DataService.weekdayName(date.weekday)} - $normalizedMealType",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: menuNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Menü Adı",
+                      hintText: "Örn: Bugünün Yemeği",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: timeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Saat Aralığı",
+                      hintText: "Örn: 13:00-18:00",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceCtrl,
+                    decoration: InputDecoration(
+                      labelText: isFastFood ? "Genel Fiyat Bilgisi" : "Fiyat",
+                      hintText: isFastFood ? "Ürün bazlı" : "Örn: ₺35",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (!isFastFood)
+                    TextField(
+                      controller: itemsCtrl,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: "İçerik / Yemekler",
+                        hintText: "Virgülle ayırın: Çorba, Tavuk, Pilav",
+                      ),
+                    )
+                  else ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Fast Food Ürünleri",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...productControllers.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final controllers = entry.value;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextField(
+                                controller: controllers["name"],
+                                decoration: InputDecoration(
+                                  labelText: "Ürün ${index + 1}",
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: controllers["price"],
+                                decoration: const InputDecoration(
+                                  labelText: "Fiyat",
+                                  hintText: "₺40",
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: productControllers.length == 1
+                                  ? null
+                                  : () {
+                                setDialogState(() {
+                                  productControllers.removeAt(index);
+                                });
+                              },
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setDialogState(() {
+                            productControllers.add({
+                              "name": TextEditingController(),
+                              "price": TextEditingController(),
+                            });
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("Ürün Ekle"),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final rawPrice = priceCtrl.text.trim();
+                  final normalizedPrice = isFastFood
+                      ? (rawPrice.isEmpty ? "Ürün bazlı" : rawPrice)
+                      : (rawPrice.isEmpty
+                      ? ""
+                      : rawPrice.startsWith("₺")
+                      ? rawPrice
+                      : "₺$rawPrice");
+
+                  List<dynamic> newItems;
+
+                  if (isFastFood) {
+                    newItems = productControllers.map((controllers) {
+                      final name = controllers["name"]!.text.trim();
+                      final price = controllers["price"]!.text.trim();
+                      final normalizedProductPrice = price.isEmpty
+                          ? "₺0"
+                          : price.startsWith("₺")
+                          ? price
+                          : "₺$price";
+
+                      return {
+                        "name": name,
+                        "price": normalizedProductPrice,
+                      };
+                    }).where((product) {
+                      return product["name"].toString().trim().isNotEmpty;
+                    }).toList();
+                  } else {
+                    newItems = itemsCtrl.text
+                        .split(",")
+                        .map((e) => e.trim())
+                        .where((e) => e.isNotEmpty)
+                        .toList();
+                  }
+
+                  if (newItems.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Menü içeriği boş bırakılamaz.")),
+                    );
+                    return;
+                  }
+
+                  final menuData = {
+                    "menuName": menuNameCtrl.text.trim().isEmpty
+                        ? normalizedMealType
+                        : menuNameCtrl.text.trim(),
+                    "time": timeCtrl.text.trim(),
+                    "price": normalizedPrice,
+                    "items": newItems,
+                    "isActive": item['isActive'] ?? true,
+                    "isChips": item['isChips'] ?? false,
+                  };
+
+                  final docId = DataService.cafeteriaMenuDocId(
+                    date: date,
+                    mealType: normalizedMealType,
+                  );
+
+                  await FirebaseFirestore.instance
+                      .collection('cafeteriaMenus')
+                      .doc(docId)
+                      .set(
+                    DataService.buildCafeteriaMenuDocument(
+                      date: date,
+                      mealType: normalizedMealType,
+                      menu: menuData,
+                    ),
+                    SetOptions(merge: true),
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Günlük menü Firebase veritabanında güncellendi."),
+                      ),
+                    );
+                    onSaved?.call();
+                    setState(() {});
+                  }
+                },
+                child: const Text("Kaydet"),
               ),
             ],
           );
@@ -1560,41 +2203,360 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openMenuForm({required String mealName, required Map<dynamic, dynamic> item, required Map<dynamic, dynamic> fullCafeteriaData}) {
-    final timeCtrl = TextEditingController(text: item['time']);
-    final priceCtrl = TextEditingController(text: item['price']);
-    final itemsListText = (item['items'] as List<dynamic>? ?? []).join(", ");
+  void _openMenuForm({
+    required bool isEdit,
+    required String mealName,
+    required Map<dynamic, dynamic> item,
+    required Map<dynamic, dynamic> fullCafeteriaData,
+  }) {
+    final nameCtrl = TextEditingController(text: mealName);
+
+    final menuNameCtrl = TextEditingController(
+      text: item['menuName']?.toString() ??
+          (mealName == "Yemek"
+              ? "Bugünün Yemeği"
+              : mealName.isNotEmpty
+              ? "$mealName Menüsü"
+              : ""),
+    );
+
+    final timeCtrl = TextEditingController(text: item['time']?.toString() ?? "");
+    final priceCtrl = TextEditingController(text: item['price']?.toString() ?? "");
+
+    final List<dynamic> currentItems = item['items'] as List<dynamic>? ?? [];
+    final bool isFastFood = mealName == "Fast Food";
+
+    final itemsListText = currentItems.map((item) {
+      if (item is Map) {
+        return item['name']?.toString() ?? '';
+      }
+      return item.toString();
+    }).where((name) => name.trim().isNotEmpty).join(", ");
+
     final itemsCtrl = TextEditingController(text: itemsListText);
+
+    final List<TextEditingController> productNameControllers = [];
+    final List<TextEditingController> productPriceControllers = [];
+
+    String normalizePrice(String rawPrice) {
+      final trimmed = rawPrice.trim();
+      if (trimmed.isEmpty) return "₺0";
+      if (trimmed == "Ürün bazlı") return trimmed;
+      return trimmed.startsWith("₺") ? trimmed : "₺$trimmed";
+    }
+
+    void addProductController({String name = "", String price = ""}) {
+      productNameControllers.add(TextEditingController(text: name));
+      productPriceControllers.add(TextEditingController(text: price));
+    }
+
+    if (isFastFood) {
+      for (final product in currentItems) {
+        if (product is Map) {
+          addProductController(
+            name: product['name']?.toString() ?? '',
+            price: product['price']?.toString() ?? '',
+          );
+        } else {
+          addProductController(name: product.toString(), price: '₺0');
+        }
+      }
+
+      if (productNameControllers.isEmpty) {
+        addProductController();
+      }
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Menü Düzenle: $mealName", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: timeCtrl, decoration: const InputDecoration(labelText: "Saat Aralığı (Örn: 12:00-14:00)")),
-            const SizedBox(height: 12),
-            TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Fiyat (Örn: ₺35)")),
-            const SizedBox(height: 12),
-            TextField(controller: itemsCtrl, maxLines: 3, decoration: const InputDecoration(labelText: "Yemekler (Virgülle ayırın)", hintText: "Çorba, Pilav, Salata")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
-          ElevatedButton(
-              onPressed: () async {
-                List<String> newItems = itemsCtrl.text.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-                fullCafeteriaData['menus'][mealName] = {
-                  'time': timeCtrl.text, 'price': priceCtrl.text, 'items': newItems, 'isChips': item['isChips'] ?? false,
-                };
-                await FirebaseFirestore.instance.collection('settings').doc('cafeteria').set(Map<String, dynamic>.from(fullCafeteriaData));
-                if (context.mounted) { Navigator.pop(context); _loadData(); }
-              },
-              child: const Text("Kaydet")
-          )
-        ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Menü Düzenle: $mealName" : "Yeni Menü Ekle",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isEdit) ...[
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Kategori / Menü Tipi",
+                        hintText: "Örn: Kahvaltı, Yemek, Fast Food",
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: menuNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Menü Adı",
+                      hintText: "Örn: Bugünün Yemeği",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: timeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Saat Aralığı",
+                      hintText: "Örn: 13:00-18:00",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (isFastFood) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryLight.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                        ),
+                      ),
+                      child: const Text(
+                        "Fast Food ürünleri ürün bazlı fiyatlandırılır.",
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...List.generate(productNameControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextField(
+                                controller: productNameControllers[index],
+                                decoration: InputDecoration(
+                                  labelText: "Ürün ${index + 1}",
+                                  hintText: "Örn: Tost",
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: productPriceControllers[index],
+                                decoration: const InputDecoration(
+                                  labelText: "Fiyat",
+                                  hintText: "₺40",
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: AppTheme.destructiveColor,
+                              ),
+                              onPressed: productNameControllers.length == 1
+                                  ? null
+                                  : () {
+                                setDialogState(() {
+                                  productNameControllers.removeAt(index);
+                                  productPriceControllers.removeAt(index);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setDialogState(() {
+                            addProductController();
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("Ürün Ekle"),
+                      ),
+                    ),
+                  ] else ...[
+                    TextField(
+                      controller: priceCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Fiyat",
+                        hintText: "Örn: ₺35",
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: itemsCtrl,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: "İçerik / Yemekler",
+                        hintText: "Virgülle ayırın: Çorba, Tavuk, Pilav, Ayran",
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  String newMealName = isEdit ? mealName : nameCtrl.text.trim();
+
+                  if (newMealName == "Öğle" ||
+                      newMealName == "Akşam" ||
+                      newMealName == "Günün Menüsü") {
+                    newMealName = "Yemek";
+                  }
+
+                  if (newMealName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Kategori adı boş bırakılamaz.")),
+                    );
+                    return;
+                  }
+
+                  final bool saveAsFastFood = newMealName == "Fast Food";
+                  late final List<dynamic> newItems;
+                  late final String normalizedPrice;
+
+                  if (saveAsFastFood) {
+                    final products = <Map<String, dynamic>>[];
+
+                    for (int i = 0; i < productNameControllers.length; i++) {
+                      final productName = productNameControllers[i].text.trim();
+                      final productPrice = productPriceControllers[i].text.trim();
+
+                      if (productName.isEmpty) continue;
+
+                      products.add({
+                        "name": productName,
+                        "price": normalizePrice(productPrice),
+                      });
+                    }
+
+                    if (products.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("En az bir Fast Food ürünü eklenmelidir.")),
+                      );
+                      return;
+                    }
+
+                    newItems = products;
+                    normalizedPrice = "Ürün bazlı";
+                  } else {
+                    final plainItems = itemsCtrl.text
+                        .split(",")
+                        .map((e) => e.trim())
+                        .where((e) => e.isNotEmpty)
+                        .toList();
+
+                    if (plainItems.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Menü içeriği boş bırakılamaz.")),
+                      );
+                      return;
+                    }
+
+                    newItems = plainItems;
+                    final rawPrice = priceCtrl.text.trim();
+                    normalizedPrice = rawPrice.isEmpty
+                        ? ""
+                        : rawPrice.startsWith("₺")
+                        ? rawPrice
+                        : "₺$rawPrice";
+                  }
+
+                  final updatedData = Map<String, dynamic>.from(fullCafeteriaData);
+
+                  final mealTypes = (updatedData['mealTypes'] as List<dynamic>?)
+                      ?.map((e) => e.toString())
+                      .where((e) =>
+                  e != "Öğle" &&
+                      e != "Akşam" &&
+                      e != "Günün Menüsü")
+                      .toList() ??
+                      [];
+
+                  final menus = Map<String, dynamic>.from(
+                    (updatedData['menus'] as Map?) ?? {},
+                  );
+
+                  menus.remove("Öğle");
+                  menus.remove("Akşam");
+                  menus.remove("Günün Menüsü");
+
+                  if (!isEdit && mealTypes.contains(newMealName)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Bu kategori zaten mevcut.")),
+                    );
+                    return;
+                  }
+
+                  if (!mealTypes.contains(newMealName)) {
+                    mealTypes.add(newMealName);
+                  }
+
+                  menus[newMealName] = {
+                    "menuName": menuNameCtrl.text.trim().isEmpty
+                        ? newMealName
+                        : menuNameCtrl.text.trim(),
+                    "time": timeCtrl.text.trim(),
+                    "price": normalizedPrice,
+                    "items": newItems,
+                    "isChips": item['isChips'] ?? false,
+                  };
+
+                  updatedData['mealTypes'] = mealTypes;
+                  updatedData['menus'] = menus;
+                  updatedData['updatedAt'] = FieldValue.serverTimestamp();
+
+                  await FirebaseFirestore.instance
+                      .collection('settings')
+                      .doc('cafeteria')
+                      .set(updatedData, SetOptions(merge: true));
+
+                  if (context.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isEdit
+                              ? "Menü Firebase veritabanında güncellendi."
+                              : "Yeni menü Firebase veritabanına eklendi.",
+                        ),
+                      ),
+                    );
+                    _loadData();
+                  }
+                },
+                child: const Text("Kaydet"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+
 }

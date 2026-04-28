@@ -1349,61 +1349,199 @@
   ],
   "cafeteria": {
     "dates": [
-      "18 Nisan (Cumartesi)",
-      "19 Nisan (Pazar)",
-      "20 Nisan (Pazartesi)",
-      "21 Nisan (Salı)",
-      "22 Nisan (Çarşamba)"
+      "Bugün",
+      "Yarın",
+      "Haftalık Menü"
     ],
-    "mealTypes": ["Kahvaltı", "Öğle", "Akşam"],
+    "mealTypes": [
+      "Kahvaltı",
+      "Yemek",
+      "Fast Food"
+    ],
     "menus": {
       "Kahvaltı": {
+        "menuName": "Kahvaltı Menüsü",
         "time": "08:00-10:00",
         "price": "₺25",
-        "items": ["Peynir", "Zeytin", "Domates", "Salatalık", "Reçel", "Tereyağı", "Haşlanmış yumurta", "Çay"],
+        "items": [
+          "Peynir",
+          "Zeytin",
+          "Domates",
+          "Salatalık",
+          "Reçel",
+          "Tereyağı",
+          "Haşlanmış yumurta",
+          "Çay"
+        ],
         "isChips": true
       },
-      "Öğle": {
-        "time": "12:00-14:00",
+      "Yemek": {
+        "menuName": "Bugünün Yemeği",
+        "time": "13:00-18:00",
         "price": "₺35",
-        "items": ["Mercimek Çorbası", "Tavuk Şinitzel", "Pilav", "Mevsim Salata", "Sütlaç", "Ayran"],
+        "items": [
+          "Mercimek Çorbası",
+          "Tavuk Şinitzel",
+          "Pilav",
+          "Mevsim Salata",
+          "Ayran"
+        ],
         "isChips": false
       },
-      "Akşam": {
-        "time": "18:00-20:00",
-        "price": "₺35",
-        "items": ["Ezogelin Çorbası", "Karnıyarık", "Bulgur Pilavı", "Çoban Salata", "Meyve", "Ayran"],
+      "Fast Food": {
+        "menuName": "Fast Food Menüsü",
+        "time": "10:00-18:00",
+        "price": "₺45+",
+        "items": [
+          "Izgara Köfte Menü",
+          "Tavuk Şinitzel Menü",
+          "Penne Makarna",
+          "Patates Kızartması",
+          "Kaşarlı Tost"
+        ],
         "isChips": false
       }
     }
   },
   "campusPrices": {
-    "categories": ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"],
+    "categories": [
+      "Çay/Kahve",
+      "İçecekler",
+      "Atıştırmalıklar",
+      "Yemek"
+    ],
     "items": {
       "Çay/Kahve": [
-        {"name": "Çay", "price": "₺3"}, {"name": "Türk Kahvesi", "price": "₺12"},
-        {"name": "Nescafe", "price": "₺8"}, {"name": "Cappuccino", "price": "₺15"},
-        {"name": "Latte", "price": "₺15"}, {"name": "Espresso", "price": "₺10"},
-        {"name": "Sıcak Çikolata", "price": "₺12"}
+        {
+          "name": "Çay",
+          "price": "₺3"
+        },
+        {
+          "name": "Türk Kahvesi",
+          "price": "₺12"
+        },
+        {
+          "name": "Nescafe",
+          "price": "₺8"
+        },
+        {
+          "name": "Cappuccino",
+          "price": "₺15"
+        },
+        {
+          "name": "Latte",
+          "price": "₺15"
+        },
+        {
+          "name": "Espresso",
+          "price": "₺10"
+        },
+        {
+          "name": "Sıcak Çikolata",
+          "price": "₺12"
+        }
       ],
       "İçecekler": [
-        {"name": "Su (0.5L)", "price": "₺3"}, {"name": "Ayran", "price": "₺5"},
-        {"name": "Kola (330ml)", "price": "₺12"}, {"name": "Fanta", "price": "₺12"},
-        {"name": "Sprite", "price": "₺12"}, {"name": "Ice Tea", "price": "₺10"},
-        {"name": "Meyve Suyu (200ml)", "price": "₺8"}, {"name": "Soğuk Kahve", "price": "₺18"}
+        {
+          "name": "Su (0.5L)",
+          "price": "₺3"
+        },
+        {
+          "name": "Ayran",
+          "price": "₺5"
+        },
+        {
+          "name": "Kola (330ml)",
+          "price": "₺12"
+        },
+        {
+          "name": "Fanta",
+          "price": "₺12"
+        },
+        {
+          "name": "Sprite",
+          "price": "₺12"
+        },
+        {
+          "name": "Ice Tea",
+          "price": "₺10"
+        },
+        {
+          "name": "Meyve Suyu (200ml)",
+          "price": "₺8"
+        },
+        {
+          "name": "Soğuk Kahve",
+          "price": "₺18"
+        }
       ],
       "Atıştırmalıklar": [
-        {"name": "Poğaça", "price": "₺8"}, {"name": "Simit", "price": "₺5"},
-        {"name": "Tost", "price": "₺15"}, {"name": "Sandviç", "price": "₺20"},
-        {"name": "Börek", "price": "₺12"}, {"name": "Waffle", "price": "₺25"},
-        {"name": "Kurabiye", "price": "₺5"}, {"name": "Çikolata", "price": "₺10"},
-        {"name": "Cips", "price": "₺8"}
+        {
+          "name": "Poğaça",
+          "price": "₺8"
+        },
+        {
+          "name": "Simit",
+          "price": "₺5"
+        },
+        {
+          "name": "Tost",
+          "price": "₺15"
+        },
+        {
+          "name": "Sandviç",
+          "price": "₺20"
+        },
+        {
+          "name": "Börek",
+          "price": "₺12"
+        },
+        {
+          "name": "Waffle",
+          "price": "₺25"
+        },
+        {
+          "name": "Kurabiye",
+          "price": "₺5"
+        },
+        {
+          "name": "Çikolata",
+          "price": "₺10"
+        },
+        {
+          "name": "Cips",
+          "price": "₺8"
+        }
       ],
       "Yemek": [
-        {"name": "Kahvaltı Tabağı", "price": "₺25"}, {"name": "Öğle Menüsü", "price": "₺35"},
-        {"name": "Akşam Menüsü", "price": "₺35"}, {"name": "Pizza (dilim)", "price": "₺20"},
-        {"name": "Lahmacun", "price": "₺15"}, {"name": "Döner", "price": "₺40"},
-        {"name": "Pilav Üstü", "price": "₺30"}
+        {
+          "name": "Kahvaltı Tabağı",
+          "price": "₺25"
+        },
+        {
+          "name": "Öğle Menüsü",
+          "price": "₺35"
+        },
+        {
+          "name": "Akşam Menüsü",
+          "price": "₺35"
+        },
+        {
+          "name": "Pizza (dilim)",
+          "price": "₺20"
+        },
+        {
+          "name": "Lahmacun",
+          "price": "₺15"
+        },
+        {
+          "name": "Döner",
+          "price": "₺40"
+        },
+        {
+          "name": "Pilav Üstü",
+          "price": "₺30"
+        }
       ]
     }
   }
