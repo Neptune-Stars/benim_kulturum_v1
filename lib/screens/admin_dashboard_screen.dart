@@ -480,25 +480,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildIssuesTab(List<dynamic> issues, TextEditingController searchController) {
+    final openIssues = issues.where((issue) {
+      final status = (issue["status"] ?? "Açık").toString();
+      return status != "Çözüldü";
+    }).toList();
+
+    final resolvedIssues = issues.where((issue) {
+      final status = (issue["status"] ?? "Açık").toString();
+      return status == "Çözüldü";
+    }).toList();
+
+    final sortedIssues = [...openIssues, ...resolvedIssues];
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Gelen Sorunlar (${issues.length})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Gelen Sorunlar (${issues.length})",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppSearchBar(controller: searchController, placeholder: "Konu veya konum ara...", onChanged: (val) => setState(() {})),
+          child: AppSearchBar(
+            controller: searchController,
+            placeholder: "Konu veya konum ara...",
+            onChanged: (val) => setState(() {}),
+          ),
         ),
         const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            itemCount: issues.length,
+            itemCount: sortedIssues.length,
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (context, index) {
-              final issue = issues[index];
-              Color priorityColor = issue["priority"] == "Yüksek" ? AppTheme.destructiveColor : (issue["priority"] == "Orta" ? AppTheme.warningColor : AppTheme.successColor);
+              final issue = sortedIssues[index];
+
+              final status = (issue["status"] ?? "Açık").toString();
+              final isResolved = status == "Çözüldü";
+
+              Color priorityColor = issue["priority"] == "Yüksek"
+                  ? AppTheme.destructiveColor
+                  : (issue["priority"] == "Orta"
+                  ? AppTheme.warningColor
+                  : AppTheme.successColor);
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -506,25 +538,82 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: priorityColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                      child: Text(issue["priority"] ?? '', style: TextStyle(color: priorityColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                      decoration: BoxDecoration(
+                        color: priorityColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        issue["priority"] ?? '',
+                        style: TextStyle(
+                          color: priorityColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(issue["subject"] ?? '', style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isResolved
+                            ? AppTheme.successColor.withOpacity(0.1)
+                            : AppTheme.warningColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: isResolved
+                              ? AppTheme.successColor
+                              : AppTheme.warningColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        issue["subject"] ?? '',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          decoration: isResolved
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
-                subtitle: Padding(padding: const EdgeInsets.only(top: 4.0), child: Text("${issue["category"]} • ${issue["location"]}\n${issue["date"]}", style: const TextStyle(color: AppTheme.textMuted))),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    "${issue["category"]} • ${issue["location"]}\n${issue["date"]}",
+                    style: const TextStyle(color: AppTheme.textMuted),
+                  ),
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryLight), onPressed: () => _openIssueDetailsDialog(issue)),
-                    IconButton(icon: const Icon(Icons.delete, color: AppTheme.destructiveColor), onPressed: () => _showDeleteDialog('issues', issue['id'].toString())),
+                    IconButton(
+                      icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryLight),
+                      onPressed: () => _openIssueDetailsDialog(issue),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: AppTheme.destructiveColor),
+                      onPressed: () => _showDeleteDialog(
+                        'issues',
+                        (issue['firestoreDocId'] ?? issue['id']).toString(),
+                      ),
+                    ),
                   ],
                 ),
               );
             },
           ),
-        )
+        ),
       ],
     );
   }
@@ -553,11 +642,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Kapat")),
           ElevatedButton.icon(
             onPressed: () async {
-              // Delete issue when resolved
+
               // Mark issue as resolved instead of deleting it
               await FirebaseFirestore.instance
                   .collection('issues')
-                  .doc(issue['id'].toString())
+                  .doc((issue['firestoreDocId'] ?? issue['id']).toString())
                   .update({
                 "status": "Çözüldü",
                 "resolvedAt": FieldValue.serverTimestamp(),

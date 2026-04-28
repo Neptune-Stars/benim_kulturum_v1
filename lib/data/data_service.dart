@@ -1,26 +1,9 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DataService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static Future<Map<String, dynamic>> loadDatabase() async {
-    final buildingSnap = await _db.collection('buildings').limit(1).get();
-    final classroomSnap = await _db.collection('classrooms').limit(1).get();
-    final instructorSnap = await _db.collection('instructors').limit(1).get();
-    final eventSnap = await _db.collection('events').limit(1).get();
-    final announcementSnap = await _db.collection('announcements').limit(1).get();
-
-    if (buildingSnap.docs.isEmpty ||
-        classroomSnap.docs.isEmpty ||
-        instructorSnap.docs.isEmpty ||
-        eventSnap.docs.isEmpty ||
-        announcementSnap.docs.isEmpty) {
-      print("Bazı ana koleksiyonlar eksik, JSON'dan Firebase'e yükleniyor...");
-      await _seedFirestore();
-    }
-
     final studentSnap = await _db.collection('students').limit(1).get();
     if (studentSnap.docs.isEmpty) {
       print("Öğrenciler eksik, varsayılan veriler Firebase'e yükleniyor...");
@@ -42,7 +25,7 @@ class DataService {
     final issues = await _fetchList('issues');
     final students = await _fetchList('students');
 
-    // NEW: admin dropdown data comes from Firebase
+    // Admin dropdown data comes from Firebase.
     final campuses = await _fetchList('campuses');
     final classroomLocations = await _fetchList('classroomLocations');
 
@@ -73,34 +56,6 @@ class DataService {
     }).toList();
   }
 
-  static Future<void> _seedFirestore() async {
-    final jsonString = await rootBundle.loadString('assets/data.json');
-    final Map<String, dynamic> jsonData = json.decode(jsonString);
-
-    Future<void> seedCollectionIfEmpty(String collectionName, List<dynamic> items) async {
-      final snap = await _db.collection(collectionName).limit(1).get();
-
-      if (snap.docs.isNotEmpty) return;
-
-      for (var item in items) {
-        await _db.collection(collectionName).doc(item['id'].toString()).set(item);
-      }
-
-      print("$collectionName koleksiyonu Firebase'e yüklendi.");
-    }
-
-    await seedCollectionIfEmpty('buildings', jsonData['buildings'] ?? []);
-    await seedCollectionIfEmpty('classrooms', jsonData['classrooms'] ?? []);
-    await seedCollectionIfEmpty('instructors', jsonData['instructors'] ?? []);
-    await seedCollectionIfEmpty('events', jsonData['events'] ?? []);
-    await seedCollectionIfEmpty('announcements', jsonData['announcements'] ?? []);
-
-    final cafeteriaDoc = await _db.collection('settings').doc('cafeteria').get();
-    if (!cafeteriaDoc.exists && jsonData['cafeteria'] != null) {
-      await _db.collection('settings').doc('cafeteria').set(jsonData['cafeteria']);
-    }
-  }
-
   static Future<void> _seedExtraData() async {
     final List<Map<String, dynamic>> starterPrices = [
       {"id": 1, "name": "Çay", "price": "₺3", "category": "Çay/Kahve"},
@@ -110,7 +65,7 @@ class DataService {
       {"id": 5, "name": "Öğle Menüsü", "price": "₺35", "category": "Yemek"},
     ];
 
-    for (var item in starterPrices) {
+    for (final item in starterPrices) {
       await _db.collection('prices').doc(item['id'].toString()).set(item);
     }
 
@@ -122,7 +77,10 @@ class DataService {
         "subject": "Sınıfta projeksiyon çalışmıyor",
         "location": "MF-101",
         "description": "Bilgisayarı bağladığımızda görüntü gelmiyor.",
-        "date": "Bugün 10:30"
+        "date": "Bugün 10:30",
+        "status": "Açık",
+        "createdAt": FieldValue.serverTimestamp(),
+        "resolvedAt": null,
       },
       {
         "id": 2,
@@ -131,11 +89,14 @@ class DataService {
         "subject": "Lavabolarda sabun bitti",
         "location": "İİBF 2. Kat",
         "description": "Erkekler tuvaletindeki sıvı sabunluklar tamamen boşalmış.",
-        "date": "Dün 14:15"
-      }
+        "date": "Dün 14:15",
+        "status": "Açık",
+        "createdAt": FieldValue.serverTimestamp(),
+        "resolvedAt": null,
+      },
     ];
 
-    for (var item in starterIssues) {
+    for (final item in starterIssues) {
       await _db.collection('issues').doc(item['id'].toString()).set(item);
     }
 
@@ -146,7 +107,7 @@ class DataService {
         "no": "20210001234",
         "email": "ogrenci@uni.edu.tr",
         "password": "123456",
-        "grade": "3. Sınıf"
+        "grade": "3. Sınıf",
       },
       {
         "id": 2,
@@ -154,16 +115,16 @@ class DataService {
         "no": "20220005678",
         "email": "ayse@uni.edu.tr",
         "password": "password123",
-        "grade": "2. Sınıf"
+        "grade": "2. Sınıf",
       },
     ];
 
-    for (var item in starterStudents) {
+    for (final item in starterStudents) {
       await _db.collection('students').doc(item['id'].toString()).set(item);
     }
   }
 
-  // NEW: Firebase-backed dropdown reference data for classroom admin form
+  // Firebase-backed dropdown reference data for classroom admin form.
   static Future<void> _seedCampusReferenceData() async {
     final List<Map<String, dynamic>> campuses = [
       {
@@ -316,7 +277,10 @@ class DataService {
     ];
 
     for (final location in classroomLocations) {
-      await _db.collection('classroomLocations').doc(location['id'].toString()).set(location);
+      await _db
+          .collection('classroomLocations')
+          .doc(location['id'].toString())
+          .set(location);
     }
   }
 }
