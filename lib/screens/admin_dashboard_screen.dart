@@ -1873,32 +1873,80 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final deptCtrl = TextEditingController(text: item?['department']);
     final photoCtrl = TextEditingController(text: item?['imageUrl'] ?? '');
 
+    // Ofis saatleri controller'ı
+    final officeHoursCtrl = TextEditingController(
+        text: (item?['officeHours'] is List)
+            ? (item?['officeHours'] as List).join(", ")
+            : ""
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEdit ? "Düzenle: Hoca" : "Yeni Hoca", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Hoca Adı Soyadı")),
-            const SizedBox(height: 12),
-            TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
-            const SizedBox(height: 12),
-            TextField(controller: photoCtrl, decoration: const InputDecoration(labelText: "Fotoğraf Yolu (Örn: assets/instructors/hoca.jpg)", hintText: "assets/instructors/varsayilan.jpg")),
-          ],
+        content: SingleChildScrollView( // Klavye açılınca taşma olmaması için eklendi
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Hoca Adı Soyadı")),
+              const SizedBox(height: 12),
+              TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
+              const SizedBox(height: 12),
+              // YENİ  Ofis Saatleri
+              TextField(
+                  controller: officeHoursCtrl,
+                  maxLines: 2, // Birden fazla satır desteği
+                  decoration: const InputDecoration(
+                      labelText: "Ofis Saatleri",
+                      hintText: "Örn: Pzt 10:00-12:00, Sal 14:00-16:00",
+                      helperText: "Günleri virgülle ayırarak yazın.",
+                      helperStyle: TextStyle(fontSize: 10)
+                  )
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: photoCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "Fotoğraf Yolu",
+                      hintText: "assets/instructors/varsayilan.jpg"
+                  )
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
           ElevatedButton(
               onPressed: () async {
-                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
+                // 1. Ofis saatlerini metinden listeye çeviriyoruz
+                List<String> hoursList = officeHoursCtrl.text
+                    .split(",")
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+
+                // ID oluşturma
+                String docId = isEdit ? item!['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
+
                 Map<String, dynamic> newData = {
-                  'id': docId, 'name': nameCtrl.text, 'department': deptCtrl.text, 'imageUrl': photoCtrl.text,
-                  'title': item?['title'] ?? 'Öğretim Üyesi', 'office': item?['office'] ?? 'Bilinmiyor',
-                  'filter': item?['filter'] ?? 'engineering', 'email': item?['email'] ?? 'iletisim@uni.edu.tr'
+                  'id': docId,
+                  'name': nameCtrl.text,
+                  'department': deptCtrl.text,
+                  'imageUrl': photoCtrl.text,
+                  'officeHours': hoursList, // YENİ: Saatleri listeye ekledik
+                  'title': item?['title'] ?? 'Öğretim Üyesi',
+                  'office': item?['office'] ?? 'Bilinmiyor',
+                  'filter': item?['filter'] ?? 'engineering',
+                  'email': item?['email'] ?? 'iletisim@uni.edu.tr'
                 };
-                await FirebaseFirestore.instance.collection('instructors').doc(docId.toString()).set(newData);
-                if (context.mounted) { Navigator.pop(context); _loadData(); }
+
+                // Firestore'a kaydetme
+                await FirebaseFirestore.instance.collection('instructors').doc(docId).set(newData);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  _loadData();
+                }
               },
               child: const Text("Kaydet")
           )
