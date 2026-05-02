@@ -6,7 +6,8 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 
 class CafeteriaMenuScreen extends StatefulWidget {
-  const CafeteriaMenuScreen({Key? key}) : super(key: key);
+  final bool showBackButton;
+  const CafeteriaMenuScreen({Key? key, this.showBackButton = true}) : super(key: key);
 
   @override
   State<CafeteriaMenuScreen> createState() => _CafeteriaMenuScreenState();
@@ -41,9 +42,9 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: "Yemekhane Menüsü",
-        showBack: true,
+        showBack: widget.showBackButton,
       ),
       body: FutureBuilder<void>(
         future: _ensureDailyFuture,

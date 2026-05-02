@@ -73,16 +73,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     QuickActionCard(
-                      icon: Icons.business,
-                      title: "Kampüs\nRehberi",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BuildingsScreen(),
-                        ),
-                      ),
-                    ),
-                    QuickActionCard(
                       icon: Icons.groups_outlined,
                       title: "Hocalar",
                       onTap: () => Navigator.push(
@@ -99,16 +89,6 @@ class HomeScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const OfficeHoursScreen(),
-                        ),
-                      ),
-                    ),
-                    QuickActionCard(
-                      icon: Icons.restaurant_menu,
-                      title: "Menü",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CafeteriaMenuScreen(),
                         ),
                       ),
                     ),

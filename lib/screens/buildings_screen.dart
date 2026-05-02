@@ -11,11 +11,13 @@ import '../data/data_service.dart';
 import 'building_detail_screen.dart';
 
 class BuildingsScreen extends StatefulWidget {
-  const BuildingsScreen({Key? key}) : super(key: key);
+  final bool showBackButton;
+  const BuildingsScreen({Key? key, this.showBackButton = true}) : super(key: key);
 
   @override
   State<BuildingsScreen> createState() => _BuildingsScreenState();
 }
+
 
 class _BuildingsScreenState extends State<BuildingsScreen> {
   String _searchQuery = "";
@@ -124,7 +126,7 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Kampüs Rehberi", showBack: true),
+      appBar: CustomAppBar(title: "Kampüs Rehberi", showBack: widget.showBackButton),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
