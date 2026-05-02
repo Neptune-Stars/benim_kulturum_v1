@@ -1597,13 +1597,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String? selectedCampus;
     String? selectedLocation;
 
+    // Liste içinde birebir veya kısmi eşleşen seçeneği bulan yardımcı fonksiyon
+    String? _matchOption(List<String> options, String? rawValue) {
+      if (rawValue == null) return null;
+      final value = rawValue.trim();
+      if (value.isEmpty) return null;
+
+      // 1) Birebir eşleşme
+      if (options.contains(value)) return value;
+
+      // 2) Kısmi eşleşme (içerme - büyük/küçük harf duyarsız)
+      final lowerValue = value.toLowerCase();
+      for (final opt in options) {
+        final lowerOpt = opt.toLowerCase();
+        if (lowerOpt.contains(lowerValue) || lowerValue.contains(lowerOpt)) {
+          return opt;
+        }
+      }
+      return null;
+    }
+
     if (item != null && item['location'] != null) {
       String loc = item['location'].toString();
+      String rawCampus;
+      String? rawLocation;
+
       if (loc.contains(',')) {
         var parts = loc.split(',');
-        selectedCampus = parts[0].trim();
-        selectedLocation = parts[1].trim();
-      } else { selectedCampus = loc; }
+        rawCampus = parts[0].trim();
+        rawLocation = parts.length > 1 ? parts[1].trim() : null;
+      } else {
+        rawCampus = loc.trim();
+        rawLocation = null;
+      }
+
+      selectedCampus = _matchOption(campusOptions, rawCampus);
+      selectedLocation = _matchOption(locationOptions, rawLocation);
     }
 
     showDialog(
@@ -1618,9 +1647,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Birim Adı (Örn: Hukuk Fakültesi)")),
                   const SizedBox(height: 12),
-                  _buildDropdown("Kampüs Seçin", campusOptions, value: campusOptions.contains(selectedCampus) ? selectedCampus : null, onChanged: (val) => setDialogState(() => selectedCampus = val)),
+                  _buildDropdown("Kampüs Seçin", campusOptions, value: selectedCampus, onChanged: (val) => setDialogState(() => selectedCampus = val)),
                   const SizedBox(height: 12),
-                  _buildDropdown("Konum/Kat Seçin", locationOptions, value: locationOptions.contains(selectedLocation) ? selectedLocation : null, onChanged: (val) => setDialogState(() => selectedLocation = val)),
+                  _buildDropdown("Konum/Kat Seçin", locationOptions, value: selectedLocation, onChanged: (val) => setDialogState(() => selectedLocation = val)),
                 ],
               ),
             ),
