@@ -22,6 +22,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
+    // Logic: Default meal type should match English keys like "Breakfast" or "Main Meal"
     _selectedTab = DataService.defaultMealTypeForDate(_selectedDate);
     _ensureDailyFuture = DataService.ensureDailyCafeteriaMenus(_selectedDate);
   }
@@ -36,14 +37,13 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final dividerColor = Theme.of(context).dividerColor;
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: "Yemekhane Menüsü",
+        title: "Cafeteria Menu", // Updated
         showBack: widget.showBackButton,
       ),
       body: FutureBuilder<void>(
@@ -56,7 +56,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
           if (ensureSnapshot.hasError) {
             return Center(
               child: Text(
-                "Menü verisi hazırlanırken hata oluştu.",
+                "An error occurred while preparing menu data.", // Updated
                 style: TextStyle(color: textColor),
               ),
             );
@@ -74,7 +74,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
               if (snapshot.hasError) {
                 return Center(
                   child: Text(
-                    "Menü verisi alınırken hata oluştu.",
+                    "An error occurred while retrieving menu data.", // Updated
                     style: TextStyle(color: textColor),
                   ),
                 );
@@ -104,12 +104,11 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                 }
               }
 
-              // If the day has no document yet, DataService.ensureDailyCafeteriaMenus
-              // will create it; until the stream updates, treat the day as open.
               if (!hasDayData) {
                 isDayActive = true;
               }
 
+              // Filter types based on English labels in DataService
               final activeMealTypes = DataService.cafeteriaMealTypes
                   .where((type) => menusByType.containsKey(type))
                   .toList();
@@ -146,7 +145,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                     ],
                     if (!isDayActive)
                       _buildEmptyState(
-                        "Bu gün yemekhane hizmeti yok.",
+                        "No cafeteria service today.", // Updated
                         "",
                         textColor,
                         cardColor,
@@ -154,8 +153,8 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                       )
                     else if (currentMenu == null)
                       _buildEmptyState(
-                        "Bu gün için aktif menü bulunmuyor.",
-                        "Yönetici panelinde aktif edilen menüler burada görünür.",
+                        "No active menu for today.", // Updated
+                        "Menus activated in the admin panel appear here.", // Updated
                         textColor,
                         cardColor,
                         dividerColor,
@@ -180,13 +179,13 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
   Widget _buildTopInfoCard(DateTime selectedDate, bool isDayActive) {
     final weekend = DataService.isWeekend(selectedDate);
     final title = !isDayActive
-        ? "Bugün Yemekhane Hizmeti Yok"
-        : (weekend ? "Hafta Sonu Fast Food Bilgisi" : "Kampüs Yemek Bilgisi");
+        ? "No Cafeteria Service Today" // Updated
+        : (weekend ? "Weekend Fast Food Info" : "Campus Meal Info"); // Updated
     final description = !isDayActive
-        ? "Seçilen gün yönetici tarafından kapalı olarak işaretlenmiş. Öğrenci tarafında menü gösterilmez."
+        ? "The selected day is marked as closed by the administrator." // Updated
         : (weekend
-        ? "Seçilen gün hafta sonu. Aktifse varsayılan olarak Fast Food seçenekleri gösterilir."
-        : "Seçilen gün hafta içi. Aktif menüler arasından kampüs yemeği gösterilir.");
+        ? "Today is the weekend. If active, Fast Food options are shown by default." // Updated
+        : "Today is a weekday. Campus meals are shown among active menus."); // Updated
 
     return Container(
       width: double.infinity,
@@ -209,11 +208,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -228,11 +223,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
     );
   }
 
-  Widget _buildWeekDateSelector(
-      Color textColor,
-      Color dividerColor,
-      Color cardColor,
-      ) {
+  Widget _buildWeekDateSelector(Color textColor, Color dividerColor, Color cardColor) {
     final weekStart = DataService.startOfWeek(_selectedDate);
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
 
@@ -244,8 +235,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final day = days[index];
-          final selected = DataService.formatDateKey(day) ==
-              DataService.formatDateKey(_selectedDate);
+          final selected = DataService.formatDateKey(day) == DataService.formatDateKey(_selectedDate);
           final weekend = DataService.isWeekend(day);
 
           return InkWell(
@@ -257,40 +247,28 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
               decoration: BoxDecoration(
                 color: selected ? AppTheme.primaryColor : cardColor,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: selected ? AppTheme.primaryColor : dividerColor,
-                ),
+                border: Border.all(color: selected ? AppTheme.primaryColor : dividerColor),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
+                    // Important: DataService.weekdayName(day.weekday) must return English (Mon, Tue etc.)
                     DataService.weekdayName(day.weekday),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: selected ? Colors.white : textColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: selected ? Colors.white : textColor, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     "${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}",
-                    style: TextStyle(
-                      color: selected ? Colors.white70 : AppTheme.textMuted,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: selected ? Colors.white70 : AppTheme.textMuted, fontSize: 12),
                   ),
                   if (weekend) ...[
                     const SizedBox(height: 4),
-                    Text(
+                    const Text(
                       "Fast Food",
-                      style: TextStyle(
-                        color: selected ? Colors.white : AppTheme.primaryColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ],
@@ -302,17 +280,10 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
     );
   }
 
-  Widget _buildTabSelector(
-      List<String> tabs,
-      String selectedTab,
-      Color textColor,
-      Color dividerColor,
-      Color cardColor,
-      ) {
+  Widget _buildTabSelector(List<String> tabs, String selectedTab, Color textColor, Color dividerColor, Color cardColor) {
     return Row(
       children: tabs.map((tab) {
         final selected = selectedTab == tab;
-
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -323,18 +294,12 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                 decoration: BoxDecoration(
                   color: selected ? AppTheme.primaryColor : cardColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: selected ? AppTheme.primaryColor : dividerColor,
-                  ),
+                  border: Border.all(color: selected ? AppTheme.primaryColor : dividerColor),
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  tab,
-                  style: TextStyle(
-                    color: selected ? Colors.white : textColor,
-                    fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                    fontSize: 13,
-                  ),
+                  tab, // Values: Breakfast, Main Meal, Fast Food
+                  style: TextStyle(color: selected ? Colors.white : textColor, fontWeight: selected ? FontWeight.bold : FontWeight.w500, fontSize: 13),
                 ),
               ),
             ),
@@ -344,187 +309,92 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
     );
   }
 
-  Widget _buildEmptyState(
-      String title,
-      String subtitle,
-      Color textColor,
-      Color cardColor,
-      Color dividerColor,
-      ) {
+  Widget _buildEmptyState(String title, String subtitle, Color textColor, Color cardColor, Color dividerColor) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: dividerColor),
-      ),
+      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(18), border: Border.all(color: dividerColor)),
       child: Column(
         children: [
-          if (subtitle.trim().isNotEmpty) ...[
-            const Icon(
-              Icons.info_outline,
-              color: AppTheme.textMuted,
-              size: 32,
-            ),
-            const SizedBox(height: 10),
-          ],
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: textColor,
-            ),
-          ),
-          if (subtitle.trim().isNotEmpty) ...[
+          const Icon(Icons.info_outline, color: AppTheme.textMuted, size: 32),
+          const SizedBox(height: 10),
+          Text(title, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+          if (subtitle.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.textMuted,
-                height: 1.35,
-              ),
-            ),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textMuted, height: 1.35)),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildMenuCard(
-      Map<String, dynamic> menu,
-      Color textColor,
-      Color dividerColor,
-      Color cardColor,
-      ) {
+  Widget _buildMenuCard(Map<String, dynamic> menu, Color textColor, Color dividerColor, Color cardColor) {
     final items = menu['items'] as List<dynamic>? ?? [];
-    final menuName = menu['menuName']?.toString() ?? "Menü";
+    final menuName = menu['menuName']?.toString() ?? "Menu";
     final mealType = menu['mealType']?.toString() ?? "";
     final isFastFood = mealType == "Fast Food";
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: dividerColor),
-      ),
+      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(18), border: Border.all(color: dividerColor)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            menuName,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
-          ),
+          Text(menuName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: Text(
                   menu['time']?.toString() ?? "-",
-                  style: const TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 15, fontWeight: FontWeight.w500),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.successColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: AppTheme.successColor, borderRadius: BorderRadius.circular(12)),
                 child: Text(
                   menu['price']?.toString() ?? "-",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 18),
           if (items.isEmpty)
-            Text(
-              "Bu menüde yemek bilgisi yok.",
-              style: TextStyle(color: textColor),
-            )
+            Text("No item info in this menu.", style: TextStyle(color: textColor)) // Updated
           else
-            ...items.map(
-                  (item) {
-                final bool itemHasPrice = item is Map;
-                final itemName = itemHasPrice
-                    ? (item['name']?.toString() ?? '')
-                    : item.toString();
-                final itemPrice = itemHasPrice ? item['price']?.toString() ?? '' : '';
+            ...items.map((item) {
+              final bool itemHasPrice = item is Map;
+              final itemName = itemHasPrice ? (item['name']?.toString() ?? '') : item.toString();
+              final itemPrice = itemHasPrice ? item['price']?.toString() ?? '' : '';
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: dividerColor.withOpacity(0.7)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isFastFood ? Icons.local_dining : Icons.fastfood,
-                        size: 18,
-                        color: AppTheme.primaryColor,
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: dividerColor.withOpacity(0.7)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(isFastFood ? Icons.local_dining : Icons.fastfood, size: 18, color: AppTheme.primaryColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(itemName, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
+                    ),
+                    if (itemPrice.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: Text(itemPrice, style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          itemName,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
-                        ),
-                      ),
-                      if (itemPrice.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            itemPrice,
-                            style: const TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                  ],
+                ),
+              );
+            }).toList(),
         ],
       ),
     );

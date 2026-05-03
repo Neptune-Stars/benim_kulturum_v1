@@ -9,15 +9,13 @@ class HelpSupportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final dividerColor = Theme.of(context).dividerColor;
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
       appBar: const CustomAppBar(
-        title: "Yardım & Destek",
+        title: "Help & Support",
         showBack: true,
       ),
       body: SingleChildScrollView(
@@ -45,7 +43,7 @@ class HelpSupportScreen extends StatelessWidget {
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          "Nasıl yardımcı olabiliriz?",
+                          "How can we help?",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -57,7 +55,7 @@ class HelpSupportScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    "Uygulama kullanımı, kampüs bilgileri ve teknik sorunlar için destek alabilirsin.",
+                    "You can get support for application usage, campus information, and technical issues.",
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -70,7 +68,7 @@ class HelpSupportScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             Text(
-              "Hızlı Yardım",
+              "Quick Support",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -81,8 +79,8 @@ class HelpSupportScreen extends StatelessWidget {
 
             _ActionCard(
               icon: Icons.report_problem_outlined,
-              title: "Sorun Bildir",
-              subtitle: "Teknik veya kampüsle ilgili bir problem ilet",
+              title: "Report an Issue",
+              subtitle: "Report a technical or campus-related problem",
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -92,22 +90,22 @@ class HelpSupportScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            _ActionCard(
+            const _ActionCard(
               icon: Icons.mail_outline,
-              title: "Destek E-postası",
-              subtitle: "destek@kampusrehberi.com",
+              title: "Support Email",
+              subtitle: "support@campusguide.com",
             ),
             const SizedBox(height: 12),
 
-            _ActionCard(
+            const _ActionCard(
               icon: Icons.access_time,
-              title: "Destek Saatleri",
-              subtitle: "Hafta içi 09:00 - 17:00",
+              title: "Support Hours",
+              subtitle: "Weekdays 09:00 - 17:00",
             ),
             const SizedBox(height: 24),
 
             Text(
-              "Sık Sorulan Sorular",
+              "Frequently Asked Questions",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -125,27 +123,23 @@ class HelpSupportScreen extends StatelessWidget {
               child: Column(
                 children: const [
                   _FaqTile(
-                    question: "Profil fotoğrafımı nasıl değiştiririm?",
-                    answer:
-                    "Profil ekranındaki fotoğraf alanına dokunup galeriden yeni bir görsel seçebilirsin.",
+                    question: "How do I change my profile photo?",
+                    answer: "You can tap on the photo area in the profile screen and select a new image from your gallery.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Etkinliklere nasıl katılırım?",
-                    answer:
-                    "Etkinlikler ekranından bir etkinlik seçip detay sayfasındaki katılım butonunu kullanabilirsin.",
+                    question: "How can I join events?",
+                    answer: "You can select an event from the events screen and use the join button on the details page.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Kampüs bilgileri güncel mi?",
-                    answer:
-                    "Ekranlardaki içerikler örnek veriyle hazırlanmıştır. Gerçek sistemde bu bilgiler güncel veri kaynağından alınmalıdır.",
+                    question: "Is campus information up to date?",
+                    answer: "The data is fetched from a central database. However, users should always cross-check with official university channels for critical updates.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Bildirimleri nasıl açıp kapatırım?",
-                    answer:
-                    "Profil ekranındaki Ayarlar bölümünden Bildirimler anahtarını kullanarak kontrol edebilirsin.",
+                    question: "How do I turn notifications on/off?",
+                    answer: "You can manage your notification preferences using the Notifications toggle in the Settings section of the profile screen.",
                   ),
                 ],
               ),
@@ -173,8 +167,7 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
     final dividerColor = Theme.of(context).dividerColor;
     final cardColor = Theme.of(context).cardColor;
@@ -199,40 +192,20 @@ class _ActionCard extends StatelessWidget {
                 color: AppTheme.primaryLight.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryColor,
-              ),
+              child: Icon(icon, color: AppTheme.primaryColor),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: mutedColor,
-                    ),
-                  ),
+                  Text(subtitle, style: TextStyle(fontSize: 13, color: mutedColor)),
                 ],
               ),
             ),
-            if (onTap != null)
-              Icon(
-                Icons.chevron_right,
-                color: mutedColor,
-              ),
+            if (onTap != null) Icon(Icons.chevron_right, color: mutedColor),
           ],
         ),
       ),
@@ -244,16 +217,12 @@ class _FaqTile extends StatelessWidget {
   final String question;
   final String answer;
 
-  const _FaqTile({
-    required this.question,
-    required this.answer,
-  });
+  const _FaqTile({required this.question, required this.answer});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return ExpansionTile(
@@ -261,25 +230,11 @@ class _FaqTile extends StatelessWidget {
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       iconColor: AppTheme.primaryColor,
       collapsedIconColor: AppTheme.primaryColor,
-      title: Text(
-        question,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
+      title: Text(question, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Text(
-            answer,
-            style: TextStyle(
-              fontSize: 14,
-              color: mutedColor,
-              height: 1.45,
-            ),
-          ),
+          child: Text(answer, style: TextStyle(fontSize: 14, color: mutedColor, height: 1.45)),
         ),
       ],
     );

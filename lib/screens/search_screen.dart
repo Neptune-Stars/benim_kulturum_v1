@@ -22,11 +22,14 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All"; // Tümü -> All
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  final List<String> _filters = ["Tümü", "Binalar", "Derslikler", "Hocalar", "Etkinlikler"];
-  final List<String> _recentSearches = ["MF-101", "Kütüphane", "Ahmet Yılmaz", "Bahar Şenliği"];
+  // Filtreler İngilizceye çevrildi
+  final List<String> _filters = ["All", "Buildings", "Classrooms", "Instructors", "Events"];
+
+  // Örnek aramalar İngilizce içeriklerle güncellendi
+  final List<String> _recentSearches = ["MF-101", "Library", "John Doe", "Spring Festival"];
 
   @override
   void initState() {
@@ -53,7 +56,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   Expanded(
                     child: AppSearchBar(
                       controller: _searchController,
-                      placeholder: "Kampüste ara...",
+                      placeholder: "Search on campus...", // Kampüste ara -> Search on campus
                       onChanged: (val) => setState(() => _searchQuery = val),
                     ),
                   ),
@@ -111,7 +114,7 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Son Aramalar", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+          const Text("Recent Searches", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -138,7 +141,7 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           Icon(Icons.search_off, size: 64, color: AppTheme.textMuted.withOpacity(0.5)),
           const SizedBox(height: 16),
-          const Text("Sonuç bulunamadı", style: TextStyle(fontSize: 18, color: AppTheme.textMuted)),
+          const Text("No results found", style: TextStyle(fontSize: 18, color: AppTheme.textMuted)),
         ],
       ),
     );
@@ -148,48 +151,49 @@ class _SearchScreenState extends State<SearchScreen> {
     List<Widget> results = [];
     final query = _searchQuery.toLowerCase();
 
-    if (_selectedFilter == "Tümü" || _selectedFilter == "Binalar") {
+    // Veri dökümü yapılırken Firestore'daki İngilizce karşılıklar kullanıldı
+    if (_selectedFilter == "All" || _selectedFilter == "Buildings") {
       final buildings = data['buildings'] as List? ?? [];
       for (var b in buildings) {
         if (b['name'].toLowerCase().contains(query) || b['abbr'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: b['name'], subtitle: b['location'], badge: const AppBadge(label: "Bina"),
+            title: b['name'], subtitle: b['location'], badge: const AppBadge(label: "Building"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: b))),
           ));
         }
       }
     }
 
-    if (_selectedFilter == "Tümü" || _selectedFilter == "Derslikler") {
+    if (_selectedFilter == "All" || _selectedFilter == "Classrooms") {
       final classrooms = data['classrooms'] as List? ?? [];
       for (var c in classrooms) {
         if (c['name'].toLowerCase().contains(query) || c['building'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Derslik"),
+            title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Classroom"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))),
           ));
         }
       }
     }
 
-    if (_selectedFilter == "Tümü" || _selectedFilter == "Hocalar") {
+    if (_selectedFilter == "All" || _selectedFilter == "Instructors") {
       final instructors = data['instructors'] as List? ?? [];
       for (var i in instructors) {
         if (i['name'].toLowerCase().contains(query) || i['department'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Hoca"),
+            title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Staff"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: i))),
           ));
         }
       }
     }
 
-    if (_selectedFilter == "Tümü" || _selectedFilter == "Etkinlikler") {
+    if (_selectedFilter == "All" || _selectedFilter == "Events") {
       final events = data['events'] as List? ?? [];
       for (var e in events) {
         if (e['title'].toLowerCase().contains(query) || e['description'].toLowerCase().contains(query)) {
           results.add(InfoCard(
-            title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Etkinlik"),
+            title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Event"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e))),
           ));
         }

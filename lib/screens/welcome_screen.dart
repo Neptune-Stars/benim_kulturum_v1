@@ -12,12 +12,9 @@ class WelcomeScreen extends StatelessWidget {
       String description,
       ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-    final softBg = isDark
-        ? Colors.white.withOpacity(0.06)
-        : AppTheme.primaryLight.withOpacity(0.08);
+    final softBg = isDark ? Colors.white.withOpacity(0.06) : AppTheme.primaryLight.withOpacity(0.08);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -26,50 +23,26 @@ class WelcomeScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: softBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withOpacity(0.06)
-                : AppTheme.borderColor,
-          ),
+          border: Border.all(color: isDark ? Colors.white.withOpacity(0.06) : AppTheme.borderColor),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.primaryColor.withOpacity(0.20)
-                    : AppTheme.primaryLight.withOpacity(0.12),
+                color: isDark ? AppTheme.primaryColor.withOpacity(0.20) : AppTheme.primaryLight.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryColor,
-                size: 24,
-              ),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: textColor,
-                    ),
-                  ),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
                   const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: mutedColor,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
+                  Text(description, style: TextStyle(color: mutedColor, fontSize: 14, height: 1.4)),
                 ],
               ),
             ),
@@ -81,13 +54,8 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-    final logoBg = isDark
-        ? AppTheme.primaryColor.withOpacity(0.15)
-        : AppTheme.primaryLight.withOpacity(0.10);
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Scaffold(
       body: SafeArea(
@@ -100,53 +68,41 @@ class WelcomeScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: logoBg,
+                  color: AppTheme.primaryLight.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(28),
                 ),
-                child: const Icon(
-                  Icons.school,
-                  size: 64,
-                  color: AppTheme.primaryColor,
-                ),
+                child: const Icon(Icons.school, size: 64, color: AppTheme.primaryColor),
               ),
               const SizedBox(height: 28),
               Text(
-                "Benim Kültürüm'e Hoş Geldin",
+                "Welcome to My Kultur",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                  height: 1.2,
-                ),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor, height: 1.2),
               ),
               const SizedBox(height: 10),
               Text(
-                "Kampüs hayatını kolaylaştıran asistanın",
+                "Your assistant making campus life easier",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: mutedColor,
-                ),
+                style: TextStyle(fontSize: 16, color: mutedColor),
               ),
               const SizedBox(height: 40),
               _buildFeatureCard(
                 context,
                 Icons.business,
-                "Derslik Bilgileri",
-                "Tüm kampüs binalarını ve derslikleri keşfet",
+                "Classroom Info",
+                "Explore all campus buildings and classrooms",
               ),
               _buildFeatureCard(
                 context,
                 Icons.notifications,
-                "Duyurular & Etkinlikler",
-                "Kampüsteki etkinliklerden anında haberdar ol",
+                "Announcements & Events",
+                "Get instant updates on campus activities",
               ),
               _buildFeatureCard(
                 context,
                 Icons.restaurant,
-                "Yemekhane & Fiyatlar",
-                "Günlük menüyü ve kampüs fiyatlarını gör",
+                "Cafeteria & Prices",
+                "View daily menus and campus prices",
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -154,13 +110,7 @@ class WelcomeScreen extends StatelessWidget {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () => context.go('/login'),
-                  child: const Text(
-                    "Başla",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: const Text("Get Started", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 16),

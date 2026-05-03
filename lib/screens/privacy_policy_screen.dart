@@ -4,6 +4,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/badge_widget.dart';
 import 'privacy_policy_screen.dart';
 
+
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({Key? key}) : super(key: key);
 
@@ -11,7 +12,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CustomAppBar(
-        title: "Gizlilik Politikası",
+        title: "Privacy Policy",
         showBack: true,
       ),
       body: SingleChildScrollView(
@@ -24,71 +25,71 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
             _PolicySection(
               icon: Icons.info_outline,
-              title: "1. Genel Bilgilendirme",
+              title: "1. General Information",
               content:
-              "Benim Kültürüm uygulaması, kampüs yaşamını daha düzenli ve erişilebilir hale getirmek amacıyla geliştirilmiştir. "
-                  "Bu politika; uygulama içinde hangi bilgilerin görüntülendiğini, nasıl işlendiğini ve kullanıcı deneyimini iyileştirmek için nasıl kullanıldığını açıklar.",
+              "The My Culture application was developed to make campus life more organized and accessible. "
+                  "This policy explains what information is displayed, how it is processed, and how it is used to improve the user experience.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.person_outline,
-              title: "2. Toplanan Bilgiler",
+              title: "2. Information Collected",
               content:
-              "Uygulama; kullanıcı adı, öğrenci numarası, favoriler, katılınan etkinlikler ve uygulama içi tercih bilgileri gibi bazı temel verileri gösterebilir veya geçici olarak tutabilir. "
-                  "Bu bilgiler kullanıcı deneyimini kişiselleştirmek amacıyla kullanılır.",
+              "The application may display or temporarily store basic data such as username, student number, favorites, events joined, and in-app preference information. "
+                  "This information is used to personalize the user experience.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.settings_outlined,
-              title: "3. Bilgilerin Kullanımı",
+              title: "3. Use of Information",
               content:
-              "Toplanan veya görüntülenen bilgiler; kullanıcıya uygun ekranları sunmak, favori içerikleri göstermek, etkinlik katılımlarını listelemek ve uygulama akışını yönetmek için kullanılır. "
-                  "Veriler, kullanıcı deneyimini geliştirmek dışında farklı bir amaçla kullanılmaz.",
+              "The information collected or displayed is used to present suitable screens, show favorite content, list event participation, and manage the application flow. "
+                  "Data is not used for any purpose other than improving the user experience.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.share_outlined,
-              title: "4. Üçüncü Taraflarla Paylaşım",
+              title: "4. Sharing with Third Parties",
               content:
-              "Kullanıcı bilgileri, açık bir yasal zorunluluk veya kullanıcı onayı bulunmadıkça üçüncü taraflarla paylaşılmaz. "
-                  "Uygulama içerisinde gösterilen veriler yalnızca sistem işleyişi kapsamında değerlendirilir.",
+              "User information is not shared with third parties unless there is a clear legal obligation or user consent. "
+                  "The data shown within the application is only evaluated within the scope of system operation.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.lock_outline,
-              title: "5. Veri Güvenliği",
+              title: "5. Data Security",
               content:
-              "Kullanıcı bilgilerinin korunması için makul teknik ve tasarımsal önlemler alınır. "
-                  "Ancak hiçbir dijital sistem yüzde yüz risksiz değildir. Bu nedenle kullanıcıların da hesap bilgilerini dikkatli kullanması beklenir.",
+              "Reasonable technical and design measures are taken to protect user information. "
+                  "However, no digital system is 100% risk-free. Therefore, users are expected to use their account information carefully.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.visibility_outlined,
-              title: "6. Kullanıcı Hakları",
+              title: "6. User Rights",
               content:
-              "Kullanıcılar, uygulama içinde görüntülenen bilgileri inceleyebilir; yanlış veya güncel olmayan bilgiler için destek kanalları üzerinden geri bildirim verebilir. "
-                  "Gerektiğinde verilerin güncellenmesi veya düzeltilmesi talep edilebilir.",
+              "Users can review the information displayed in the application; they can provide feedback via support channels for incorrect or outdated information. "
+                  "Updates or corrections to the data can be requested when necessary.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.update_outlined,
-              title: "7. Politika Güncellemeleri",
+              title: "7. Policy Updates",
               content:
-              "Bu gizlilik politikası ihtiyaçlara göre güncellenebilir. Önemli değişiklikler olduğunda kullanıcıya uygulama içinde bilgilendirme yapılması hedeflenir.",
+              "This privacy policy may be updated according to needs. When significant changes occur, we aim to inform the user within the application.",
             ),
             const SizedBox(height: 16),
 
             _PolicySection(
               icon: Icons.mail_outline,
-              title: "8. İletişim",
+              title: "8. Contact",
               content:
-              "Gizlilik politikası hakkında sorularınız veya geri bildirimleriniz için uygulama içindeki “Sorun Bildir” bölümü üzerinden iletişime geçebilirsiniz.",
+              "For questions or feedback regarding the privacy policy, you can contact us via the 'Report Issue' section within the application.",
             ),
             const SizedBox(height: 24),
 
@@ -103,8 +104,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                "Bu ekran şu an uygulama içi bilgilendirme amaçlı hazırlanmıştır. "
-                    "Gerçek bir yayına çıkılacaksa metin, hukukî ve kurumsal gerekliliklere göre yeniden gözden geçirilmelidir.",
+                "This screen is currently prepared for in-app informational purposes. "
+                    "If a real release is planned, the text should be reviewed according to legal and institutional requirements.",
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.5,
@@ -140,7 +141,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            "Kullanıcı Verilerinin Korunması",
+            "Protection of User Data",
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -149,7 +150,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            "Uygulamada görüntülenen ve işlenen temel kullanıcı verilerine ilişkin bilgilendirme metni.",
+            "Information text regarding the basic user data displayed and processed in the application.",
             style: TextStyle(
               color: Colors.white70,
               fontSize: 14,
@@ -157,10 +158,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: const [
+          const Row(
+            children: [
               AppBadge(
-                label: "Son Güncelleme: 2026",
+                label: "Last Update: 2026",
                 backgroundColor: Colors.white24,
                 textColor: Colors.white,
               ),

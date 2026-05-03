@@ -8,7 +8,6 @@ import '../widgets/info_card.dart';
 import '../data/data_service.dart';
 
 class OfficeHoursScreen extends StatefulWidget {
-
   const OfficeHoursScreen({super.key});
 
   @override
@@ -17,48 +16,11 @@ class OfficeHoursScreen extends StatefulWidget {
 
 class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
 
-  late Future<Map<String, dynamic>> _databaseFuture;
+  // Updated filter list with English days
+  final List<String> _filters = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  final List<String> _filters = ["Tümü", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
-
-  @override
-  void initState() {
-    super.initState();
-    _databaseFuture = DataService.loadDatabase(); // Silinmedi, burada duruyor.
-  }
-
-
-  List<Map<String, String>> _generateDynamicOfficeHours(List<dynamic> instructors) {
-    List<Map<String, String>> generatedList = [];
-    final days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
-
-    for (int i = 0; i < instructors.length; i++) {
-      var instructor = instructors[i];
-      String day1 = days[i % 5];
-      String day2 = days[(i + 2) % 5];
-
-      generatedList.add({
-        "name": instructor['name']?.toString() ?? "",
-        "office": instructor['office']?.toString() ?? "Bilinmiyor",
-        "day": day1,
-        "time": "10:00-12:00",
-        "dept": instructor['department']?.toString() ?? ""
-      });
-
-      generatedList.add({
-        "name": instructor['name']?.toString() ?? "",
-        "office": instructor['office']?.toString() ?? "Bilinmiyor",
-        "day": day2,
-        "time": "14:00-16:00",
-        "dept": instructor['department']?.toString() ?? ""
-      });
-    }
-    return generatedList;
-  }
-
-  // YENİ: Gerçek Firestore verisini parçalayan yardımcı fonksiyon
   List<Map<String, String>> _processRealOfficeHours(List<QueryDocumentSnapshot> docs) {
     List<Map<String, String>> finalHoursList = [];
 
@@ -66,16 +28,16 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
       final data = doc.data() as Map<String, dynamic>;
       final String name = data['name'] ?? "";
       final String dept = data['department'] ?? "";
-      final String office = data['office'] ?? "Bilinmiyor";
+      final String office = data['office'] ?? "Unknown";
 
-      // Eğer Firestore'da ofis saati varsa onu al, yoksa varsayılan listeyi kullan
+      // Default values switched to English
       final List<dynamic> hours = (data['officeHours'] is List && (data['officeHours'] as List).isNotEmpty)
           ? data['officeHours']
-          : ["Pazartesi: 10:00-12:00", "Çarşamba: 14:00-16:00"];
+          : ["Monday: 10:00-12:00", "Wednesday: 14:00-16:00"];
 
       for (var hourEntry in hours) {
         String hourStr = hourEntry.toString();
-        String day = "Görüşme";
+        String day = "Meeting";
         String time = hourStr;
 
         if (hourStr.contains(':')) {
@@ -99,39 +61,24 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "Ofis Saatleri", showBack: true),
-      // FutureBuilder yerine StreamBuilder gelerek veriyi "CANLI" hale getirdik
+      appBar: const CustomAppBar(title: "Office Hours", showBack: true),
       body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('instructors').snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text("Veri bulunamadı."));
-            }
+            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const Center(child: Text("No data found."));
 
-            // Artık yapay veri değil, Firestore'dan gelen gerçek veri işleniyor
             final allOfficeHours = _processRealOfficeHours(snapshot.data!.docs);
 
             final filteredHours = allOfficeHours.where((oh) {
-              final String name = oh['name'] ?? "";
-              final String dept = oh['dept'] ?? "";
-              final String day = oh['day'] ?? "";
+              final name = oh['name']!.toLowerCase();
+              final dept = oh['dept']!.toLowerCase();
+              final day = oh['day']!;
 
-              final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  dept.toLowerCase().contains(_searchQuery.toLowerCase());
+              final matchesSearch = name.contains(_searchQuery.toLowerCase()) || dept.contains(_searchQuery.toLowerCase());
 
-              // GÜNCELLENEN ESNEK FİLTRELEME: Türkçe karakterleri normalize ediyoruz
-              String normalize(String text) {
-                return text.toLowerCase()
-                    .replaceAll('ş', 's').replaceAll('ı', 'i')
-                    .replaceAll('ç', 'c').replaceAll('ğ', 'g')
-                    .replaceAll('ü', 'u').replaceAll('ö', 'o');
-              }
-
-              final matchesFilter = _selectedFilter == "Tümü" ||
-                  normalize(day) == normalize(_selectedFilter);
+              // Direct string comparison since data should now be in English
+              final matchesFilter = _selectedFilter == "All" || day == _selectedFilter;
 
               return matchesSearch && matchesFilter;
             }).toList();
@@ -141,7 +88,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: AppSearchBar(
-                    placeholder: "Hoca veya bölüm ara...",
+                    placeholder: "Search instructor or department...",
                     onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),
@@ -149,31 +96,26 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                   height: 40,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: _filters.length,
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      return AppFilterChip(
-                        label: filter,
-                        active: _selectedFilter == filter,
-                        onTap: () => setState(() => _selectedFilter = filter),
-                      );
-                    },
+                    itemBuilder: (context, index) => AppFilterChip(
+                      label: _filters[index],
+                      active: _selectedFilter == _filters[index],
+                      onTap: () => setState(() => _selectedFilter = _filters[index]),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: filteredHours.isEmpty
-                      ? const Center(child: Text("Sonuç bulunamadı", style: TextStyle(color: AppTheme.textMuted)))
+                      ? const Center(child: Text("No results found", style: TextStyle(color: AppTheme.textMuted)))
                       : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: filteredHours.length,
                     itemBuilder: (context, index) {
                       final oh = filteredHours[index];
                       return InfoCard(
                         title: oh['name'] ?? "",
                         subtitle: oh['dept'] ?? "",
-                        metadata: "${oh['day'] ?? ""} • ${oh['time'] ?? ""} | Ofis: ${oh['office'] ?? ""}",
+                        metadata: "${oh['day']} • ${oh['time']} | Office: ${oh['office']}",
                         showChevron: false,
                       );
                     },

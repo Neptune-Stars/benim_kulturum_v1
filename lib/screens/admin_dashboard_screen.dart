@@ -9,7 +9,6 @@ import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
 import 'package:flutter/services.dart';
 
-
 class DateInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -62,8 +61,6 @@ class TimeInputFormatter extends TextInputFormatter {
   }
 }
 
-
-
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
 
@@ -76,7 +73,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _tabs = [
-    "Genel", "Birimler", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane", "Fiyatlar", "Sorunlar", "Öğrenciler"
+    "General", "Units", "Classrooms", "Instructors", "Events", "Announcements", "Cafeteria", "Prices", "Issues", "Students"
   ];
 
   final Map<int, TextEditingController> _searchControllers = {
@@ -143,20 +140,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Silmeyi Onayla"),
-        content: const Text("Bu kaydı silmek istediğinize emin misiniz? Bu işlem geri alınamaz."),
+        title: const Text("Confirm Deletion"),
+        content: const Text("Are you sure you want to delete this record? This action cannot be undone."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal", style: TextStyle(color: AppTheme.textMuted))),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: AppTheme.textMuted))),
           TextButton(
               onPressed: () async {
                 await FirebaseFirestore.instance.collection(collectionKey).doc(docId).delete();
                 if (context.mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt bulut veritabanından silindi.")));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Record deleted from cloud database.")));
                   _loadData();
                 }
               },
-              child: const Text("Sil", style: TextStyle(color: AppTheme.destructiveColor))
+              child: const Text("Delete", style: TextStyle(color: AppTheme.destructiveColor))
           ),
         ],
       ),
@@ -234,10 +231,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     // Fallback only if Firebase campus reference data is not loaded yet.
     return [
-      "Ataköy Yerleşkesi",
-      "İncirli Yerleşkesi",
-      "Şirinevler / Bahçelievler Yerleşkesi",
-      "Basın Ekspres / Küçükçekmece Yerleşkesi",
+      "Atakoy Campus",
+      "Incirli Campus",
+      "Sirinevler / Bahcelievler Campus",
+      "Basin Ekspres / Kucukcekmece Campus",
     ];
   }
 
@@ -263,7 +260,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       final list = locationSet.toList()..sort();
 
       if (list.isEmpty) {
-        list.add("Genel Bina");
+        list.add("General Building");
       }
 
       return MapEntry(campus, list);
@@ -273,20 +270,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   String _floorLabelFromValue(dynamic value) {
     final text = value?.toString().trim() ?? "";
 
-    if (text.contains("Kat")) return text;
+    if (text.contains("Floor") || text.contains("Kat")) return text;
 
     final number = int.tryParse(text);
 
-    if (number == -1) return "Bodrum Kat";
-    if (number == 0) return "Zemin Kat";
-    if (number != null) return "$number. Kat";
+    if (number == -1) return "Basement";
+    if (number == 0) return "Ground Floor";
+    if (number == 1) return "1st Floor";
+    if (number == 2) return "2nd Floor";
+    if (number == 3) return "3rd Floor";
+    if (number != null) return "${number}th Floor";
 
-    return "Zemin Kat";
+    return "Ground Floor";
   }
 
   int _floorValueFromLabel(String label) {
-    if (label == "Bodrum Kat") return -1;
-    if (label == "Zemin Kat") return 0;
+    if (label == "Basement" || label == "Bodrum Kat") return -1;
+    if (label == "Ground Floor" || label == "Zemin Kat") return 0;
 
     final match = RegExp(r'(\d+)').firstMatch(label);
     if (match == null) return 0;
@@ -313,7 +313,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
             ),
             const SizedBox(width: 8),
-            const Text("Yönetici Paneli"),
+            const Text("Admin Panel"),
           ],
         ),
         centerTitle: false,
@@ -322,8 +322,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             builder: (context, themeProvider, _) {
               return IconButton(
                 tooltip: themeProvider.isDarkMode
-                    ? "Aydınlık moda geç"
-                    : "Karanlık moda geç",
+                    ? "Switch to Light Mode"
+                    : "Switch to Dark Mode",
                 icon: Icon(
                   themeProvider.isDarkMode
                       ? Icons.light_mode_outlined
@@ -336,7 +336,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             },
           ),
           IconButton(
-            tooltip: "Çıkış yap",
+            tooltip: "Logout",
             icon: const Icon(
               Icons.logout,
               color: AppTheme.destructiveColor,
@@ -357,7 +357,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         future: _databaseFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Gösterilecek veri bulunamadı."));
+          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No data to display."));
 
           final data = snapshot.data!;
 
@@ -370,7 +370,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           final allEvents = data['events'] as List<dynamic>? ?? [];
           final allAnnouncements = data['announcements'] as List<dynamic>? ?? [];
 
-          // NEW: Reading fully from Firebase now
           final allPrices = data['prices'] as List<dynamic>? ?? [];
           final allIssues = data['issues'] as List<dynamic>? ?? [];
           final allStudents = data['students'] as List<dynamic>? ?? [];
@@ -380,7 +379,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
-              ["Kahvaltı", "Yemek", "Fast Food"];
+              ["Breakfast", "Main Meal", "Fast Food"];
 
           final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
           final filteredBuildings = allBuildings.where((b) => _normalizeForSearch(b['name'] ?? '').contains(sq1) || _normalizeForSearch(b['location'] ?? '').contains(sq1)).toList();
@@ -414,12 +413,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             children: [
               _buildGenelTab(data),
               _buildManagementTab(
-                title: "Kampüs Birimleri", count: filteredBuildings.length, searchController: _searchControllers[1]!,
+                title: "Campus Units", count: filteredBuildings.length, searchController: _searchControllers[1]!,
                 items: filteredBuildings.map((e) => _buildListItem(e['name'] ?? '', e['location'] ?? '', () => _openBuildingForm(isEdit: true, item: e), () => _showDeleteDialog('buildings', e['id'].toString()))).toList(),
                 onAdd: () => _openBuildingForm(isEdit: false),
               ),
               _buildManagementTab(
-                title: "Derslikler",
+                title: "Classrooms",
                 count: filteredClassrooms.length,
                 searchController: _searchControllers[2]!,
                 items: filteredClassrooms.map((e) {
@@ -448,29 +447,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ),
               ),
               _buildManagementTab(
-                title: "Hocalar", count: filteredInstructors.length, searchController: _searchControllers[3]!,
+                title: "Instructors", count: filteredInstructors.length, searchController: _searchControllers[3]!,
                 items: filteredInstructors.map((e) => _buildListItem(e['name'] ?? '', e['department'] ?? '', () => _openInstructorForm(isEdit: true, item: e), () => _showDeleteDialog('instructors', e['id'].toString()))).toList(),
                 onAdd: () => _openInstructorForm(isEdit: false),
               ),
               _buildManagementTab(
-                title: "Etkinlikler", count: filteredEvents.length, searchController: _searchControllers[4]!,
+                title: "Events", count: filteredEvents.length, searchController: _searchControllers[4]!,
                 items: filteredEvents.map((e) => _buildListItem(e['title'] ?? '', "${e['date']} - ${e['location']}", () => _openEventForm(isEdit: true, item: e), () => _showDeleteDialog('events', e['id'].toString()))).toList(),
                 onAdd: () => _openEventForm(isEdit: false),
               ),
               _buildManagementTab(
-                title: "Duyurular", count: filteredAnnouncements.length, searchController: _searchControllers[5]!,
+                title: "Announcements", count: filteredAnnouncements.length, searchController: _searchControllers[5]!,
                 items: filteredAnnouncements.map((e) => _buildListItem(e['title'] ?? '', e['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e), () => _showDeleteDialog('announcements', e['id'].toString()))).toList(),
                 onAdd: () => _openAnnouncementForm(isEdit: false),
               ),
               _buildCafeteriaWeekTab(),
               _buildManagementTab(
-                title: "Fiyatlar", count: filteredPrices.length, searchController: _searchControllers[7]!,
+                title: "Prices", count: filteredPrices.length, searchController: _searchControllers[7]!,
                 items: filteredPrices.map((p) => _buildListItem(p["name"] ?? '', "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true, item: p), () => _showDeleteDialog('prices', p['id'].toString()))).toList(),
                 onAdd: () => _openPriceForm(isEdit: false),
               ),
               _buildIssuesTab(filteredIssues, _searchControllers[8]!),
               _buildManagementTab(
-                title: "Öğrenciler", count: filteredStudents.length, searchController: _searchControllers[9]!,
+                title: "Students", count: filteredStudents.length, searchController: _searchControllers[9]!,
                 items: filteredStudents.map((s) => _buildListItem(s["name"] ?? '', "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true, item: s), () => _showDeleteDialog('students', s['id'].toString()))).toList(),
                 onAdd: () => _openStudentForm(isEdit: false),
               ),
@@ -493,7 +492,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
         if (snapshot.hasError) {
           return const Center(
-            child: Text("Haftalık yemekhane verisi alınamadı."),
+            child: Text("Could not retrieve weekly cafeteria data."),
           );
         }
 
@@ -511,7 +510,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     children: [
                       const Expanded(
                         child: Text(
-                          "Yemekhane Menüleri",
+                          "Cafeteria Menus",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -519,7 +518,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         ),
                       ),
                       IconButton(
-                        tooltip: "Önceki hafta",
+                        tooltip: "Previous week",
                         onPressed: () {
                           setState(() {
                             _cafeteriaWeekStart = _cafeteriaWeekStart.subtract(
@@ -530,7 +529,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         icon: const Icon(Icons.chevron_left),
                       ),
                       IconButton(
-                        tooltip: "Sonraki hafta",
+                        tooltip: "Next week",
                         onPressed: () {
                           setState(() {
                             _cafeteriaWeekStart = _cafeteriaWeekStart.add(
@@ -552,7 +551,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Gün tikini kapatırsanız öğrenciler o gün için yemek olmadığını görür. Gün açıkken o güne ait Kahvaltı, Yemek ve Fast Food içeriklerini düzenleyebilirsiniz.",
+                    "If you uncheck a day, students will see that there is no food for that day. When active, you can edit Breakfast, Main Meal, and Fast Food items.",
                     style: TextStyle(
                       color: _adminTextMutedColor(),
                       height: 1.35,
@@ -634,7 +633,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
             ),
             IconButton(
-              tooltip: isDayActive ? "Günü kapat" : "Günü aç",
+              tooltip: isDayActive ? "Close day" : "Open day",
               visualDensity: VisualDensity.compact,
               onPressed: () => _toggleCafeteriaDayActive(date, !isDayActive),
               icon: Icon(
@@ -644,7 +643,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
             ),
             IconButton(
-              tooltip: isDayActive ? "Günü düzenle" : "Gün kapalı",
+              tooltip: isDayActive ? "Edit day" : "Day is closed",
               visualDensity: VisualDensity.compact,
               onPressed: isDayActive ? () => _openDailyCafeteriaDialog(date) : null,
               icon: Icon(
@@ -659,7 +658,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-
   Future<void> _toggleCafeteriaDayActive(DateTime date, bool nextValue) async {
     await DataService.setCafeteriaDayActiveStatus(date, nextValue);
 
@@ -668,8 +666,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         SnackBar(
           content: Text(
             nextValue
-                ? "${DataService.weekdayName(date.weekday)} tekrar öğrencilere açıldı."
-                : "${DataService.weekdayName(date.weekday)} öğrenciler için kapatıldı.",
+                ? "${DataService.weekdayName(date.weekday)} is open for students again."
+                : "${DataService.weekdayName(date.weekday)} is closed for students.",
           ),
         ),
       );
@@ -694,8 +692,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         SnackBar(
           content: Text(
             nextValue
-                ? "$mealType öğrenciler için görünür yapıldı."
-                : "$mealType öğrencilerden gizlendi.",
+                ? "$mealType is now visible to students."
+                : "$mealType is hidden from students.",
           ),
         ),
       );
@@ -712,7 +710,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
               title: Text(
-                "${DataService.weekdayName(date.weekday)} Menüsü",
+                "${DataService.weekdayName(date.weekday)} Menu",
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               content: SizedBox(
@@ -736,12 +734,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "Bu gün öğrenciler için kapalı.",
+                            "This day is closed for students.",
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            "Gün tikini tekrar açarsanız öğrenciler bu günü görebilir ve menüler tekrar düzenlenebilir.",
+                            "If you check the day again, students can see it and menus can be edited.",
                             style: TextStyle(color: _adminTextMutedColor(), height: 1.35),
                           ),
                           const SizedBox(height: 16),
@@ -752,7 +750,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               setState(() {});
                             },
                             icon: const Icon(Icons.check_circle),
-                            label: const Text("Günü Aç"),
+                            label: const Text("Open Day"),
                           ),
                         ],
                       );
@@ -795,7 +793,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     ),
                                   ),
                                   subtitle: Text(
-                                    "$mealType • ${menu['time'] ?? '-'} • ${menu['price'] ?? '-'} • ${items.length} içerik",
+                                    "$mealType • ${menu['time'] ?? '-'} • ${menu['price'] ?? '-'} • ${items.length} items",
                                     style: TextStyle(
                                       color: isMenuActive
                                           ? AppTheme.textMuted
@@ -806,7 +804,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                        tooltip: isMenuActive ? "Öğrencilerden gizle" : "Öğrencilere göster",
+                                        tooltip: isMenuActive ? "Hide from students" : "Show to students",
                                         onPressed: () => _toggleDailyMenuActive(
                                           date: date,
                                           mealType: mealType,
@@ -826,7 +824,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                         ),
                                       ),
                                       IconButton(
-                                        tooltip: "Menüyü düzenle",
+                                        tooltip: "Edit menu",
                                         onPressed: () => _openDailyMenuForm(
                                           date: date,
                                           mealType: mealType,
@@ -856,7 +854,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text("Kapat"),
+                  child: const Text("Close"),
                 ),
               ],
             );
@@ -865,7 +863,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       },
     );
   }
-
 
   void _openDailyMenuForm({
     required DateTime date,
@@ -912,216 +909,216 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     }
 
     showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          return AlertDialog(
-            title: Text(
-              "${DataService.weekdayName(date.weekday)} - $normalizedMealType",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: menuNameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "Menü Adı",
-                      hintText: "Örn: Bugünün Yemeği",
-                    ),
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+            builder: (dialogContext, setDialogState) {
+              return AlertDialog(
+                  title: Text(
+                    "${DataService.weekdayName(date.weekday)} - $normalizedMealType",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: timeCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "Saat Aralığı",
-                      hintText: "Örn: 13:00-18:00",
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: priceCtrl,
-                    decoration: InputDecoration(
-                      labelText: isFastFood ? "Genel Fiyat Bilgisi" : "Fiyat",
-                      hintText: isFastFood ? "Ürün bazlı" : "Örn: ₺35",
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (!isFastFood)
-                    TextField(
-                      controller: itemsCtrl,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: "İçerik / Yemekler",
-                        hintText: "Virgülle ayırın: Çorba, Tavuk, Pilav",
-                      ),
-                    )
-                  else ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Fast Food Ürünleri",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...productControllers.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final controllers = entry.value;
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: menuNameCtrl,
+                          decoration: const InputDecoration(
+                            labelText: "Menu Name",
+                            hintText: "E.g.: Today's Meal",
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: timeCtrl,
+                          decoration: const InputDecoration(
+                            labelText: "Time Range",
+                            hintText: "E.g.: 13:00-18:00",
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: priceCtrl,
+                          decoration: InputDecoration(
+                            labelText: isFastFood ? "General Price Info" : "Price",
+                            hintText: isFastFood ? "Item based" : "E.g.: ₺35",
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (!isFastFood)
+                          TextField(
+                            controller: itemsCtrl,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: "Content / Meals",
+                              hintText: "Separate with commas: Soup, Chicken, Rice",
+                            ),
+                          )
+                        else ...[
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Fast Food Items",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...productControllers.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final controllers = entry.value;
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextField(
-                                controller: controllers["name"],
-                                decoration: InputDecoration(
-                                  labelText: "Ürün ${index + 1}",
-                                ),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextField(
+                                      controller: controllers["name"],
+                                      decoration: InputDecoration(
+                                        labelText: "Item ${index + 1}",
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextField(
+                                      controller: controllers["price"],
+                                      decoration: const InputDecoration(
+                                        labelText: "Price",
+                                        hintText: "₺40",
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: productControllers.length == 1
+                                        ? null
+                                        : () {
+                                      setDialogState(() {
+                                        productControllers.removeAt(index);
+                                      });
+                                    },
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 2,
-                              child: TextField(
-                                controller: controllers["price"],
-                                decoration: const InputDecoration(
-                                  labelText: "Fiyat",
-                                  hintText: "₺40",
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: productControllers.length == 1
-                                  ? null
-                                  : () {
+                            );
+                          }).toList(),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
                                 setDialogState(() {
-                                  productControllers.removeAt(index);
+                                  productControllers.add({
+                                    "name": TextEditingController(),
+                                    "price": TextEditingController(),
+                                  });
                                 });
                               },
-                              icon: const Icon(Icons.delete_outline),
+                              icon: const Icon(Icons.add),
+                              label: const Text("Add Item"),
                             ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () {
-                          setDialogState(() {
-                            productControllers.add({
-                              "name": TextEditingController(),
-                              "price": TextEditingController(),
-                            });
-                          });
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text("Ürün Ekle"),
-                      ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text("İptal"),
+                  ),
+                  actions: [
+                  TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("Cancel"),
               ),
               ElevatedButton(
-                onPressed: () async {
-                  final rawPrice = priceCtrl.text.trim();
-                  final normalizedPrice = isFastFood
-                      ? (rawPrice.isEmpty ? "Ürün bazlı" : rawPrice)
-                      : (rawPrice.isEmpty
-                      ? ""
-                      : rawPrice.startsWith("₺")
-                      ? rawPrice
-                      : "₺$rawPrice");
+              onPressed: () async {
+              final rawPrice = priceCtrl.text.trim();
+              final normalizedPrice = isFastFood
+              ? (rawPrice.isEmpty ? "Item based" : rawPrice)
+                  : (rawPrice.isEmpty
+              ? ""
+                  : rawPrice.startsWith("₺")
+              ? rawPrice
+                  : "₺$rawPrice");
 
-                  List<dynamic> newItems;
+              List<dynamic> newItems;
 
-                  if (isFastFood) {
-                    newItems = productControllers.map((controllers) {
-                      final name = controllers["name"]!.text.trim();
-                      final price = controllers["price"]!.text.trim();
-                      final normalizedProductPrice = price.isEmpty
-                          ? "₺0"
-                          : price.startsWith("₺")
-                          ? price
-                          : "₺$price";
+              if (isFastFood) {
+                newItems = productControllers.map((controllers) {
+                  final name = controllers["name"]!.text.trim();
+                  final price = controllers["price"]!.text.trim();
+                  final normalizedProductPrice = price.isEmpty
+                      ? "₺0"
+                      : price.startsWith("₺")
+                      ? price
+                      : "₺$price";
 
-                      return {
-                        "name": name,
-                        "price": normalizedProductPrice,
-                      };
-                    }).where((product) {
-                      return product["name"].toString().trim().isNotEmpty;
-                    }).toList();
-                  } else {
-                    newItems = itemsCtrl.text
-                        .split(",")
-                        .map((e) => e.trim())
-                        .where((e) => e.isNotEmpty)
-                        .toList();
-                  }
-
-                  if (newItems.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Menü içeriği boş bırakılamaz.")),
-                    );
-                    return;
-                  }
-
-                  final menuData = {
-                    "menuName": menuNameCtrl.text.trim().isEmpty
-                        ? normalizedMealType
-                        : menuNameCtrl.text.trim(),
-                    "time": timeCtrl.text.trim(),
-                    "price": normalizedPrice,
-                    "items": newItems,
-                    "isActive": item['isActive'] ?? true,
-                    "isChips": item['isChips'] ?? false,
+                  return {
+                    "name": name,
+                    "price": normalizedProductPrice,
                   };
+                }).where((product) {
+                  return product["name"].toString().trim().isNotEmpty;
+                }).toList();
+              } else {
+                newItems = itemsCtrl.text
+                    .split(",")
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+              }
 
-                  final docId = DataService.cafeteriaMenuDocId(
-                    date: date,
-                    mealType: normalizedMealType,
-                  );
+              if (newItems.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Menu content cannot be empty.")),
+                );
+                return;
+              }
 
-                  await FirebaseFirestore.instance
-                      .collection('cafeteriaMenus')
-                      .doc(docId)
-                      .set(
-                    DataService.buildCafeteriaMenuDocument(
-                      date: date,
-                      mealType: normalizedMealType,
-                      menu: menuData,
-                    ),
-                    SetOptions(merge: true),
-                  );
+              final menuData = {
+                "menuName": menuNameCtrl.text.trim().isEmpty
+                    ? normalizedMealType
+                    : menuNameCtrl.text.trim(),
+                "time": timeCtrl.text.trim(),
+                "price": normalizedPrice,
+                "items": newItems,
+                "isActive": item['isActive'] ?? true,
+                "isChips": item['isChips'] ?? false,
+              };
 
-                  if (context.mounted) {
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Günlük menü Firebase veritabanında güncellendi."),
-                      ),
-                    );
-                    onSaved?.call();
-                    setState(() {});
-                  }
-                },
-                child: const Text("Kaydet"),
+              final docId = DataService.cafeteriaMenuDocId(
+                date: date,
+                mealType: normalizedMealType,
+              );
+
+              await FirebaseFirestore.instance
+                  .collection('cafeteriaMenus')
+                  .doc(docId)
+                  .set(
+                DataService.buildCafeteriaMenuDocument(
+                  date: date,
+                  mealType: normalizedMealType,
+                  menu: menuData,
+                ),
+                SetOptions(merge: true),
+              );
+
+              if (context.mounted) {
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Daily menu updated in Firebase database."),
+                  ),
+                );
+                onSaved?.call();
+                setState(() {});
+              }
+              },
+                child: const Text("Save"),
               ),
-            ],
-          );
-        },
-      ),
+                  ],
+              );
+            },
+        ),
     );
   }
 
@@ -1142,7 +1139,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               children: [
                 Icon(Icons.cloud_done, color: AppTheme.primaryColor),
                 SizedBox(width: 12),
-                Expanded(child: Text("Google Firebase Cloud Aktif", style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold))),
+                Expanded(child: Text("Google Firebase Cloud Active", style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold))),
               ],
             ),
           ),
@@ -1151,12 +1148,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 1.25,
             children: [
-              _buildStatCard(Icons.business, "Birimler", bCount.toString(), 1),
-              _buildStatCard(Icons.meeting_room, "Derslikler", cCount.toString(), 2),
-              _buildStatCard(Icons.people, "Hocalar", iCount.toString(), 3),
-              _buildStatCard(Icons.event, "Etkinlikler", ((data['events'] as List?)?.length ?? 0).toString(), 4),
-              _buildStatCard(Icons.report_problem, "Sorunlar", ((data['issues'] as List?)?.length ?? 0).toString(), 8),
-              _buildStatCard(Icons.person, "Öğrenciler", ((data['students'] as List?)?.length ?? 0).toString(), 9),
+              _buildStatCard(Icons.business, "Units", bCount.toString(), 1),
+              _buildStatCard(Icons.meeting_room, "Classrooms", cCount.toString(), 2),
+              _buildStatCard(Icons.people, "Instructors", iCount.toString(), 3),
+              _buildStatCard(Icons.event, "Events", ((data['events'] as List?)?.length ?? 0).toString(), 4),
+              _buildStatCard(Icons.report_problem, "Issues", ((data['issues'] as List?)?.length ?? 0).toString(), 8),
+              _buildStatCard(Icons.person, "Students", ((data['students'] as List?)?.length ?? 0).toString(), 9),
             ],
           ),
         ],
@@ -1225,7 +1222,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             children: [
               Text("$title ($count)", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                onPressed: onAdd, icon: const Icon(Icons.add, size: 18), label: const Text("Ekle"),
+                onPressed: onAdd, icon: const Icon(Icons.add, size: 18), label: const Text("Add"),
                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
               )
             ],
@@ -1233,7 +1230,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppSearchBar(controller: searchController, placeholder: "Ara...", onChanged: (val) => setState(() {})),
+          child: AppSearchBar(controller: searchController, placeholder: "Search...", onChanged: (val) => setState(() {})),
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -1298,13 +1295,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   Widget _buildIssuesTab(List<dynamic> issues, TextEditingController searchController) {
     final openIssues = issues.where((issue) {
-      final status = (issue["status"] ?? "Açık").toString();
-      return status != "Çözüldü";
+      final status = (issue["status"] ?? "Open").toString();
+      return status != "Resolved";
     }).toList();
 
     final resolvedIssues = issues.where((issue) {
-      final status = (issue["status"] ?? "Açık").toString();
-      return status == "Çözüldü";
+      final status = (issue["status"] ?? "Open").toString();
+      return status == "Resolved";
     }).toList();
 
     final sortedIssues = [...openIssues, ...resolvedIssues];
@@ -1327,7 +1324,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: AppSearchBar(
             controller: searchController,
-            placeholder: "Konu veya konum ara...",
+            placeholder: "Search subject or location...",
             onChanged: (val) => setState(() {}),
           ),
         ),
@@ -1340,12 +1337,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             itemBuilder: (context, index) {
               final issue = sortedIssues[index];
 
-              final status = (issue["status"] ?? "Açık").toString();
-              final isResolved = status == "Çözüldü";
+              final status = (issue["status"] ?? "Open").toString();
+              final isResolved = status == "Resolved";
 
-              Color priorityColor = issue["priority"] == "Yüksek"
+              Color priorityColor = issue["priority"] == "High"
                   ? AppTheme.destructiveColor
-                  : (issue["priority"] == "Orta"
+                  : (issue["priority"] == "Medium"
                   ? AppTheme.warningColor
                   : AppTheme.successColor);
 
@@ -1439,24 +1436,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Sorun Detayı", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Issue Details", style: TextStyle(fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Konu: ${issue["subject"]}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text("Subject: ${issue["subject"]}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 12),
-              Text("Kategori: ${issue["category"]}", style: const TextStyle(color: AppTheme.textMuted)),
+              Text("Category: ${issue["category"]}", style: const TextStyle(color: AppTheme.textMuted)),
               const SizedBox(height: 4),
-              Text("Konum: ${issue["location"]}", style: const TextStyle(color: AppTheme.textMuted)),
+              Text("Location: ${issue["location"]}", style: const TextStyle(color: AppTheme.textMuted)),
               const Divider(height: 24),
               Text(issue["description"] ?? '', style: const TextStyle(height: 1.4)),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Kapat")),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
           ElevatedButton.icon(
             onPressed: () async {
 
@@ -1465,18 +1462,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   .collection('issues')
                   .doc((issue['firestoreDocId'] ?? issue['id']).toString())
                   .update({
-                "status": "Çözüldü",
+                "status": "Resolved",
                 "resolvedAt": FieldValue.serverTimestamp(),
               });
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Sorun çözüldü olarak işaretlendi.")),
+                  const SnackBar(content: Text("Issue marked as resolved.")),
                 );
                 _loadData();
               }
             },
-            icon: const Icon(Icons.check, size: 18), label: const Text("Çözüldü"),
+            icon: const Icon(Icons.check, size: 18), label: const Text("Resolved"),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor, foregroundColor: Colors.white),
           ),
         ],
@@ -1488,10 +1485,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final nameCtrl = TextEditingController(text: item?['name']);
     final noCtrl = TextEditingController(text: item?['no']);
     final emailCtrl = TextEditingController(text: item?['email']);
-    // YENİ: Veritabanından şifreyi çekiyoruz (veya yeni kayıt için boş bırakıyoruz)
     final passCtrl = TextEditingController(text: item?['password']);
 
-    final List<String> gradeOptions = ["Hazırlık", "1. Sınıf", "2. Sınıf", "3. Sınıf", "4. Sınıf", "Mezun"];
+    final List<String> gradeOptions = ["Prep", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "Alumni"];
     String? selectedGrade = item?['grade'];
 
     showDialog(
@@ -1499,26 +1495,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       builder: (context) => StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isEdit ? "Düzenle — Öğrenci" : "Yeni Öğrenci Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(isEdit ? "Edit — Student" : "Add New Student", style: const TextStyle(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildTextField("Ad Soyad", controller: nameCtrl),
+                    _buildTextField("Full Name", controller: nameCtrl),
                     const SizedBox(height: 12),
-                    _buildTextField("Öğrenci No", isNumber: true, controller: noCtrl),
+                    _buildTextField("Student No", isNumber: true, controller: noCtrl),
                     const SizedBox(height: 12),
-                    _buildTextField("E-posta", controller: emailCtrl),
+                    _buildTextField("Email", controller: emailCtrl),
                     const SizedBox(height: 12),
-                    // YENİ: Şifre alanı her zaman görünür, böylece Admin şifreyi değiştirebilir
-                    _buildTextField("Şifre", controller: passCtrl),
+                    _buildTextField("Password", controller: passCtrl),
                     const SizedBox(height: 12),
-                    _buildDropdown("Sınıf", gradeOptions, value: gradeOptions.contains(selectedGrade) ? selectedGrade : null, onChanged: (val) => setDialogState(() => selectedGrade = val)),
+                    _buildDropdown("Grade", gradeOptions, value: gradeOptions.contains(selectedGrade) ? selectedGrade : null, onChanged: (val) => setDialogState(() => selectedGrade = val)),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
                 ElevatedButton(
                     onPressed: () async {
                       int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
@@ -1527,13 +1522,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         'name': nameCtrl.text,
                         'no': noCtrl.text,
                         'email': emailCtrl.text,
-                        'password': passCtrl.text, // YENİ: Şifreyi Firebase'e kaydediyoruz
-                        'grade': selectedGrade ?? '1. Sınıf'
+                        'password': passCtrl.text,
+                        'grade': selectedGrade ?? '1st Grade'
                       };
                       await FirebaseFirestore.instance.collection('students').doc(docId.toString()).set(newData);
                       if (context.mounted) { Navigator.pop(context); _loadData(); }
                     },
-                    child: const Text("Kaydet")
+                    child: const Text("Save")
                 )
               ],
             );
@@ -1546,7 +1541,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final nameCtrl = TextEditingController(text: item?['name']);
     final priceCtrl = TextEditingController(text: item?['price']?.replaceAll('₺', ''));
 
-    final List<String> catOptions = ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"];
+    final List<String> catOptions = ["Tea/Coffee", "Beverages", "Snacks", "Meal"];
     String? selectedCat = item?['category'];
 
     showDialog(
@@ -1554,21 +1549,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       builder: (context) => StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isEdit ? "Düzenle — Fiyat" : "Yeni Fiyat Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(isEdit ? "Edit — Price" : "Add New Price", style: const TextStyle(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildDropdown("Kategori", catOptions, value: catOptions.contains(selectedCat) ? selectedCat : null, onChanged: (val) => setDialogState(() => selectedCat = val)),
+                    _buildDropdown("Category", catOptions, value: catOptions.contains(selectedCat) ? selectedCat : null, onChanged: (val) => setDialogState(() => selectedCat = val)),
                     const SizedBox(height: 12),
-                    _buildTextField("Ürün Adı", controller: nameCtrl),
+                    _buildTextField("Product Name", controller: nameCtrl),
                     const SizedBox(height: 12),
-                    _buildTextField("Fiyat", isNumber: true, controller: priceCtrl),
+                    _buildTextField("Price", isNumber: true, controller: priceCtrl),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
                 ElevatedButton(
                     onPressed: () async {
                       int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
@@ -1576,12 +1571,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         'id': docId,
                         'name': nameCtrl.text,
                         'price': "₺${priceCtrl.text}",
-                        'category': selectedCat ?? 'Çay/Kahve'
+                        'category': selectedCat ?? 'Tea/Coffee'
                       };
                       await FirebaseFirestore.instance.collection('prices').doc(docId.toString()).set(newData);
                       if (context.mounted) { Navigator.pop(context); _loadData(); }
                     },
-                    child: const Text("Kaydet")
+                    child: const Text("Save")
                 )
               ],
             );
@@ -1592,21 +1587,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
     final nameCtrl = TextEditingController(text: item?['name']);
-    final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
-    final List<String> locationOptions = ["Zemin Kat", "1. Kat", "2. Kat", "3. Kat", "4. Kat", "5. Kat", "Bodrum Kat", "Bahçe"];
+    final List<String> campusOptions = ["Atakoy", "Incirli", "Basin Ekspres", "Sirinevler"];
+    final List<String> locationOptions = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "Basement", "Garden"];
     String? selectedCampus;
     String? selectedLocation;
 
-    // Liste içinde birebir veya kısmi eşleşen seçeneği bulan yardımcı fonksiyon
     String? _matchOption(List<String> options, String? rawValue) {
       if (rawValue == null) return null;
       final value = rawValue.trim();
       if (value.isEmpty) return null;
 
-      // 1) Birebir eşleşme
       if (options.contains(value)) return value;
 
-      // 2) Kısmi eşleşme (içerme - büyük/küçük harf duyarsız)
       final lowerValue = value.toLowerCase();
       for (final opt in options) {
         final lowerOpt = opt.toLowerCase();
@@ -1640,33 +1632,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: Text(isEdit ? "Düzenle: Birim/Alan" : "Yeni Birim Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(isEdit ? "Edit: Unit/Area" : "Add New Unit", style: const TextStyle(fontWeight: FontWeight.bold)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Birim Adı (Örn: Hukuk Fakültesi)")),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Unit Name (E.g.: Faculty of Law)")),
                   const SizedBox(height: 12),
-                  _buildDropdown("Kampüs Seçin", campusOptions, value: selectedCampus, onChanged: (val) => setDialogState(() => selectedCampus = val)),
+                  _buildDropdown("Select Campus", campusOptions, value: selectedCampus, onChanged: (val) => setDialogState(() => selectedCampus = val)),
                   const SizedBox(height: 12),
-                  _buildDropdown("Konum/Kat Seçin", locationOptions, value: selectedLocation, onChanged: (val) => setDialogState(() => selectedLocation = val)),
+                  _buildDropdown("Select Floor/Location", locationOptions, value: selectedLocation, onChanged: (val) => setDialogState(() => selectedLocation = val)),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
               ElevatedButton(
                   onPressed: () async {
-                    String finalLocation = "${selectedCampus ?? 'Belirtilmedi'}, ${selectedLocation ?? 'Belirtilmedi'}";
+                    String finalLocation = "${selectedCampus ?? 'Not Specified'}, ${selectedLocation ?? 'Not Specified'}";
                     int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
                     Map<String, dynamic> newData = {
                       'id': docId, 'name': nameCtrl.text, 'location': finalLocation,
-                      'abbr': item?['abbr'] ?? 'YENİ', 'type': item?['type'] ?? 'faculty'
+                      'abbr': item?['abbr'] ?? 'NEW', 'type': item?['type'] ?? 'faculty'
                     };
                     await FirebaseFirestore.instance.collection('buildings').doc(docId.toString()).set(newData);
                     if (context.mounted) { Navigator.pop(context); _loadData(); }
                   },
-                  child: const Text("Kaydet")
+                  child: const Text("Save")
               )
             ],
           );
@@ -1685,22 +1677,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final capacityCtrl = TextEditingController(text: (item?['capacity'] ?? 40).toString());
 
     final List<String> floorOptions = [
-      "Bodrum Kat",
-      "Zemin Kat",
-      "1. Kat",
-      "2. Kat",
-      "3. Kat",
-      "4. Kat",
-      "5. Kat",
-      "6. Kat",
-      "7. Kat",
-      "8. Kat",
+      "Basement",
+      "Ground Floor",
+      "1st Floor",
+      "2nd Floor",
+      "3rd Floor",
+      "4th Floor",
+      "5th Floor",
+      "6th Floor",
+      "7th Floor",
+      "8th Floor",
     ];
 
     final List<String> typeOptions = [
-      "Derslik",
-      "Amfi",
-      "Laboratuvar",
+      "Classroom",
+      "Amphitheater",
+      "Laboratory",
     ];
 
     String? selectedCampus = item?['campus']?.toString();
@@ -1708,7 +1700,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String? selectedFloor = item?['floorLabel']?.toString();
     String? selectedType = item?['type']?.toString();
 
-    // Old data compatibility: previous code stored campus/floor together inside building.
     if ((selectedCampus == null || selectedCampus.trim().isEmpty) && item?['building'] != null) {
       final buildingText = item!['building'].toString();
 
@@ -1737,18 +1728,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     List<String> currentLocationOptions = selectedCampus == null
         ? <String>[]
-        : (locationsByCampus[selectedCampus] ?? <String>["Genel Bina"]);
+        : (locationsByCampus[selectedCampus] ?? <String>["General Building"]);
 
     if (selectedLocation == null || !currentLocationOptions.contains(selectedLocation)) {
       selectedLocation = currentLocationOptions.isNotEmpty ? currentLocationOptions.first : null;
     }
 
     if (selectedFloor == null || !floorOptions.contains(selectedFloor)) {
-      selectedFloor = "Zemin Kat";
+      selectedFloor = "Ground Floor";
     }
 
     if (selectedType == null || !typeOptions.contains(selectedType)) {
-      selectedType = "Derslik";
+      selectedType = "Classroom";
     }
 
     showDialog(
@@ -1757,11 +1748,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         builder: (context, setDialogState) {
           currentLocationOptions = selectedCampus == null
               ? <String>[]
-              : (locationsByCampus[selectedCampus] ?? <String>["Genel Bina"]);
+              : (locationsByCampus[selectedCampus] ?? <String>["General Building"]);
 
           return AlertDialog(
             title: Text(
-              isEdit ? "Düzenle: Derslik" : "Yeni Derslik",
+              isEdit ? "Edit: Classroom" : "New Classroom",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -1770,18 +1761,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   TextField(
                     controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: "Derslik Adı"),
+                    decoration: const InputDecoration(labelText: "Classroom Name"),
                   ),
                   const SizedBox(height: 12),
 
                   _buildDropdown(
-                    "Kampüs",
+                    "Campus",
                     campusOptions,
                     value: campusOptions.contains(selectedCampus) ? selectedCampus : null,
                     onChanged: (val) {
                       setDialogState(() {
                         selectedCampus = val;
-                        final nextLocations = locationsByCampus[selectedCampus] ?? <String>["Genel Bina"];
+                        final nextLocations = locationsByCampus[selectedCampus] ?? <String>["General Building"];
                         selectedLocation = nextLocations.isNotEmpty ? nextLocations.first : null;
                       });
                     },
@@ -1789,7 +1780,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   const SizedBox(height: 12),
 
                   _buildDropdown(
-                    "Konum / Bina",
+                    "Location / Building",
                     currentLocationOptions,
                     value: currentLocationOptions.contains(selectedLocation) ? selectedLocation : null,
                     onChanged: (val) {
@@ -1801,7 +1792,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   const SizedBox(height: 12),
 
                   _buildDropdown(
-                    "Kat",
+                    "Floor",
                     floorOptions,
                     value: floorOptions.contains(selectedFloor) ? selectedFloor : null,
                     onChanged: (val) {
@@ -1813,7 +1804,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   const SizedBox(height: 12),
 
                   _buildDropdown(
-                    "Derslik Türü",
+                    "Classroom Type",
                     typeOptions,
                     value: typeOptions.contains(selectedType) ? selectedType : null,
                     onChanged: (val) {
@@ -1827,7 +1818,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   TextField(
                     controller: capacityCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: "Kapasite"),
+                    decoration: const InputDecoration(labelText: "Capacity"),
                   ),
                 ],
               ),
@@ -1835,7 +1826,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("İptal"),
+                child: const Text("Cancel"),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -1848,7 +1839,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       selectedFloor == null ||
                       selectedType == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Lütfen derslik adı, kampüs, konum, kat ve tür alanlarını doldurun.")),
+                      const SnackBar(content: Text("Please fill classroom name, campus, location, floor and type fields.")),
                     );
                     return;
                   }
@@ -1860,16 +1851,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   final Map<String, dynamic> newData = {
                     'id': docId,
                     'name': name,
-
-                    // New clean Firebase fields
                     'campus': selectedCampus,
                     'location': selectedLocation,
                     'floor': _floorValueFromLabel(selectedFloor!),
                     'floorLabel': selectedFloor,
-
-                    // Kept for old screens/detail pages that still read "building"
                     'building': "$selectedCampus, $selectedLocation",
-
                     'capacity': capacity,
                     'type': selectedType,
                     'updatedAt': FieldValue.serverTimestamp(),
@@ -1883,12 +1869,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Derslik Firebase veritabanına kaydedildi.")),
+                      const SnackBar(content: Text("Classroom saved to Firebase database.")),
                     );
                     _loadData();
                   }
                 },
-                child: const Text("Kaydet"),
+                child: const Text("Save"),
               ),
             ],
           );
@@ -1902,7 +1888,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final deptCtrl = TextEditingController(text: item?['department']);
     final photoCtrl = TextEditingController(text: item?['imageUrl'] ?? '');
 
-    // Ofis saatleri controller'ı
     final officeHoursCtrl = TextEditingController(
         text: (item?['officeHours'] is List)
             ? (item?['officeHours'] as List).join(", ")
@@ -1912,23 +1897,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isEdit ? "Düzenle: Hoca" : "Yeni Hoca", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView( // Klavye açılınca taşma olmaması için eklendi
+        title: Text(isEdit ? "Edit: Instructor" : "New Instructor", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Hoca Adı Soyadı")),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Full Name")),
               const SizedBox(height: 12),
-              TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
+              TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Department")),
               const SizedBox(height: 12),
-              // YENİ  Ofis Saatleri
               TextField(
                   controller: officeHoursCtrl,
-                  maxLines: 2, // Birden fazla satır desteği
+                  maxLines: 2,
                   decoration: const InputDecoration(
-                      labelText: "Ofis Saatleri",
-                      hintText: "Örn: Pzt 10:00-12:00, Sal 14:00-16:00",
-                      helperText: "Günleri virgülle ayırarak yazın.",
+                      labelText: "Office Hours",
+                      hintText: "E.g.: Mon 10:00-12:00, Tue 14:00-16:00",
+                      helperText: "Separate days with commas.",
                       helperStyle: TextStyle(fontSize: 10)
                   )
               ),
@@ -1936,25 +1920,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               TextField(
                   controller: photoCtrl,
                   decoration: const InputDecoration(
-                      labelText: "Fotoğraf Yolu",
-                      hintText: "assets/instructors/varsayilan.jpg"
+                      labelText: "Photo Path",
+                      hintText: "assets/instructors/default.jpg"
                   )
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
               onPressed: () async {
-                // 1. Ofis saatlerini metinden listeye çeviriyoruz
                 List<String> hoursList = officeHoursCtrl.text
                     .split(",")
                     .map((e) => e.trim())
                     .where((e) => e.isNotEmpty)
                     .toList();
 
-                // ID oluşturma
                 String docId = isEdit ? item!['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
 
                 Map<String, dynamic> newData = {
@@ -1962,14 +1944,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   'name': nameCtrl.text,
                   'department': deptCtrl.text,
                   'imageUrl': photoCtrl.text,
-                  'officeHours': hoursList, // YENİ: Saatleri listeye ekledik
-                  'title': item?['title'] ?? 'Öğretim Üyesi',
-                  'office': item?['office'] ?? 'Bilinmiyor',
+                  'officeHours': hoursList,
+                  'title': item?['title'] ?? 'Faculty Member',
+                  'office': item?['office'] ?? 'Unknown',
                   'filter': item?['filter'] ?? 'engineering',
-                  'email': item?['email'] ?? 'iletisim@uni.edu.tr'
+                  'email': item?['email'] ?? 'contact@uni.edu.tr'
                 };
 
-                // Firestore'a kaydetme
                 await FirebaseFirestore.instance.collection('instructors').doc(docId).set(newData);
 
                 if (context.mounted) {
@@ -1977,7 +1958,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   _loadData();
                 }
               },
-              child: const Text("Kaydet")
+              child: const Text("Save")
           )
         ],
       ),
@@ -1992,16 +1973,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final descCtrl = TextEditingController(text: item?['description'] ?? '');
 
     final List<String> categoryOptions = [
-      "Genel",
-      "Akademik",
-      "Kültür Sanat",
-      "Spor",
-      "Seminer",
-      "Kulüp",
-      "Kariyer",
+      "General",
+      "Academic",
+      "Culture Art",
+      "Sports",
+      "Seminar",
+      "Club",
+      "Career",
     ];
 
-    String? selectedCategory = item?['category'] ?? "Genel";
+    String? selectedCategory = item?['category'] ?? "General";
 
     showDialog(
       context: context,
@@ -2009,7 +1990,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         builder: (context, setDialogState) {
           return AlertDialog(
             title: Text(
-              isEdit ? "Düzenle: Etkinlik" : "Yeni Etkinlik",
+              isEdit ? "Edit: Event" : "New Event",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -2019,7 +2000,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   TextField(
                     controller: titleCtrl,
                     decoration: const InputDecoration(
-                      labelText: "Etkinlik Başlığı",
+                      labelText: "Event Title",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2027,8 +2008,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   TextField(
                     controller: dateCtrl,
                     decoration: const InputDecoration(
-                      labelText: "Tarih",
-                      hintText: "Örn: 28 Nisan",
+                      labelText: "Date",
+                      hintText: "E.g.: April 28",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2036,8 +2017,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   TextField(
                     controller: timeCtrl,
                     decoration: const InputDecoration(
-                      labelText: "Saat",
-                      hintText: "Örn: 14:00",
+                      labelText: "Time",
+                      hintText: "E.g.: 14:00",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2045,18 +2026,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   TextField(
                     controller: locCtrl,
                     decoration: const InputDecoration(
-                      labelText: "Konum",
-                      hintText: "Örn: Ataköy Kampüsü / Konferans Salonu",
+                      labelText: "Location",
+                      hintText: "E.g.: Atakoy Campus / Conference Hall",
                     ),
                   ),
                   const SizedBox(height: 12),
 
                   _buildDropdown(
-                    "Kategori",
+                    "Category",
                     categoryOptions,
                     value: categoryOptions.contains(selectedCategory)
                         ? selectedCategory
-                        : "Genel",
+                        : "General",
                     onChanged: (val) {
                       setDialogState(() {
                         selectedCategory = val;
@@ -2069,8 +2050,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: descCtrl,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      labelText: "Açıklama",
-                      hintText: "Etkinlik hakkında kısa açıklama girin.",
+                      labelText: "Description",
+                      hintText: "Enter a brief description of the event.",
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -2080,7 +2061,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("İptal"),
+                child: const Text("Cancel"),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -2093,7 +2074,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (title.isEmpty || date.isEmpty || location.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Başlık, tarih ve konum alanları zorunludur."),
+                        content: Text("Title, date and location fields are required."),
                       ),
                     );
                     return;
@@ -2110,9 +2091,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     'date': date,
                     'time': time,
                     'location': location,
-                    'category': selectedCategory ?? 'Genel',
+                    'category': selectedCategory ?? 'General',
                     'description': description.isEmpty
-                        ? 'Detay girilmedi.'
+                        ? 'No details entered.'
                         : description,
                     'updatedAt': FieldValue.serverTimestamp(),
                   };
@@ -2148,13 +2129,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Etkinlik Firebase veritabanına kaydedildi."),
+                        content: Text("Event saved to Firebase database."),
                       ),
                     );
                     _loadData();
                   }
                 },
-                child: const Text("Kaydet"),
+                child: const Text("Save"),
               ),
             ],
           );
@@ -2234,7 +2215,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         builder: (context, setDialogState) {
           return AlertDialog(
             title: Text(
-              isEdit ? "Düzenle: Duyuru" : "Yeni Duyuru",
+              isEdit ? "Edit: Announcement" : "New Announcement",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -2243,7 +2224,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   TextField(
                     controller: titleCtrl,
-                    decoration: const InputDecoration(labelText: "Başlık"),
+                    decoration: const InputDecoration(labelText: "Title"),
                   ),
                   const SizedBox(height: 12),
 
@@ -2255,8 +2236,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       DateInputFormatter(),
                     ],
                     decoration: const InputDecoration(
-                      labelText: "Gösterilecek Tarih",
-                      hintText: "GG/AA/YYYY",
+                      labelText: "Date to Display",
+                      hintText: "DD/MM/YYYY",
                     ),
                   ),
 
@@ -2268,13 +2249,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       TimeInputFormatter(),
                     ],
                     decoration: const InputDecoration(
-                      labelText: "Gösterilecek Saat",
-                      hintText: "SS:DD",
+                      labelText: "Time to Display",
+                      hintText: "HH:MM",
                     ),
                   ),
 
                   _buildDropdown(
-                    "Kategori",
+                    "Category",
                     categoryOptions,
                     value: categoryOptions.contains(selectedCategory)
                         ? selectedCategory
@@ -2291,7 +2272,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: contentCtrl,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      labelText: "İçerik",
+                      labelText: "Content",
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -2301,7 +2282,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("İptal"),
+                child: const Text("Cancel"),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -2313,7 +2294,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (title.isEmpty || content.isEmpty || publishDate.isEmpty || publishTime.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Başlık, içerik, gösterilecek tarih ve saat zorunludur."),
+                        content: Text("Title, content, date and time to display are required."),
                       ),
                     );
                     return;
@@ -2324,7 +2305,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (publishDateTime == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Tarih GG/AA/YYYY, saat SS:DD formatında olmalıdır. Örn: 28/04/2026 ve 13:45"),
+                        content: Text("Date must be DD/MM/YYYY, time must be HH:MM format. E.g.: 28/04/2026 and 13:45"),
                       ),
                     );
                     return;
@@ -2340,17 +2321,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     'title': title,
                     'content': content,
                     'category': selectedCategory ?? 'general',
-
-                    // Display/scheduling fields
                     'date': publishDate,
                     'publishDate': publishDate,
                     'publishTime': publishTime,
                     'publishAt': Timestamp.fromDate(publishDateTime),
-
-                    // UI fields
                     'isNew': true,
-
-                    // Audit fields
                     'updatedAt': FieldValue.serverTimestamp(),
                   };
 
@@ -2383,13 +2358,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Duyuru Firebase veritabanına kaydedildi."),
+                        content: Text("Announcement saved to Firebase database."),
                       ),
                     );
                     _loadData();
                   }
                 },
-                child: const Text("Kaydet"),
+                child: const Text("Save"),
               ),
             ],
           );
@@ -2408,10 +2383,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     final menuNameCtrl = TextEditingController(
       text: item['menuName']?.toString() ??
-          (mealName == "Yemek"
-              ? "Bugünün Yemeği"
+          (mealName == "Main Meal"
+              ? "Today's Meal"
               : mealName.isNotEmpty
-              ? "$mealName Menüsü"
+              ? "$mealName Menu"
               : ""),
     );
 
@@ -2436,7 +2411,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String normalizePrice(String rawPrice) {
       final trimmed = rawPrice.trim();
       if (trimmed.isEmpty) return "₺0";
-      if (trimmed == "Ürün bazlı") return trimmed;
+      if (trimmed == "Item based") return trimmed;
       return trimmed.startsWith("₺") ? trimmed : "₺$trimmed";
     }
 
@@ -2468,7 +2443,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
             title: Text(
-              isEdit ? "Menü Düzenle: $mealName" : "Yeni Menü Ekle",
+              isEdit ? "Edit Menu: $mealName" : "Add New Menu",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -2479,8 +2454,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     TextField(
                       controller: nameCtrl,
                       decoration: const InputDecoration(
-                        labelText: "Kategori / Menü Tipi",
-                        hintText: "Örn: Kahvaltı, Yemek, Fast Food",
+                        labelText: "Category / Menu Type",
+                        hintText: "E.g.: Breakfast, Main Meal, Fast Food",
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -2488,16 +2463,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   TextField(
                     controller: menuNameCtrl,
                     decoration: const InputDecoration(
-                      labelText: "Menü Adı",
-                      hintText: "Örn: Bugünün Yemeği",
+                      labelText: "Menu Name",
+                      hintText: "E.g.: Today's Meal",
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: timeCtrl,
                     decoration: const InputDecoration(
-                      labelText: "Saat Aralığı",
-                      hintText: "Örn: 13:00-18:00",
+                      labelText: "Time Range",
+                      hintText: "E.g.: 13:00-18:00",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2514,7 +2489,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         ),
                       ),
                       child: Text(
-                        "Fast Food ürünleri ürün bazlı fiyatlandırılır.",
+                        "Fast Food items are priced per item.",
                         style: TextStyle(
                           color: _adminTextMutedColor(),
                           fontSize: 13,
@@ -2532,8 +2507,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               child: TextField(
                                 controller: productNameControllers[index],
                                 decoration: InputDecoration(
-                                  labelText: "Ürün ${index + 1}",
-                                  hintText: "Örn: Tost",
+                                  labelText: "Product ${index + 1}",
+                                  hintText: "E.g.: Toast",
                                   border: const OutlineInputBorder(),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 10,
@@ -2548,7 +2523,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               child: TextField(
                                 controller: productPriceControllers[index],
                                 decoration: const InputDecoration(
-                                  labelText: "Fiyat",
+                                  labelText: "Price",
                                   hintText: "₺40",
                                   border: OutlineInputBorder(),
                                   contentPadding: EdgeInsets.symmetric(
@@ -2585,15 +2560,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           });
                         },
                         icon: const Icon(Icons.add),
-                        label: const Text("Ürün Ekle"),
+                        label: const Text("Add Product"),
                       ),
                     ),
                   ] else ...[
                     TextField(
                       controller: priceCtrl,
                       decoration: const InputDecoration(
-                        labelText: "Fiyat",
-                        hintText: "Örn: ₺35",
+                        labelText: "Price",
+                        hintText: "E.g.: ₺35",
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -2601,8 +2576,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       controller: itemsCtrl,
                       maxLines: 4,
                       decoration: const InputDecoration(
-                        labelText: "İçerik / Yemekler",
-                        hintText: "Virgülle ayırın: Çorba, Tavuk, Pilav, Ayran",
+                        labelText: "Content / Meals",
+                        hintText: "Separate with commas: Soup, Chicken, Rice, Ayran",
                       ),
                     ),
                   ],
@@ -2612,21 +2587,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text("İptal"),
+                child: const Text("Cancel"),
               ),
               ElevatedButton(
                 onPressed: () async {
                   String newMealName = isEdit ? mealName : nameCtrl.text.trim();
 
-                  if (newMealName == "Öğle" ||
-                      newMealName == "Akşam" ||
-                      newMealName == "Günün Menüsü") {
-                    newMealName = "Yemek";
+                  if (newMealName == "Lunch" ||
+                      newMealName == "Dinner" ||
+                      newMealName == "Today's Menu") {
+                    newMealName = "Main Meal";
                   }
 
                   if (newMealName.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Kategori adı boş bırakılamaz.")),
+                      const SnackBar(content: Text("Category name cannot be empty.")),
                     );
                     return;
                   }
@@ -2652,13 +2627,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
                     if (products.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("En az bir Fast Food ürünü eklenmelidir.")),
+                        const SnackBar(content: Text("At least one Fast Food product must be added.")),
                       );
                       return;
                     }
 
                     newItems = products;
-                    normalizedPrice = "Ürün bazlı";
+                    normalizedPrice = "Item based";
                   } else {
                     final plainItems = itemsCtrl.text
                         .split(",")
@@ -2668,7 +2643,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
                     if (plainItems.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Menü içeriği boş bırakılamaz.")),
+                        const SnackBar(content: Text("Menu content cannot be empty.")),
                       );
                       return;
                     }
@@ -2687,9 +2662,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   final mealTypes = (updatedData['mealTypes'] as List<dynamic>?)
                       ?.map((e) => e.toString())
                       .where((e) =>
-                  e != "Öğle" &&
-                      e != "Akşam" &&
-                      e != "Günün Menüsü")
+                  e != "Lunch" &&
+                      e != "Dinner" &&
+                      e != "Today's Menu")
                       .toList() ??
                       [];
 
@@ -2697,13 +2672,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     (updatedData['menus'] as Map?) ?? {},
                   );
 
-                  menus.remove("Öğle");
-                  menus.remove("Akşam");
-                  menus.remove("Günün Menüsü");
+                  menus.remove("Lunch");
+                  menus.remove("Dinner");
+                  menus.remove("Today's Menu");
 
                   if (!isEdit && mealTypes.contains(newMealName)) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Bu kategori zaten mevcut.")),
+                      const SnackBar(content: Text("This category already exists.")),
                     );
                     return;
                   }
@@ -2737,15 +2712,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       SnackBar(
                         content: Text(
                           isEdit
-                              ? "Menü Firebase veritabanında güncellendi."
-                              : "Yeni menü Firebase veritabanına eklendi.",
+                              ? "Menu updated in Firebase database."
+                              : "New menu added to Firebase database.",
                         ),
                       ),
                     );
                     _loadData();
                   }
                 },
-                child: const Text("Kaydet"),
+                child: const Text("Save"),
               ),
             ],
           );
@@ -2755,3 +2730,4 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
 }
+

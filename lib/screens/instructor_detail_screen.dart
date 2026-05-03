@@ -13,7 +13,7 @@ class InstructorDetailScreen extends StatelessWidget {
   const InstructorDetailScreen({Key? key, required this.instructorData}) : super(key: key);
 
   String getInitials(String name) {
-    List<String> names = name.replaceAll(RegExp(r'(Prof\. Dr\.|Doç\. Dr\.|Dr\. Öğr\. Üyesi)\s*'), '').split(" ");
+    List<String> names = name.replaceAll(RegExp(r'(Prof\. Dr\.|Assoc\. Prof\.|Asst\. Prof\.|Dr\.)\s*'), '').split(" ");
     if (names.length >= 2) {
       return "${names[0][0]}${names[names.length - 1][0]}".toUpperCase();
     }
@@ -25,26 +25,19 @@ class InstructorDetailScreen extends StatelessWidget {
     final favProvider = context.watch<FavoritesProvider>();
     final isFav = favProvider.isFavorite("inst_${instructorData['id']}");
 
-    // Eğer Firestore'da veri varsa onu kullan, yoksa senin istediğin varsayılanları göster
     final List<dynamic> displayHours = (instructorData['officeHours'] is List && (instructorData['officeHours'] as List).isNotEmpty)
         ? instructorData['officeHours']
-        : ["Pazartesi: 10:00 - 12:00", "Çarşamba: 14:00 - 16:00"];
+        : ["Monday: 10:00 - 12:00", "Wednesday: 14:00 - 16:00"];
 
-    // JSON'dan güvenli okuma
-    final String name = instructorData['name'] ?? 'İsimsiz';
+    final String name = instructorData['name'] ?? 'Unnamed';
     final String title = instructorData['title'] ?? '';
     final String department = instructorData['department'] ?? '';
-    final String office = instructorData['office'] ?? 'Bilinmiyor';
-    final String email = instructorData['email'] ?? 'iletisim@iku.edu.tr';
-
-    // Yeni: Fotoğraf yolu veritabanından çekiliyor
+    final String office = instructorData['office'] ?? 'Unknown';
+    final String email = instructorData['email'] ?? 'contact@iku.edu.tr';
     final String? imageUrl = instructorData['imageUrl'];
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-    final dividerColor = Theme.of(context).dividerColor;
-    final cardColor = Theme.of(context).cardColor;
+    final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -67,16 +60,9 @@ class InstructorDetailScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 48,
                     backgroundColor: AppTheme.primaryLight.withOpacity(0.18),
-                    // YENİ: Fotoğraf varsa backgroundImage olarak ata
-                    backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                        ? AssetImage(imageUrl)
-                        : null,
-                    // YENİ: Eğer fotoğraf yoksa harfleri göster, varsa boş bırak
+                    backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? AssetImage(imageUrl) : null,
                     child: imageUrl == null || imageUrl.isEmpty
-                        ? Text(
-                      getInitials(name),
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                    )
+                        ? Text(getInitials(name), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryColor))
                         : null,
                   ),
                   const SizedBox(height: 16),
@@ -84,26 +70,21 @@ class InstructorDetailScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(department, style: TextStyle(fontSize: 16, color: mutedColor)),
                   const SizedBox(height: 4),
-                  Text("Ofis: $office", style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+                  Text("Office: $office", style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
                 ],
               ),
             ),
             const SizedBox(height: 32),
 
-            // E-POSTA KUTUSU (Kopyalanabilir yapıldı)
             Material(
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
-                  // Panoya kopyalama işlemi
                   Clipboard.setData(ClipboardData(text: email)).then((_) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("E-posta adresi kopyalandı!"),
-                          duration: Duration(seconds: 2),
-                        ),
+                        const SnackBar(content: Text("Email address copied!"), duration: Duration(seconds: 2)),
                       );
                     }
                   });
@@ -112,18 +93,15 @@ class InstructorDetailScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                      color: cardColor,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: dividerColor)
+                      border: Border.all(color: Theme.of(context).dividerColor)
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.email_outlined, color: AppTheme.primaryColor),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(email, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor)),
-                      ),
-                      // Tıklanabilir olduğunu belli eden ikon eklendi
+                      Expanded(child: Text(email, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor))),
                       Icon(Icons.copy, size: 18, color: mutedColor),
                     ],
                   ),
@@ -132,7 +110,7 @@ class InstructorDetailScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 32),
-            const SectionHeader(title: "Ofis Saatleri"),
+            const SectionHeader(title: "Office Hours"),
             Card(
               child: ListView.separated(
                 shrinkWrap: true,
@@ -141,9 +119,7 @@ class InstructorDetailScreen extends StatelessWidget {
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final String hourInfo = displayHours[index].toString();
-
-                  // Görsel formatlama: "Gün: Saat" ayrımı
-                  String day = "Görüşme";
+                  String day = "Meeting";
                   String time = hourInfo;
 
                   if (hourInfo.contains(':')) {
@@ -151,7 +127,6 @@ class InstructorDetailScreen extends StatelessWidget {
                     day = parts[0].trim();
                     time = parts.sublist(1).join(':').trim();
                   }
-
                   return _buildOfficeHourRow(context, day, time);
                 },
               ),
@@ -163,9 +138,8 @@ class InstructorDetailScreen extends StatelessWidget {
   }
 
   Widget _buildOfficeHourRow(BuildContext context, String day, String time) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+    final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

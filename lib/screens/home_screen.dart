@@ -25,9 +25,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final dividerColor = Theme.of(context).dividerColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
 
     return Scaffold(
       body: SafeArea(
@@ -38,20 +36,11 @@ class HomeScreen extends StatelessWidget {
             children: [
               _buildHeader(context),
               const SizedBox(height: 18),
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Hızlı Erişim",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
+                child: Text("Quick Access", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
               ),
               const SizedBox(height: 14),
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GridView.count(
@@ -62,83 +51,46 @@ class HomeScreen extends StatelessWidget {
                   crossAxisSpacing: 8,
                   childAspectRatio: 0.72,
                   children: [
-                    QuickActionCard(
-                      icon: Icons.meeting_room_outlined,
-                      title: "Derslikler",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ClassroomsScreen(),
-                        ),
-                      ),
+                    _QuickActionCard(
+                        icon: Icons.meeting_room_outlined,
+                        title: "Classrooms",
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClassroomsScreen()))
                     ),
-                    QuickActionCard(
-                      icon: Icons.groups_outlined,
-                      title: "Hocalar",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const InstructorsScreen(),
-                        ),
-                      ),
+                    _QuickActionCard(
+                        icon: Icons.groups_outlined,
+                        title: "Instructors",
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InstructorsScreen()))
                     ),
-                    QuickActionCard(
-                      icon: Icons.access_time_outlined,
-                      title: "Ofis Saatleri",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const OfficeHoursScreen(),
-                        ),
-                      ),
+                    _QuickActionCard(
+                        icon: Icons.access_time_outlined,
+                        title: "Hours",
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OfficeHoursScreen()))
                     ),
-                    QuickActionCard(
-                      icon: Icons.attach_money,
-                      title: "Fiyatlar",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CampusPricesScreen(),
-                        ),
-                      ),
+                    _QuickActionCard(
+                        icon: Icons.attach_money,
+                        title: "Prices",
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CampusPricesScreen()))
                     ),
-                    QuickActionCard(
-                      icon: Icons.event_note_outlined,
-                      title: "Etkinlikler",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EventsScreen(),
-                        ),
-                      ),
+                    _QuickActionCard(
+                        icon: Icons.event_note_outlined,
+                        title: "Events",
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventsScreen()))
                     ),
-                    QuickActionCard(
-                      icon: Icons.report_problem_outlined,
-                      title: "Sorun Bildir",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ReportIssueScreen(),
-                        ),
-                      ),
+                    _QuickActionCard(
+                        icon: Icons.report_problem_outlined,
+                        title: "Report",
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportIssueScreen()))
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 18),
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SectionHeader(
-                  title: "Bugünün Menüsü",
-                  actionLabel: "Tümünü Gör",
-                  onAction: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CafeteriaMenuScreen(),
-                    ),
-                  ),
+                    title: "Today's Menu",
+                    actionLabel: "See All",
+                    onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen()))
                 ),
               ),
               const SizedBox(height: 10),
@@ -147,136 +99,50 @@ class HomeScreen extends StatelessWidget {
                 child: StreamBuilder<Map<String, dynamic>>(
                   stream: DataService.todayDashboardMenuStream(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return _buildTodayMenuCard(
-                        context,
-                        meal: "Menü yükleniyor...",
-                        desc: "Firebase üzerinden güncel menü hazırlanıyor.",
-                        time: "-",
-                        price: "-",
-                        note: "Bugünün menüsü merkezi veritabanından alınır.",
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      return _buildTodayMenuCard(
-                        context,
-                        meal: "Menü bilgisi alınamadı",
-                        desc: "Lütfen daha sonra tekrar deneyin.",
-                        time: "-",
-                        price: "-",
-                        note: "Firebase bağlantısı kontrol edilmeli.",
-                      );
-                    }
-
                     final menu = snapshot.data ?? {};
-                    final items = menu['items'] as List<dynamic>? ?? [];
-                    final mealName = menu['menuName']?.toString() ??
-                        menu['mealType']?.toString() ??
-                        "Bugünün Menüsü";
-                    final desc = _menuDescription(items);
-                    final price = menu['price']?.toString() ?? "-";
-                    final time = menu['time']?.toString() ?? "-";
-                    final note = menu['dashboardMessage']?.toString() ??
-                        "Bugünün menüsü güncel güne göre gösteriliyor.";
-
-                    return _buildTodayMenuCard(
-                      context,
-                      meal: mealName,
-                      desc: desc,
-                      time: time,
-                      price: price,
-                      note: note,
-                    );
+                    return _buildTodayMenuCard(context,
+                        meal: menu['menuName']?.toString() ?? "Loading Menu...",
+                        desc: _menuDescription(menu['items'] as List? ?? []),
+                        time: menu['time']?.toString() ?? "-",
+                        price: menu['price']?.toString() ?? "-",
+                        note: menu['dashboardMessage']?.toString() ?? "Updated daily.");
                   },
                 ),
               ),
-
               const SizedBox(height: 24),
-
               FutureBuilder<Map<String, dynamic>>(
                 future: DataService.loadDatabase(),
                 builder: (context, snapshot) {
                   final data = snapshot.data ?? {};
-                  final announcements = data['announcements'] as List<dynamic>? ?? [];
-                  final events = data['events'] as List<dynamic>? ?? [];
-
+                  final announcements = data['announcements'] as List? ?? [];
+                  final events = data['events'] as List? ?? [];
                   return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
+                      const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SectionHeader(title: "Recent Announcements")),
+                      ...announcements.take(2).map((a) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: const SectionHeader(title: "Son Duyurular"),
-                      ),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: announcements.take(2).map((announcement) {
-                            final item = Map<dynamic, dynamic>.from(announcement as Map);
-                            return InfoCard(
-                              title: item['title']?.toString() ?? '',
-                              subtitle: _announcementDateText(item),
-                              metadata: item['content']?.toString() ?? '',
-                              badge: item['isNew'] == true
-                                  ? const AppBadge(label: "Yeni")
-                                  : null,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const AnnouncementsScreen(),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                        child: InfoCard(
+                            title: a['title'] ?? '',
+                            subtitle: _announcementDateText(a),
+                            metadata: a['content'] ?? '',
+                            badge: a['isNew'] == true ? const AppBadge(label: "New") : null,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen()))
                         ),
-                      ),
-
+                      )),
                       const SizedBox(height: 24),
-
-                      Padding(
+                      const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SectionHeader(title: "Upcoming Events")),
+                      ...events.take(2).map((e) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SectionHeader(
-                          title: "Yaklaşan Etkinlikler",
-                          actionLabel: "Tümünü Gör",
-                          onAction: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const EventsScreen(),
-                            ),
-                          ),
+                        child: InfoCard(
+                            title: e['title'] ?? '',
+                            subtitle: "${e['date']} • ${e['time']}",
+                            metadata: e['location'] ?? '',
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e)))
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: events.take(2).map((event) {
-                            final item = Map<dynamic, dynamic>.from(event as Map);
-                            return InfoCard(
-                              title: item['title']?.toString() ?? '',
-                              subtitle: "${item['date'] ?? ''} • ${item['time'] ?? ''}",
-                              metadata: item['location']?.toString() ?? '',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EventDetailScreen(eventData: item),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
+                      )),
                     ],
                   );
                 },
-              ),
-
-              const SizedBox(height: 12),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Divider(color: dividerColor),
               ),
             ],
           ),
@@ -286,6 +152,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    // BURASI DÜZELTİLDİ: primaryGradient yerine doğrudan renkler kullanıldı.
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
@@ -296,161 +163,84 @@ class HomeScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
-        children: const [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  "Merhaba, Öğrenci 👋",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.notifications_none,
-                color: Colors.white,
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          AppSearchBar(
-            placeholder: "Kampüste ara...",
-            readOnly: true,
-          ),
-        ],
-      ),
+      child: Column(children: [
+        Row(children: const [
+          Expanded(child: Text("Hello, Student 👋", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
+          Icon(Icons.notifications_none, color: Colors.white),
+        ]),
+        const SizedBox(height: 16),
+        const AppSearchBar(placeholder: "Search on campus...", readOnly: true),
+      ]),
     );
   }
 
   String _announcementDateText(Map<dynamic, dynamic> item) {
     final publishDate = item['publishDate']?.toString() ?? '';
     final publishTime = item['publishTime']?.toString() ?? '';
-    final date = item['date']?.toString() ?? '';
-
-    if (publishDate.isNotEmpty && publishTime.isNotEmpty) {
-      return "$publishDate • $publishTime";
-    }
-
-    return date;
+    return (publishDate.isNotEmpty && publishTime.isNotEmpty) ? "$publishDate • $publishTime" : (item['date']?.toString() ?? '');
   }
 
   String _menuDescription(List<dynamic> items) {
-    if (items.isEmpty) return "Menü bilgisi bulunamadı.";
-
-    final names = items.take(4).map((item) {
-      if (item is Map) {
-        final name = item['name']?.toString() ?? "";
-        final price = item['price']?.toString() ?? "";
-        return price.isEmpty ? name : "$name $price";
-      }
-      return item.toString();
-    }).where((text) => text.trim().isNotEmpty).toList();
-
-    if (items.length > 4) names.add("...");
-
-    return names.join(", ");
+    if (items.isEmpty) return "Menu info not found.";
+    final names = items.take(4).map((e) => e is Map ? e['name'] : e.toString()).toList();
+    return names.join(", ") + (items.length > 4 ? "..." : "");
   }
 
-  Widget _buildTodayMenuCard(
-      BuildContext context, {
-        required String meal,
-        required String desc,
-        required String time,
-        required String price,
-        required String note,
-      }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-    final dividerColor = Theme.of(context).dividerColor;
-    final hasPrice = price.trim().isNotEmpty && price.trim() != "-";
-    final badgeText = hasPrice ? price : "Kapalı";
-
+  Widget _buildTodayMenuCard(BuildContext context, {required String meal, required String desc, required String time, required String price, required String note}) {
+    final hasPrice = price.trim() != "-" && price.isNotEmpty;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const CafeteriaMenuScreen(),
-        ),
-      ),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen())),
       child: Container(
-        width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: dividerColor),
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Theme.of(context).dividerColor)
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    meal,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    note,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    desc,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: mutedColor,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    time,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: textColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
+        child: Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(meal, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
+            const SizedBox(height: 4),
+            Text(note, style: const TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text(desc, style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.3)),
+            const SizedBox(height: 10),
+            Text(time, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          ])),
+          const SizedBox(width: 12),
+          Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: hasPrice ? AppTheme.successColor : AppTheme.textMuted,
-                borderRadius: BorderRadius.circular(12),
+                  color: hasPrice ? AppTheme.successColor : AppTheme.textMuted,
+                  borderRadius: BorderRadius.circular(12)
               ),
-              child: Text(
-                badgeText,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
+              child: Text(hasPrice ? price : "Closed", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))
+          ),
+        ]),
       ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  const _QuickActionCard({required this.icon, required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(children: [
+        Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppTheme.primaryLight.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: AppTheme.primaryColor)
+        ),
+        const SizedBox(height: 8),
+        Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+      ]),
     );
   }
 }

@@ -9,17 +9,16 @@ import 'classroom_detail_screen.dart';
 
 class BuildingDetailScreen extends StatelessWidget {
   final Map<String, dynamic> buildingData;
-
   const BuildingDetailScreen({Key? key, required this.buildingData}) : super(key: key);
 
   String _getTypeLabel(String rawType) {
     switch (rawType.toLowerCase()) {
-      case "faculty": return "Akademik Birim";
-      case "admin": return "İdari Birim";
-      case "social": return "Sosyal Alan";
-      case "food": return "Yeme-İçme";
-      case "study": return "Çalışma Alanı";
-      default: return "Kampüs Alanı";
+      case "faculty": return "Academic Unit";
+      case "admin": return "Admin Unit";
+      case "social": return "Social Area";
+      case "food": return "Dining";
+      case "study": return "Study Area";
+      default: return "Campus Area";
     }
   }
 
@@ -39,81 +38,47 @@ class BuildingDetailScreen extends StatelessWidget {
     final String type = buildingData['type']?.toString() ?? "unknown";
 
     return Scaffold(
-      appBar: CustomAppBar(title: buildingData['name'] ?? 'Birim Detayı', showBack: true),
+      appBar: CustomAppBar(title: buildingData['name'] ?? 'Unit Detail', showBack: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // YENİ TİP İSTATİSTİK KARTI (Gereksiz kat/oda sayıları kaldırıldı)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   children: [
-                    AppBadge(
-                        label: buildingData['abbr'] ?? '',
-                        backgroundColor: AppTheme.primaryColor,
-                        textColor: Colors.white
-                    ),
+                    AppBadge(label: buildingData['abbr'] ?? '', backgroundColor: AppTheme.primaryColor),
                     const SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: _buildStat(_getTypeIcon(type), _getTypeLabel(type))),
                         Container(width: 1, height: 40, color: AppTheme.borderColor),
-                        Expanded(child: _buildStat(Icons.location_on, buildingData['location'] ?? 'Bilinmiyor')),
+                        Expanded(child: _buildStat(Icons.location_on, buildingData['location'] ?? 'Unknown')),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-
-            // EĞER BU BİR AKADEMİK BİRİMSE (Fakülte), İÇİNDEKİ DERSLİKLERİ GÖSTER
             if (type == "faculty")
               FutureBuilder<Map<String, dynamic>>(
                 future: DataService.loadDatabase(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData) return const SizedBox();
+                  if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+                  final classrooms = (snapshot.data?['classrooms'] as List?)?.where((c) =>
+                      c['building'].toString().contains(buildingData['name'])).toList() ?? [];
 
-                  final allClassrooms = snapshot.data!['classrooms'] as List<dynamic>? ?? [];
-
-                  // Derslikleri artık binaya göre değil, bağlı olduğu "birime" göre filtreliyoruz
-                  final relatedClassrooms = allClassrooms.where((c) {
-                    String cBuilding = c['building']?.toString() ?? "";
-                    // Dersliğin bağlı olduğu birim, açtığımız bu birimin adıyla eşleşiyorsa
-                    return cBuilding.contains(buildingData['name']);
-                  }).toList();
-
-                  if (relatedClassrooms.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Center(child: Text("Bu birime tanımlanmış derslik bulunamadı.", style: TextStyle(color: AppTheme.textMuted))),
-                    );
-                  }
+                  if (classrooms.isEmpty) return const Padding(padding: EdgeInsets.all(20), child: Text("No classrooms found for this unit."));
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SectionHeader(title: "Bağlı Derslikler ve Amfiler"),
-                      const SizedBox(height: 10),
-                      ...relatedClassrooms.map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: InfoCard(
-                          title: c['name']?.toString() ?? '',
-                          subtitle: "${c['type']} • Kat ${c['floor']}",
-                          metadata: "Kapasite: ${c['capacity']} Kişi",
-                          onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))
-                          ),
-                        ),
+                      const SectionHeader(title: "Related Classrooms & Labs"),
+                      ...classrooms.map((c) => InfoCard(
+                        title: c['name'] ?? '',
+                        subtitle: "${c['type']} • Floor ${c['floor']}",
+                        metadata: "Capacity: ${c['capacity']} People",
                       )).toList(),
                     ],
                   );
@@ -130,11 +95,7 @@ class BuildingDetailScreen extends StatelessWidget {
       children: [
         Icon(icon, color: AppTheme.primaryLight, size: 28),
         const SizedBox(height: 8),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary, height: 1.3),
-        ),
+        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600)),
       ],
     );
   }

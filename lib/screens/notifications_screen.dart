@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/section_header.dart';
 
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
 
@@ -29,164 +30,121 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         .get();
 
     final batch = _db.batch();
-
     for (final doc in snapshot.docs) {
       batch.update(doc.reference, {'isRead': true});
     }
-
     await batch.commit();
   }
 
   String _formatTime(dynamic value) {
     if (value == null) return "";
-
     DateTime? dateTime;
-
-    if (value is Timestamp) {
-      dateTime = value.toDate();
-    } else if (value is DateTime) {
-      dateTime = value;
-    }
+    if (value is Timestamp) dateTime = value.toDate();
+    else if (value is DateTime) dateTime = value;
 
     if (dateTime == null) return "";
 
     final now = DateTime.now();
     final diff = now.difference(dateTime);
 
-    if (diff.inMinutes < 1) return "Az önce";
-    if (diff.inMinutes < 60) return "${diff.inMinutes} dk önce";
-    if (diff.inHours < 24) return "${diff.inHours} saat önce";
-    if (diff.inDays == 1) return "Dün";
-    if (diff.inDays < 7) return "${diff.inDays} gün önce";
+    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
+    if (diff.inHours < 24) return "${diff.inHours}h ago";
+    if (diff.inDays == 1) return "Yesterday";
+    if (diff.inDays < 7) return "${diff.inDays} days ago";
 
-    final day = dateTime.day.toString().padLeft(2, '0');
-    final month = dateTime.month.toString().padLeft(2, '0');
-    final year = dateTime.year.toString();
-
-    return "$day/$month/$year";
+    return "${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year}";
   }
 
   String _groupTitle(dynamic value) {
-    if (value == null) return "Daha Önce";
-
+    if (value == null) return "Earlier";
     DateTime? dateTime;
+    if (value is Timestamp) dateTime = value.toDate();
+    else if (value is DateTime) dateTime = value;
 
-    if (value is Timestamp) {
-      dateTime = value.toDate();
-    } else if (value is DateTime) {
-      dateTime = value;
-    }
-
-    if (dateTime == null) return "Daha Önce";
+    if (dateTime == null) return "Earlier";
 
     final now = DateTime.now();
-
     final today = DateTime(now.year, now.month, now.day);
-    final notificationDay = DateTime(
-      dateTime.year,
-      dateTime.month,
-      dateTime.day,
-    );
+    final notificationDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
     final diffDays = today.difference(notificationDay).inDays;
 
-    if (diffDays == 0) return "Bugün";
-    if (diffDays <= 7) return "Bu Hafta";
+    if (diffDays == 0) return "Today";
+    if (diffDays <= 7) return "This Week";
 
-    return "Daha Önce";
+    return "Earlier";
   }
 
   IconData _iconForType(String type) {
     switch (type) {
-      case 'announcement':
-        return Icons.campaign;
-      case 'event':
-        return Icons.event;
-      case 'menu':
-        return Icons.restaurant;
-      case 'issue':
-        return Icons.report_problem;
-      default:
-        return Icons.notifications;
+      case 'announcement': return Icons.campaign;
+      case 'event': return Icons.event;
+      case 'menu': return Icons.restaurant;
+      case 'issue': return Icons.report_problem;
+      default: return Icons.notifications;
     }
   }
 
   Color _colorForType(String type) {
     switch (type) {
-      case 'announcement':
-        return AppTheme.primaryColor;
-      case 'event':
-        return AppTheme.secondaryColor;
-      case 'menu':
-        return AppTheme.warningColor;
-      case 'issue':
-        return AppTheme.destructiveColor;
-      default:
-        return AppTheme.primaryLight;
+      case 'announcement': return AppTheme.primaryColor;
+      case 'event': return Colors.orange;
+      case 'menu': return Colors.green;
+      case 'issue': return AppTheme.destructiveColor;
+      default: return AppTheme.primaryLight;
     }
   }
 
-  Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>
-  _groupNotifications(
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-      ) {
-    final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>
-    grouped = {
-      "Bugün": [],
-      "Bu Hafta": [],
-      "Daha Önce": [],
+  Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> _groupNotifications(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {
+      "Today": [],
+      "This Week": [],
+      "Earlier": [],
     };
 
     for (final doc in docs) {
       final data = doc.data();
       final group = _groupTitle(data['createdAt']);
-
-      grouped.putIfAbsent(group, () => []);
-      grouped[group]!.add(doc);
+      if (grouped.containsKey(group)) {
+        grouped[group]!.add(doc);
+      } else {
+        grouped["Earlier"]!.add(doc);
+      }
     }
-
     return grouped;
   }
 
-  Future<void> _confirmAndDeleteNotification(
-      QueryDocumentSnapshot<Map<String, dynamic>> doc,
-      ) async {
+  Future<void> _confirmAndDeleteNotification(QueryDocumentSnapshot<Map<String, dynamic>> doc) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Bildirimi Sil"),
-        content: const Text("Bu bildirimi silmek istediğinizden emin misiniz?"),
+        title: const Text("Delete Notification"),
+        content: const Text("Are you sure you want to delete this notification?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("İptal"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              "Sil",
-              style: TextStyle(color: AppTheme.destructiveColor),
-            ),
+            child: const Text("Delete", style: TextStyle(color: AppTheme.destructiveColor)),
           ),
         ],
       ),
     );
 
-    if (shouldDelete == true) {
-      await doc.reference.delete();
-    }
+    if (shouldDelete == true) await doc.reference.delete();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: "Bildirimler",
+        title: "Notifications",
         showBack: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all, color: AppTheme.primaryColor),
-            tooltip: "Tümünü Okundu İşaretle",
+            tooltip: "Mark all as read",
             onPressed: _markAllAsRead,
           ),
         ],
@@ -194,52 +152,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _notificationsStream(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text("Bildirimler yüklenemedi: ${snapshot.error}"),
-            );
-          }
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
 
           final docs = snapshot.data?.docs ?? [];
-
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                "Henüz bildirim yok.",
-                style: TextStyle(color: AppTheme.textMuted),
-              ),
-            );
-          }
+          if (docs.isEmpty) return const Center(child: Text("No notifications yet.", style: TextStyle(color: AppTheme.textMuted)));
 
           final grouped = _groupNotifications(docs);
 
           return ListView(
             children: [
-              if (grouped["Bugün"]!.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: SectionHeader(title: "Bugün"),
-                ),
-                ...grouped["Bugün"]!.map((doc) => _buildNotificationRow(doc)),
+              if (grouped["Today"]!.isNotEmpty) ...[
+                const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 8), child: SectionHeader(title: "Today")),
+                ...grouped["Today"]!.map((doc) => _buildNotificationRow(doc)),
               ],
-              if (grouped["Bu Hafta"]!.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: SectionHeader(title: "Bu Hafta"),
-                ),
-                ...grouped["Bu Hafta"]!.map((doc) => _buildNotificationRow(doc)),
+              if (grouped["This Week"]!.isNotEmpty) ...[
+                const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 8), child: SectionHeader(title: "This Week")),
+                ...grouped["This Week"]!.map((doc) => _buildNotificationRow(doc)),
               ],
-              if (grouped["Daha Önce"]!.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: SectionHeader(title: "Daha Önce"),
-                ),
-                ...grouped["Daha Önce"]!
-                    .map((doc) => _buildNotificationRow(doc)),
+              if (grouped["Earlier"]!.isNotEmpty) ...[
+                const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 8), child: SectionHeader(title: "Earlier")),
+                ...grouped["Earlier"]!.map((doc) => _buildNotificationRow(doc)),
               ],
             ],
           );
@@ -248,17 +181,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationRow(
-      QueryDocumentSnapshot<Map<String, dynamic>> doc,
-      ) {
+  Widget _buildNotificationRow(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
-
-    final title = data["title"]?.toString() ?? "";
-    final subtitle = data["subtitle"]?.toString() ?? "";
-    final type = data["type"]?.toString() ?? "general";
-    final isRead = data["isRead"] == true;
-    final createdAt = data["createdAt"];
-
+    final type = data['type']?.toString() ?? 'general';
+    final isRead = data['isRead'] == true;
     final color = _colorForType(type);
 
     return InkWell(
@@ -268,8 +194,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         }
       },
       child: Container(
-        color:
-        isRead ? Colors.transparent : AppTheme.primaryLight.withOpacity(0.05),
+        color: isRead ? Colors.transparent : AppTheme.primaryLight.withOpacity(0.05),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,11 +205,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                _iconForType(type),
-                color: color,
-                size: 24,
-              ),
+              child: Icon(_iconForType(type), color: color, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -292,56 +213,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    data['title']?.toString() ?? "",
                     style: TextStyle(
-                      fontWeight:
-                      isRead ? FontWeight.normal : FontWeight.bold,
+                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 14,
-                    ),
+                    data['subtitle']?.toString() ?? "",
+                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _formatTime(createdAt),
-                    style: const TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    _formatTime(data['createdAt']),
+                    style: const TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
             ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isRead)
-                  Container(
-                    margin: const EdgeInsets.only(top: 6),
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryLight,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: AppTheme.destructiveColor,
-                    size: 22,
-                  ),
-                  tooltip: "Bildirimi sil",
-                  onPressed: () => _confirmAndDeleteNotification(doc),
-                ),
-              ],
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppTheme.destructiveColor, size: 22),
+              onPressed: () => _confirmAndDeleteNotification(doc),
             ),
           ],
         ),

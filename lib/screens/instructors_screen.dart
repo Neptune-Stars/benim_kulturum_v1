@@ -17,18 +17,11 @@ class InstructorsScreen extends StatefulWidget {
 
 class _InstructorsScreenState extends State<InstructorsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
   late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _filters = [
-    "Tümü",
-    "Mühendislik",
-    "İktisat",
-    "Fen-Edebiyat",
-    "Hukuk",
-    "Mimarlık",
-    "Psikoloji",
-    "Edebiyat"
+    "All", "Engineering", "Economics", "Arts & Sciences", "Law", "Architecture", "Psychology", "Literature"
   ];
 
   @override
@@ -40,36 +33,30 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "Öğretim Görevlileri", showBack: true),
+      appBar: const CustomAppBar(title: "Academic Staff", showBack: true),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text("Hoca verisi bulunamadı."));
-            }
+            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+            if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Staff data not found."));
 
             final allInstructors = snapshot.data!['instructors'] as List<dynamic>? ?? [];
 
             final filteredInstructors = allInstructors.where((i) {
-              final name = i['name']?.toString() ?? "";
-              final dept = i['department']?.toString() ?? "";
+              final name = i['name']?.toString().toLowerCase() ?? "";
+              final dept = i['department']?.toString().toLowerCase() ?? "";
               final filterValue = i['filter']?.toString() ?? "";
 
-              final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  dept.toLowerCase().contains(_searchQuery.toLowerCase());
+              final matchesSearch = name.contains(_searchQuery.toLowerCase()) || dept.contains(_searchQuery.toLowerCase());
+              bool matchesFilter = _selectedFilter == "All";
 
-              bool matchesFilter = _selectedFilter == "Tümü";
-
-              if (_selectedFilter == "Mühendislik" && filterValue == "engineering") matchesFilter = true;
-              if (_selectedFilter == "İktisat" && filterValue == "economics") matchesFilter = true;
-              if (_selectedFilter == "Fen-Edebiyat" && filterValue == "science") matchesFilter = true;
-              if (_selectedFilter == "Hukuk" && filterValue == "law") matchesFilter = true;
-              if (_selectedFilter == "Mimarlık" && filterValue == "architecture") matchesFilter = true;
-              if (_selectedFilter == "Psikoloji" && filterValue == "psychology") matchesFilter = true;
-              if (_selectedFilter == "Edebiyat" && filterValue == "literature") matchesFilter = true;
+              if (_selectedFilter == "Engineering" && filterValue == "engineering") matchesFilter = true;
+              if (_selectedFilter == "Economics" && filterValue == "economics") matchesFilter = true;
+              if (_selectedFilter == "Arts & Sciences" && filterValue == "science") matchesFilter = true;
+              if (_selectedFilter == "Law" && filterValue == "law") matchesFilter = true;
+              if (_selectedFilter == "Architecture" && filterValue == "architecture") matchesFilter = true;
+              if (_selectedFilter == "Psychology" && filterValue == "psychology") matchesFilter = true;
+              if (_selectedFilter == "Literature" && filterValue == "literature") matchesFilter = true;
 
               return matchesSearch && matchesFilter;
             }).toList();
@@ -78,61 +65,41 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: AppSearchBar(
-                    placeholder: "Hoca veya bölüm ara...",
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                  ),
+                  child: AppSearchBar(placeholder: "Search instructor or department...", onChanged: (val) => setState(() => _searchQuery = val)),
                 ),
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: _filters.length,
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      return AppFilterChip(
-                        label: filter,
-                        active: _selectedFilter == filter,
-                        onTap: () => setState(() => _selectedFilter = filter),
-                      );
-                    },
+                    itemBuilder: (context, index) => AppFilterChip(
+                        label: _filters[index], active: _selectedFilter == _filters[index],
+                        onTap: () => setState(() => _selectedFilter = _filters[index])),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: filteredInstructors.isEmpty
+                      ? const Center(child: Text("No staff members found."))
+                      : ListView.builder(
                     itemCount: filteredInstructors.length,
                     itemBuilder: (context, index) {
                       final instructor = filteredInstructors[index];
-
-                      // HATA ÇÖZÜMÜ: Map türünü güvenli bir şekilde String key'lere dönüştürüyoruz (Casting)
-                      final Map<String, dynamic> safeInstructorData = Map<String, dynamic>.from(instructor as Map);
-
-                      // YENİ: Fotoğraf verisini çekiyoruz
-                      final String? imageUrl = safeInstructorData['imageUrl'];
+                      final Map<String, dynamic> safeData = Map<String, dynamic>.from(instructor as Map);
+                      final String? imageUrl = safeData['imageUrl'];
 
                       return InfoCard(
-                        // YENİ: InfoCard içine hocanın profil fotoğrafını ekliyoruz
                         leading: CircleAvatar(
                           radius: 25,
                           backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                          backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                              ? AssetImage(imageUrl)
-                              : null,
-                          child: imageUrl == null || imageUrl.isEmpty
-                              ? const Icon(Icons.person, color: AppTheme.primaryColor)
-                              : null,
+                          backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? AssetImage(imageUrl) : null,
+                          child: imageUrl == null || imageUrl.isEmpty ? const Icon(Icons.person, color: AppTheme.primaryColor) : null,
                         ),
-                        title: safeInstructorData['name'] ?? '',
-                        subtitle: safeInstructorData['department'] ?? '',
-                        metadata: "Ofis: ${safeInstructorData['office']}",
-                        badge: AppBadge(label: safeInstructorData['title'] ?? ''),
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: safeInstructorData))
-                        ),
+                        title: safeData['name'] ?? '',
+                        subtitle: safeData['department'] ?? '',
+                        metadata: "Office: ${safeData['office']}",
+                        badge: AppBadge(label: safeData['title'] ?? ''),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: safeData))),
                       );
                     },
                   ),

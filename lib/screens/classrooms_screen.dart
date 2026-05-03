@@ -17,15 +17,15 @@ class ClassroomsScreen extends StatefulWidget {
 
 class _ClassroomsScreenState extends State<ClassroomsScreen> {
   String _searchQuery = "";
-  String _selectedTypeFilter = "Tümü";
-  String _selectedFloorFilter = "Tüm Katlar";
+  String _selectedTypeFilter = "All";
+  String _selectedFloorFilter = "All Floors";
   late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _typeFilters = [
-    "Tümü",
-    "Derslik",
-    "Amfi",
-    "Laboratuvar",
+    "All",
+    "Classroom",
+    "Amphitheater",
+    "Laboratory",
   ];
 
   @override
@@ -36,33 +36,29 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
 
   String _floorLabel(dynamic floor) {
     final text = floor?.toString().trim() ?? "";
-
-    if (text.isEmpty) return "Kat Bilgisi Yok";
-    if (text.contains("Kat")) return text;
+    if (text.isEmpty) return "No Floor Info";
+    if (text.contains("Floor") || text.contains("Kat")) return text;
 
     final number = int.tryParse(text);
-
-    if (number == -1) return "Bodrum Kat";
-    if (number == 0) return "Zemin Kat";
-    if (number != null) return "$number. Kat";
+    if (number == -1) return "Basement";
+    if (number == 0) return "Ground Floor";
+    if (number != null) return "Floor $number";
 
     return text;
   }
 
   int _floorOrder(String label) {
-    if (label == "Bodrum Kat") return -1;
-    if (label == "Zemin Kat") return 0;
-
+    if (label == "Basement") return -1;
+    if (label == "Ground Floor") return 0;
     final match = RegExp(r'(\d+)').firstMatch(label);
     if (match == null) return 999;
-
     return int.tryParse(match.group(1) ?? "999") ?? 999;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "Derslikler", showBack: true),
+      appBar: const CustomAppBar(title: "Classrooms", showBack: true),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
@@ -70,11 +66,10 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!['classrooms'] == null) {
-              return const Center(child: Text("Derslik verisi bulunamadı."));
+              return const Center(child: Text("Classroom data not found."));
             }
 
             final allClassrooms = snapshot.data!['classrooms'] as List<dynamic>? ?? [];
-
             final floorSet = <String>{};
 
             for (final c in allClassrooms) {
@@ -84,12 +79,8 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
             final sortedFloors = floorSet.toList()
               ..sort((a, b) => _floorOrder(a).compareTo(_floorOrder(b)));
 
-            final floorFilters = [
-              "Tüm Katlar",
-              ...sortedFloors,
-            ];
+            final floorFilters = ["All Floors", ...sortedFloors];
 
-            // Arama ve Filtreleme İşlemleri
             final filteredClassrooms = allClassrooms.where((classroom) {
               final name = classroom['name']?.toString() ?? "";
               final building = classroom['building']?.toString() ?? "";
@@ -98,10 +89,8 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
 
               final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   building.toLowerCase().contains(_searchQuery.toLowerCase());
-
-              final matchesType = _selectedTypeFilter == "Tümü" || type == _selectedTypeFilter;
-
-              final matchesFloor = _selectedFloorFilter == "Tüm Katlar" || _floorLabel(floor) == _selectedFloorFilter;
+              final matchesType = _selectedTypeFilter == "All" || type == _selectedTypeFilter;
+              final matchesFloor = _selectedFloorFilter == "All Floors" || _floorLabel(floor) == _selectedFloorFilter;
 
               return matchesSearch && matchesType && matchesFloor;
             }).toList();
@@ -111,12 +100,10 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: AppSearchBar(
-                    placeholder: "Derslik veya bina ara...",
+                    placeholder: "Search classroom or building...",
                     onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),
-
-                // Tip filtreleri
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
@@ -124,19 +111,15 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: _typeFilters.length,
                     itemBuilder: (context, index) {
-                      final filter = _typeFilters[index];
                       return AppFilterChip(
-                        label: filter,
-                        active: _selectedTypeFilter == filter,
-                        onTap: () => setState(() => _selectedTypeFilter = filter),
+                        label: _typeFilters[index],
+                        active: _selectedTypeFilter == _typeFilters[index],
+                        onTap: () => setState(() => _selectedTypeFilter = _typeFilters[index]),
                       );
                     },
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
-                // Kat filtreleri
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
@@ -144,25 +127,22 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: floorFilters.length,
                     itemBuilder: (context, index) {
-                      final filter = floorFilters[index];
                       return AppFilterChip(
-                        label: filter,
-                        active: _selectedFloorFilter == filter,
-                        onTap: () => setState(() => _selectedFloorFilter = filter),
+                        label: floorFilters[index],
+                        active: _selectedFloorFilter == floorFilters[index],
+                        onTap: () => setState(() => _selectedFloorFilter = floorFilters[index]),
                       );
                     },
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 Expanded(
                   child: filteredClassrooms.isEmpty
                       ? const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24.0),
                       child: Text(
-                        "Seçtiğin filtrelere uygun derslik bulunamadı.",
+                        "No classrooms found matching your filters.",
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppTheme.textMuted, fontSize: 16),
                       ),
@@ -173,14 +153,13 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
                     itemCount: filteredClassrooms.length,
                     itemBuilder: (context, index) {
                       final classroom = filteredClassrooms[index];
-
-                      // HATA ÇÖZÜMÜ: Map türünü güvenli bir şekilde String key'lere dönüştürüyoruz (Casting)
                       final Map<String, dynamic> safeClassroomData = Map<String, dynamic>.from(classroom as Map);
 
                       return InfoCard(
                         title: safeClassroomData['name']?.toString() ?? "",
                         subtitle: safeClassroomData['building']?.toString() ?? "",
-                        metadata: "Kapasite: ${safeClassroomData['capacity'] ?? 0} Kişi • Kat: ${_floorLabel(safeClassroomData['floorLabel'] ?? safeClassroomData['floor'])}",                        onTap: () => Navigator.push(
+                        metadata: "Capacity: ${safeClassroomData['capacity'] ?? 0} People • Floor: ${_floorLabel(safeClassroomData['floorLabel'] ?? safeClassroomData['floor'])}",
+                        onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: safeClassroomData)),
                         ),

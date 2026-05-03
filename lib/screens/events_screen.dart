@@ -13,11 +13,7 @@ import 'event_detail_screen.dart';
 
 class EventsScreen extends StatefulWidget {
   final bool showOnlyJoined;
-
-  const EventsScreen({
-    Key? key,
-    this.showOnlyJoined = false,
-  }) : super(key: key);
+  const EventsScreen({Key? key, this.showOnlyJoined = false}) : super(key: key);
 
   @override
   State<EventsScreen> createState() => _EventsScreenState();
@@ -25,16 +21,10 @@ class EventsScreen extends StatefulWidget {
 
 class _EventsScreenState extends State<EventsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  final List<String> _filters = [
-    "Tümü",
-    "Akademik",
-    "Kültürel",
-    "Spor",
-    "Sosyal",
-  ];
+  final List<String> _filters = ["All", "Academic", "Cultural", "Sports", "Social"];
 
   @override
   void initState() {
@@ -43,12 +33,12 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   String _getCategoryLabel(String cat) {
-    switch (cat) {
-      case "academic": return "Akademik";
-      case "cultural": return "Kültürel";
-      case "sports": return "Spor";
-      case "social": return "Sosyal";
-      default: return "Genel";
+    switch (cat.toLowerCase()) {
+      case "academic": return "Academic";
+      case "cultural": return "Cultural";
+      case "sports": return "Sports";
+      case "social": return "Social";
+      default: return "General";
     }
   }
 
@@ -58,38 +48,25 @@ class _EventsScreenState extends State<EventsScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: widget.showOnlyJoined ? "Etkinliklerim" : "Etkinlikler",
+        title: widget.showOnlyJoined ? "My Events" : "Events",
         showBack: true,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!['events'] == null) {
-              return const Center(child: Text("Etkinlik verisi bulunamadı."));
-            }
+            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+            if (!snapshot.hasData) return const Center(child: Text("Event data not found."));
 
             final allEvents = snapshot.data!['events'] as List<dynamic>? ?? [];
 
             final filteredEvents = allEvents.where((e) {
-              final title = e['title']?.toString() ?? "";
-              final description = e['description']?.toString() ?? "";
+              final title = e['title']?.toString().toLowerCase() ?? "";
               final category = e['category']?.toString() ?? "";
-              final eventId = e['id'];
+              final matchesSearch = title.contains(_searchQuery.toLowerCase());
 
-              final matchesSearch = title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  description.toLowerCase().contains(_searchQuery.toLowerCase());
-
-              final mappedFilter = _selectedFilter == "Akademik" ? "academic"
-                  : _selectedFilter == "Kültürel" ? "cultural"
-                  : _selectedFilter == "Spor" ? "sports"
-                  : _selectedFilter == "Sosyal" ? "social" : "Tümü";
-
-              final matchesFilter = _selectedFilter == "Tümü" || category == mappedFilter;
-
-              final matchesJoined = !widget.showOnlyJoined || joinedProvider.isJoined(eventId);
+              final mappedFilter = _selectedFilter.toLowerCase();
+              final matchesFilter = _selectedFilter == "All" || category == mappedFilter;
+              final matchesJoined = !widget.showOnlyJoined || joinedProvider.isJoined(e['id']);
 
               return matchesSearch && matchesFilter && matchesJoined;
             }).toList();
@@ -98,60 +75,38 @@ class _EventsScreenState extends State<EventsScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: AppSearchBar(
-                    placeholder: "Etkinlik ara...",
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                  ),
+                  child: AppSearchBar(placeholder: "Search events...", onChanged: (val) => setState(() => _searchQuery = val)),
                 ),
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: _filters.length,
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      return AppFilterChip(
-                        label: filter,
-                        active: _selectedFilter == filter,
-                        onTap: () => setState(() => _selectedFilter = filter),
-                      );
-                    },
+                    itemBuilder: (context, index) => AppFilterChip(
+                        label: _filters[index],
+                        active: _selectedFilter == _filters[index],
+                        onTap: () => setState(() => _selectedFilter = _filters[index])
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: filteredEvents.isEmpty
-                      ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Text(
-                        widget.showOnlyJoined ? "Henüz katıldığın bir etkinlik yok." : "Etkinlik bulunamadı.",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 16),
-                      ),
-                    ),
-                  )
+                      ? Center(child: Text(widget.showOnlyJoined ? "You haven't joined any events yet." : "No events found."))
                       : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: filteredEvents.length,
                     itemBuilder: (context, index) {
                       final e = filteredEvents[index];
                       final isJoined = joinedProvider.isJoined(e['id']);
-
                       return InfoCard(
-                        title: e['title']?.toString() ?? "",
-                        subtitle: e['description']?.toString() ?? "",
+                        title: e['title'] ?? "",
+                        subtitle: e['description'] ?? "",
                         metadata: "${e['date']} • ${e['time']} | ${e['location']}",
                         badge: AppBadge(
-                          label: isJoined ? "Katıldın" : _getCategoryLabel(e['category']?.toString() ?? ""),
+                          label: isJoined ? "Joined" : _getCategoryLabel(e['category'] ?? ""),
                           backgroundColor: isJoined ? AppTheme.successColor.withOpacity(0.12) : null,
-                          textColor: isJoined ? AppTheme.successColor : null,
                         ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e)),
-                        ),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e))),
                       );
                     },
                   ),
