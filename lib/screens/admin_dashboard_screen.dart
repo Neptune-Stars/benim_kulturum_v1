@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
 import 'package:flutter/services.dart';
+import 'admin_chat_list_screen.dart';
 
 
 class DateInputFormatter extends TextInputFormatter {
@@ -1157,6 +1158,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               _buildStatCard(Icons.event, "Etkinlikler", ((data['events'] as List?)?.length ?? 0).toString(), 4),
               _buildStatCard(Icons.report_problem, "Sorunlar", ((data['issues'] as List?)?.length ?? 0).toString(), 8),
               _buildStatCard(Icons.person, "Öğrenciler", ((data['students'] as List?)?.length ?? 0).toString(), 9),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminChatListScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _adminBorderColor()),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Icon(Icons.support_agent, color: _adminPrimaryColor()),
+                          Icon(Icons.chevron_right, color: _adminTextMutedColor(), size: 20),
+                        ],
+                      ),
+                      const Spacer(),
+                      const Text(
+                        "Live",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        "Support Messages",
+                        style: TextStyle(color: _adminTextMutedColor(), fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],
