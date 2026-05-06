@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
 import 'package:flutter/services.dart';
+import 'admin_chat_list_screen.dart';
 
 
 class DateInputFormatter extends TextInputFormatter {
@@ -72,7 +74,18 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Future<Map<String, dynamic>> _databaseFuture;
+  Future<Map<String, int>>? _dashboardSummaryFuture;
+  Future<List<Map<String, dynamic>>>? _buildingsFuture;
+  Future<Map<String, dynamic>>? _classroomTabDataFuture;
+  Future<List<Map<String, dynamic>>>? _instructorsFuture;
+  Future<List<Map<String, dynamic>>>? _eventsFuture;
+  Future<List<Map<String, dynamic>>>? _announcementsFuture;
+  Future<List<Map<String, dynamic>>>? _pricesFuture;
+  Future<List<String>>? _priceCategoriesFuture;
+  List<String> _currentPriceCategoryOptions = List<String>.from(_priceCategoryOptions);
+  Future<List<Map<String, dynamic>>>? _issuesFuture;
+  Future<List<Map<String, dynamic>>>? _studentsFuture;
+  Future<List<Map<String, dynamic>>>? _weeklyCafeteriaFuture;
 
   final List<String> _tabs = [
     "Genel", "Birimler", "Derslikler", "Hocalar", "Etkinlikler", "Duyurular", "Yemekhane", "Fiyatlar", "Sorunlar", "Öğrenciler"
@@ -84,16 +97,132 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     7: TextEditingController(), 8: TextEditingController(), 9: TextEditingController(),
   };
 
+  DateTime _cafeteriaWeekStart = DataService.startOfWeek(DateTime.now());
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _loadData();
+    _tabController.addListener(() {
+      _ensureTabFuture(_tabController.index);
+    });
+    _ensureTabFuture(0, updateState: false);
   }
 
-  void _loadData() {
+  void _refreshWeeklyCafeteriaMenus() {
+    _weeklyCafeteriaFuture = DataService.fetchWeeklyCafeteriaMenus(
+      weekStart: _cafeteriaWeekStart,
+    );
+  }
+
+  void _ensureTabFuture(int index, {bool forceRefresh = false, bool updateState = true}) {
+    void assignFuture() {
+      switch (index) {
+        case 0:
+          if (forceRefresh || _dashboardSummaryFuture == null) {
+            _dashboardSummaryFuture = DataService.fetchDashboardSummary(forceRefresh: forceRefresh);
+          }
+          break;
+        case 1:
+          if (forceRefresh || _buildingsFuture == null) {
+            _buildingsFuture = DataService.fetchCollection('buildings', forceRefresh: forceRefresh);
+          }
+          break;
+        case 2:
+          if (forceRefresh || _classroomTabDataFuture == null) {
+            _classroomTabDataFuture = DataService.fetchAdminClassroomTabData(forceRefresh: forceRefresh);
+          }
+          break;
+        case 3:
+          if (forceRefresh || _instructorsFuture == null) {
+            _instructorsFuture = DataService.fetchCollection('instructors', forceRefresh: forceRefresh);
+          }
+          break;
+        case 4:
+          if (forceRefresh || _eventsFuture == null) {
+            _eventsFuture = DataService.fetchCollection('events', forceRefresh: forceRefresh);
+          }
+          break;
+        case 5:
+          if (forceRefresh || _announcementsFuture == null) {
+            _announcementsFuture = DataService.fetchCollection('announcements', forceRefresh: forceRefresh);
+          }
+          break;
+        case 6:
+          if (forceRefresh || _weeklyCafeteriaFuture == null) {
+            _refreshWeeklyCafeteriaMenus();
+          }
+          break;
+        case 7:
+          if (forceRefresh || _pricesFuture == null) {
+            _pricesFuture = DataService.fetchCollection('prices', forceRefresh: forceRefresh);
+          }
+          if (forceRefresh || _priceCategoriesFuture == null) {
+            _priceCategoriesFuture = DataService.fetchPriceCategories(forceRefresh: forceRefresh);
+          }
+          break;
+        case 8:
+          if (forceRefresh || _issuesFuture == null) {
+            _issuesFuture = DataService.fetchCollection('issues', forceRefresh: forceRefresh);
+          }
+          break;
+        case 9:
+          if (forceRefresh || _studentsFuture == null) {
+            _studentsFuture = DataService.fetchCollection('students', forceRefresh: forceRefresh);
+          }
+          break;
+      }
+    }
+
+    if (updateState && mounted) {
+      setState(assignFuture);
+    } else {
+      assignFuture();
+    }
+  }
+
+  void _refreshTab(int index) {
+    _ensureTabFuture(index, forceRefresh: true);
+  }
+
+  void _refreshAdminData({String? collectionKey, bool refreshCafeteria = false}) {
+    if (refreshCafeteria) {
+      DataService.clearCafeteriaCache();
+      setState(() {
+        _refreshWeeklyCafeteriaMenus();
+      });
+      return;
+    }
+
+    if (collectionKey == null) {
+      DataService.clearCache();
+      for (int i = 0; i < _tabs.length; i++) {
+        _ensureTabFuture(i, forceRefresh: true, updateState: false);
+      }
+      setState(() {});
+      return;
+    }
+
+    DataService.clearCollectionCache(collectionKey);
+
+    final tabIndexByCollection = <String, int>{
+      'buildings': 1,
+      'classrooms': 2,
+      'instructors': 3,
+      'events': 4,
+      'announcements': 5,
+      'prices': 7,
+      'priceCategories': 7,
+      'issues': 8,
+      'students': 9,
+    };
+
+    final tabIndex = tabIndexByCollection[collectionKey];
     setState(() {
-      _databaseFuture = DataService.loadDatabase();
+      _dashboardSummaryFuture = DataService.fetchDashboardSummary(forceRefresh: true);
+      if (tabIndex != null) {
+        _ensureTabFuture(tabIndex, forceRefresh: true, updateState: false);
+      }
     });
   }
 
@@ -109,7 +238,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     context.go('/login');
   }
 
-  void _switchTab(int index) { _tabController.animateTo(index); }
+  void _switchTab(int index) {
+    _ensureTabFuture(index);
+    _tabController.animateTo(index);
+  }
+
+  Color _adminPrimaryColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.primaryLight : AppTheme.primaryColor;
+  }
+
+  Color _adminTextPrimaryColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
+  }
+
+  Color _adminTextMutedColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+  }
+
+  Color _adminBorderColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
+  }
 
   String _normalizeForSearch(String text) {
     return text.toLowerCase().replaceAll('i̇', 'i').replaceAll('ı', 'i').replaceAll('ğ', 'g')
@@ -130,7 +282,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kayıt bulut veritabanından silindi.")));
-                  _loadData();
+                  _refreshAdminData(collectionKey: collectionKey);
                 }
               },
               child: const Text("Sil", style: TextStyle(color: AppTheme.destructiveColor))
@@ -275,139 +427,1441 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.admin_panel_settings, color: AppTheme.primaryColor), SizedBox(width: 8), Text("Yönetici Paneli")]),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _switchTab(0),
+              child:  Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.admin_panel_settings,
+                  color: _adminPrimaryColor(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text("Yönetici Paneli"),
+          ],
+        ),
         centerTitle: false,
-        actions: [IconButton(icon: const Icon(Icons.logout, color: AppTheme.destructiveColor), onPressed: _logout)],
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              return IconButton(
+                tooltip: themeProvider.isDarkMode
+                    ? "Aydınlık moda geç"
+                    : "Karanlık moda geç",
+                icon: Icon(
+                  themeProvider.isDarkMode
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+                onPressed: () {
+                  context.read<ThemeProvider>().toggleTheme();
+                },
+              );
+            },
+          ),
+          IconButton(
+            tooltip: "Çıkış yap",
+            icon: const Icon(
+              Icons.logout,
+              color: AppTheme.destructiveColor,
+            ),
+            onPressed: _logout,
+          ),
+        ],
         bottom: TabBar(
-          controller: _tabController, isScrollable: true,
-          labelColor: AppTheme.primaryColor, unselectedLabelColor: AppTheme.textMuted, indicatorColor: AppTheme.primaryColor,
+          controller: _tabController,
+          isScrollable: true,
+          labelColor: _adminPrimaryColor(),
+          unselectedLabelColor: _adminTextMutedColor(),
+          indicatorColor: _adminPrimaryColor(),
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _databaseFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Gösterilecek veri bulunamadı."));
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildDashboardSummaryTab(),
+          _buildBuildingsTab(),
+          _buildClassroomsTab(),
+          _buildInstructorsTab(),
+          _buildEventsTab(),
+          _buildAnnouncementsTab(),
+          _buildCafeteriaWeekTab(),
+          _buildPricesTab(),
+          _buildIssuesFutureTab(),
+          _buildStudentsTab(),
+        ],
+      ),
+    );
+  }
 
-          final data = snapshot.data!;
+  Widget _buildDashboardSummaryTab() {
+    final future = _dashboardSummaryFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(0));
+      return _buildDashboardSkeleton();
+    }
 
-          final campusOptions = _getCampusOptions(data);
-          final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
+    return FutureBuilder<Map<String, int>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildDashboardSkeleton();
+        }
 
-          final allBuildings = data['buildings'] as List<dynamic>? ?? [];
-          final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
-          final allInstructors = data['instructors'] as List<dynamic>? ?? [];
-          final allEvents = data['events'] as List<dynamic>? ?? [];
-          final allAnnouncements = data['announcements'] as List<dynamic>? ?? [];
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Genel özet alınamadı.",
+            onRetry: () => _refreshTab(0),
+          );
+        }
 
-          // NEW: Reading fully from Firebase now
-          final allPrices = data['prices'] as List<dynamic>? ?? [];
-          final allIssues = data['issues'] as List<dynamic>? ?? [];
-          final allStudents = data['students'] as List<dynamic>? ?? [];
+        return _buildGenelTab(snapshot.data ?? <String, int>{});
+      },
+    );
+  }
 
-          final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
-          final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
-          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ["Kahvaltı", "Öğle", "Akşam"];
+  Widget _buildBuildingsTab() {
+    return _buildCollectionFutureTab(
+      future: _buildingsFuture,
+      tabIndex: 1,
+      title: "Kampüs Birimleri",
+      searchController: _searchControllers[1]!,
+      searchFields: const ['name', 'location'],
+      onAdd: () => _openBuildingForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['name'] ?? '',
+        e['location'] ?? '',
+            () => _openBuildingForm(isEdit: true, item: e),
+            () => _showDeleteDialog('buildings', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
 
-          final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
-          final filteredBuildings = allBuildings.where((b) => _normalizeForSearch(b['name'] ?? '').contains(sq1) || _normalizeForSearch(b['location'] ?? '').contains(sq1)).toList();
+  Widget _buildClassroomsTab() {
+    final future = _classroomTabDataFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(2));
+      return _buildListSkeleton("Derslikler yükleniyor...");
+    }
 
-          final sq2 = _normalizeForSearch(_searchControllers[2]!.text);
-          final filteredClassrooms = allClassrooms.where((c) => _normalizeForSearch(c['name'] ?? '').contains(sq2) || _normalizeForSearch(c['building'] ?? '').contains(sq2)).toList();
+    return FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Derslikler yükleniyor...");
+        }
 
-          final sq3 = _normalizeForSearch(_searchControllers[3]!.text);
-          final filteredInstructors = allInstructors.where((i) => _normalizeForSearch(i['name'] ?? '').contains(sq3) || _normalizeForSearch(i['department'] ?? '').contains(sq3)).toList();
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Derslik verileri alınamadı.",
+            onRetry: () => _refreshTab(2),
+          );
+        }
 
-          final sq4 = _normalizeForSearch(_searchControllers[4]!.text);
-          final filteredEvents = allEvents.where((e) => _normalizeForSearch(e['title'] ?? '').contains(sq4) || _normalizeForSearch(e['date'] ?? '').contains(sq4)).toList();
+        final data = snapshot.data ?? {};
+        final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
+        final campusOptions = _getCampusOptions(data);
+        final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
 
-          final sq5 = _normalizeForSearch(_searchControllers[5]!.text);
-          final filteredAnnouncements = allAnnouncements.where((a) => _normalizeForSearch(a['title'] ?? '').contains(sq5) || _normalizeForSearch(a['date'] ?? '').contains(sq5)).toList();
+        final sq = _normalizeForSearch(_searchControllers[2]!.text);
+        final filteredClassrooms = allClassrooms.where((c) {
+          return _normalizeForSearch(c['name']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(c['building']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(c['campus']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(c['location']?.toString() ?? '').contains(sq);
+        }).toList();
 
-          final sq6 = _normalizeForSearch(_searchControllers[6]!.text);
-          final filteredMeals = mealTypes.where((m) => _normalizeForSearch(m).contains(sq6)).toList();
+        return _buildManagementTab(
+          title: "Derslikler",
+          count: filteredClassrooms.length,
+          searchController: _searchControllers[2]!,
+          items: filteredClassrooms.map((e) {
+            final subtitle = [
+              e['campus'],
+              e['location'],
+              e['floorLabel'] ?? _floorLabelFromValue(e['floor']),
+            ].where((value) => value != null && value.toString().trim().isNotEmpty).join(" • ");
 
-          final sq7 = _normalizeForSearch(_searchControllers[7]!.text);
-          final filteredPrices = allPrices.where((p) => _normalizeForSearch(p["name"] ?? '').contains(sq7) || _normalizeForSearch(p["category"] ?? '').contains(sq7)).toList();
-
-          final sq8 = _normalizeForSearch(_searchControllers[8]!.text);
-          final filteredIssues = allIssues.where((iss) => _normalizeForSearch(iss["subject"] ?? '').contains(sq8) || _normalizeForSearch(iss["category"] ?? '').contains(sq8)).toList();
-
-          final sq9 = _normalizeForSearch(_searchControllers[9]!.text);
-          final filteredStudents = allStudents.where((s) => _normalizeForSearch(s["name"] ?? '').contains(sq9) || _normalizeForSearch(s["no"] ?? '').contains(sq9)).toList();
-
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildGenelTab(data),
-              _buildManagementTab(
-                title: "Kampüs Birimleri", count: filteredBuildings.length, searchController: _searchControllers[1]!,
-                items: filteredBuildings.map((e) => _buildListItem(e['name'] ?? '', e['location'] ?? '', () => _openBuildingForm(isEdit: true, item: e), () => _showDeleteDialog('buildings', e['id'].toString()))).toList(),
-                onAdd: () => _openBuildingForm(isEdit: false),
+            return _buildListItem(
+              e['name'] ?? '',
+              subtitle,
+                  () => _openClassroomForm(
+                isEdit: true,
+                item: e,
+                campusOptions: campusOptions,
+                locationsByCampus: classroomLocationsByCampus,
               ),
-              _buildManagementTab(
-                title: "Derslikler",
-                count: filteredClassrooms.length,
-                searchController: _searchControllers[2]!,
-                items: filteredClassrooms.map((e) {
-                  final subtitle = [
-                    e['campus'],
-                    e['location'],
-                    e['floorLabel'] ?? _floorLabelFromValue(e['floor']),
-                  ].where((value) => value != null && value.toString().trim().isNotEmpty).join(" • ");
+                  () => _showDeleteDialog('classrooms', (e['firestoreDocId'] ?? e['id']).toString()),
+            );
+          }).toList(),
+          onAdd: () => _openClassroomForm(
+            isEdit: false,
+            campusOptions: campusOptions,
+            locationsByCampus: classroomLocationsByCampus,
+          ),
+        );
+      },
+    );
+  }
 
-                  return _buildListItem(
-                    e['name'] ?? '',
-                    subtitle,
-                        () => _openClassroomForm(
-                      isEdit: true,
-                      item: e,
-                      campusOptions: campusOptions,
-                      locationsByCampus: classroomLocationsByCampus,
+  Widget _buildInstructorsTab() {
+    return _buildCollectionFutureTab(
+      future: _instructorsFuture,
+      tabIndex: 3,
+      title: "Hocalar",
+      searchController: _searchControllers[3]!,
+      searchFields: const ['name', 'department'],
+      onAdd: () => _openInstructorForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['name'] ?? '',
+        e['department'] ?? '',
+            () => _openInstructorForm(isEdit: true, item: e),
+            () => _showDeleteDialog('instructors', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
+
+  Widget _buildEventsTab() {
+    return _buildCollectionFutureTab(
+      future: _eventsFuture,
+      tabIndex: 4,
+      title: "Etkinlikler",
+      searchController: _searchControllers[4]!,
+      searchFields: const ['title', 'date', 'location'],
+      onAdd: () => _openEventForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['title'] ?? '',
+        "${e['date'] ?? '-'} - ${e['location'] ?? '-'}",
+            () => _openEventForm(isEdit: true, item: e),
+            () => _showDeleteDialog('events', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
+
+  Widget _buildAnnouncementsTab() {
+    return _buildCollectionFutureTab(
+      future: _announcementsFuture,
+      tabIndex: 5,
+      title: "Duyurular",
+      searchController: _searchControllers[5]!,
+      searchFields: const ['title', 'date'],
+      onAdd: () => _openAnnouncementForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['title'] ?? '',
+        e['date'] ?? '',
+            () => _openAnnouncementForm(isEdit: true, item: e),
+            () => _showDeleteDialog('announcements', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
+
+  static const List<String> _priceCategoryOptions = [
+    "İçecekler",
+    "Kahve Çeşitleri",
+    "Tost Çeşitleri",
+    "Atıştırmalıklar",
+  ];
+
+  List<String> _mergePriceCategories(
+      List<String> storedCategories,
+      List<Map<String, dynamic>> prices,
+      ) {
+    final result = <String>[];
+
+    void addCategory(String? value) {
+      final category = value?.trim();
+      if (category == null || category.isEmpty) return;
+      if (!result.contains(category)) {
+        result.add(category);
+      }
+    }
+
+    for (final category in _priceCategoryOptions) {
+      addCategory(category);
+    }
+    for (final category in storedCategories) {
+      addCategory(category);
+    }
+    for (final price in prices) {
+      addCategory(_inferPriceCategory(
+        price['category']?.toString(),
+        price['name']?.toString() ?? '',
+      ));
+    }
+
+    return result;
+  }
+
+  String _normalizePriceValue(String rawPrice) {
+    final value = rawPrice.trim();
+    if (value.isEmpty) return "₺0";
+    return value.startsWith("₺") ? value : "₺$value";
+  }
+
+  String _inferPriceCategory(String? rawCategory, String productName) {
+    final raw = rawCategory?.trim() ?? "";
+    final name = productName.toLowerCase();
+
+    if (_priceCategoryOptions.contains(raw)) {
+      return raw;
+    }
+
+    if (name.contains("kahve") ||
+        name.contains("latte") ||
+        name.contains("espresso") ||
+        name.contains("americano") ||
+        name.contains("cappuccino") ||
+        name.contains("mocha") ||
+        name.contains("filtre")) {
+      return "Kahve Çeşitleri";
+    }
+
+    if (name.contains("tost") ||
+        name.contains("sandviç") ||
+        name.contains("sandwich")) {
+      return "Tost Çeşitleri";
+    }
+
+    if (name.contains("eti") ||
+        name.contains("puf") ||
+        name.contains("çikolata") ||
+        name.contains("bisküvi") ||
+        name.contains("cips") ||
+        name.contains("kraker") ||
+        name.contains("gofret") ||
+        name.contains("kek")) {
+      return "Atıştırmalıklar";
+    }
+
+    if (name.contains("çay") ||
+        name.contains("su") ||
+        name.contains("ayran") ||
+        name.contains("kola") ||
+        name.contains("soda") ||
+        name.contains("meyve suyu") ||
+        name.contains("ice tea") ||
+        name.contains("fanta") ||
+        name.contains("sprite")) {
+      return "İçecekler";
+    }
+
+    if (raw == "Çay/Kahve") {
+      return name.contains("kahve") ? "Kahve Çeşitleri" : "İçecekler";
+    }
+    if (raw == "Atıştırmalık" || raw == "Atıştırmalıklar" || raw == "Abur Cubur") {
+      return "Atıştırmalıklar";
+    }
+    if (raw == "Yemek") {
+      return "Tost Çeşitleri";
+    }
+
+    // Custom categories created by the admin must be preserved.
+    if (raw.isNotEmpty) {
+      return raw;
+    }
+
+    return "İçecekler";
+  }
+
+  String _priceDocumentId(Map<dynamic, dynamic>? item) {
+    final firestoreDocId = item?['firestoreDocId']?.toString().trim();
+    if (firestoreDocId != null && firestoreDocId.isNotEmpty && firestoreDocId != "null") {
+      return firestoreDocId;
+    }
+
+    final id = item?['id']?.toString().trim();
+    if (id != null && id.isNotEmpty && id != "null") {
+      return id;
+    }
+
+    return DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  Widget _buildPricesTab() {
+    final pricesFuture = _pricesFuture;
+    final categoriesFuture = _priceCategoriesFuture;
+    if (pricesFuture == null || categoriesFuture == null) {
+      Future.microtask(() => _ensureTabFuture(7));
+      return _buildListSkeleton("Fiyatlar yükleniyor...");
+    }
+
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait<dynamic>([pricesFuture, categoriesFuture]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Fiyatlar yükleniyor...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Fiyat verileri alınamadı.",
+            onRetry: () => _refreshTab(7),
+          );
+        }
+
+        final rawPrices = snapshot.data?[0];
+        final allPrices = rawPrices is List
+            ? rawPrices
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList()
+            : <Map<String, dynamic>>[];
+
+        final rawCategories = snapshot.data?[1];
+        final storedCategories = rawCategories is List
+            ? rawCategories.map((category) => category.toString()).toList()
+            : <String>[];
+        final categoryOptions = _mergePriceCategories(storedCategories, allPrices);
+        _currentPriceCategoryOptions = categoryOptions;
+
+        final sq = _normalizeForSearch(_searchControllers[7]!.text);
+
+        final groupedPrices = <String, List<Map<String, dynamic>>>{
+          for (final category in categoryOptions) category: <Map<String, dynamic>>[],
+        };
+
+        for (final priceItem in allPrices) {
+          final normalizedItem = Map<String, dynamic>.from(priceItem);
+          final normalizedCategory = _inferPriceCategory(
+            normalizedItem['category']?.toString(),
+            normalizedItem['name']?.toString() ?? "",
+          );
+          normalizedItem['category'] = normalizedCategory;
+
+          final searchableText = [
+            normalizedItem['name']?.toString() ?? "",
+            normalizedItem['price']?.toString() ?? "",
+            normalizedCategory,
+          ].map(_normalizeForSearch).join(" ");
+
+          if (sq.isNotEmpty && !searchableText.contains(sq)) {
+            continue;
+          }
+
+          groupedPrices.putIfAbsent(normalizedCategory, () => <Map<String, dynamic>>[]);
+          groupedPrices[normalizedCategory]!.add(normalizedItem);
+        }
+
+        final visibleCount = groupedPrices.values.fold<int>(0, (sum, items) => sum + items.length);
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Fiyatlar ($visibleCount)",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                        () => _showDeleteDialog('classrooms', e['id'].toString()),
-                  );
-                }).toList(),
-                onAdd: () => _openClassroomForm(
-                  isEdit: false,
-                  campusOptions: campusOptions,
-                  locationsByCampus: classroomLocationsByCampus,
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _openPriceCategoryForm,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Kategori Ekle"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: AppSearchBar(
+                controller: _searchControllers[7]!,
+                placeholder: "Ürün, fiyat veya kategori ara...",
+                onChanged: (val) => setState(() {}),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: categoryOptions.length,
+                itemBuilder: (context, index) {
+                  final category = categoryOptions[index];
+                  final items = groupedPrices[category] ?? <Map<String, dynamic>>[];
+                  return _buildPriceCategoryTile(category, items, searchActive: sq.isNotEmpty);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceCategoryTile(
+      String category,
+      List<Map<String, dynamic>> items, {
+        required bool searchActive,
+      }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: _adminBorderColor()),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: searchActive,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        title: Text(
+          category,
+          style: TextStyle(
+            color: _adminTextPrimaryColor(),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: Text(
+          "${items.length} ürün",
+          style: TextStyle(color: _adminTextMutedColor()),
+        ),
+        trailing: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
+          children: [
+            IconButton(
+              tooltip: "$category içine ürün ekle",
+              icon: const Icon(Icons.add_circle_outline),
+              color: _adminPrimaryColor(),
+              onPressed: () => _openPriceForm(
+                isEdit: false,
+                defaultCategory: category,
+              ),
+            ),
+            const Icon(Icons.expand_more),
+          ],
+        ),
+        children: [
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Bu kategoride ürün yok.",
+                  style: TextStyle(color: _adminTextMutedColor()),
                 ),
               ),
-              _buildManagementTab(
-                title: "Hocalar", count: filteredInstructors.length, searchController: _searchControllers[3]!,
-                items: filteredInstructors.map((e) => _buildListItem(e['name'] ?? '', e['department'] ?? '', () => _openInstructorForm(isEdit: true, item: e), () => _showDeleteDialog('instructors', e['id'].toString()))).toList(),
-                onAdd: () => _openInstructorForm(isEdit: false),
+            )
+          else
+            ...items.map((item) {
+              return Column(
+                children: [
+                  _buildListItem(
+                    item['name']?.toString() ?? "İsimsiz ürün",
+                    "${item['price'] ?? '-'} • ${item['category'] ?? category}",
+                        () => _openPriceForm(isEdit: true, item: item),
+                        () => _showDeleteDialog('prices', _priceDocumentId(item)),
+                  ),
+                  if (item != items.last) const Divider(height: 18),
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIssuesFutureTab() {
+    final future = _issuesFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(8));
+      return _buildListSkeleton("Sorunlar yükleniyor...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Sorunlar yükleniyor...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Sorun kayıtları alınamadı.",
+            onRetry: () => _refreshTab(8),
+          );
+        }
+
+        final allIssues = snapshot.data ?? [];
+        final sq = _normalizeForSearch(_searchControllers[8]!.text);
+        final filteredIssues = allIssues.where((iss) {
+          return _normalizeForSearch(iss['subject']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(iss['category']?.toString() ?? '').contains(sq);
+        }).toList();
+
+        return _buildIssuesTab(filteredIssues, _searchControllers[8]!);
+      },
+    );
+  }
+
+  Widget _buildStudentsTab() {
+    return _buildCollectionFutureTab(
+      future: _studentsFuture,
+      tabIndex: 9,
+      title: "Öğrenciler",
+      searchController: _searchControllers[9]!,
+      searchFields: const ['name', 'no', 'email'],
+      onAdd: () => _openStudentForm(isEdit: false),
+      itemBuilder: (s) => _buildListItem(
+        s['name'] ?? '',
+        "${s['no'] ?? '-'} - ${s['grade'] ?? '-'}",
+            () => _openStudentForm(isEdit: true, item: s),
+            () => _showDeleteDialog('students', (s['firestoreDocId'] ?? s['id']).toString()),
+      ),
+    );
+  }
+
+  Widget _buildCollectionFutureTab({
+    required Future<List<Map<String, dynamic>>>? future,
+    required int tabIndex,
+    required String title,
+    required TextEditingController searchController,
+    required List<String> searchFields,
+    required VoidCallback onAdd,
+    required Widget Function(Map<String, dynamic> item) itemBuilder,
+  }) {
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(tabIndex));
+      return _buildListSkeleton("$title yükleniyor...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("$title yükleniyor...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "$title verileri alınamadı.",
+            onRetry: () => _refreshTab(tabIndex),
+          );
+        }
+
+        final allItems = snapshot.data ?? [];
+        final sq = _normalizeForSearch(searchController.text);
+        final filteredItems = allItems.where((item) {
+          if (sq.isEmpty) return true;
+          return searchFields.any((field) {
+            return _normalizeForSearch(item[field]?.toString() ?? '').contains(sq);
+          });
+        }).toList();
+
+        return _buildManagementTab(
+          title: title,
+          count: filteredItems.length,
+          searchController: searchController,
+          items: filteredItems.map(itemBuilder).toList(),
+          onAdd: onAdd,
+        );
+      },
+    );
+  }
+
+  Widget _buildDashboardSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSkeletonBox(height: 54, borderRadius: 12),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final crossAxisCount = width >= 720 ? 3 : 2;
+              final aspectRatio = width < 380 ? 1.08 : 1.22;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: aspectRatio,
+                ),
+                itemCount: 6,
+                itemBuilder: (context, index) => _buildSkeletonBox(borderRadius: 12),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListSkeleton(String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              _buildManagementTab(
-                title: "Etkinlikler", count: filteredEvents.length, searchController: _searchControllers[4]!,
-                items: filteredEvents.map((e) => _buildListItem(e['title'] ?? '', "${e['date']} - ${e['location']}", () => _openEventForm(isEdit: true, item: e), () => _showDeleteDialog('events', e['id'].toString()))).toList(),
-                onAdd: () => _openEventForm(isEdit: false),
+              const SizedBox(width: 12),
+              SizedBox(width: 76, height: 34, child: _buildSkeletonBox(borderRadius: 8)),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildSkeletonBox(height: 46, borderRadius: 10),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: 7,
+            separatorBuilder: (_, __) => const Divider(),
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSkeletonBox(height: 16, width: 180, borderRadius: 6),
+                          const SizedBox(height: 8),
+                          _buildSkeletonBox(height: 13, width: 240, borderRadius: 6),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    _buildSkeletonBox(height: 32, width: 32, borderRadius: 16),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonBox({double? width, double? height, double borderRadius = 8}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message, {required VoidCallback onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_outlined, size: 44, color: _adminTextMutedColor()),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, color: _adminTextPrimaryColor()),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Bağlantıyı kontrol edip tekrar deneyin.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _adminTextMutedColor()),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text("Tekrar dene"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCafeteriaWeekTab() {
+    if (_weeklyCafeteriaFuture == null) {
+      Future.microtask(() => _ensureTabFuture(6));
+      return _buildListSkeleton("Yemekhane menüleri yükleniyor...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _weeklyCafeteriaFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Yemekhane menüleri yükleniyor...");
+        }
+
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text("Haftalık yemekhane verisi alınamadı."),
+          );
+        }
+
+        final days = snapshot.data ?? [];
+        final weekEnd = _cafeteriaWeekStart.add(const Duration(days: 6));
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Yemekhane Menüleri",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: "Önceki hafta",
+                        onPressed: () {
+                          setState(() {
+                            _cafeteriaWeekStart = _cafeteriaWeekStart.subtract(
+                              const Duration(days: 7),
+                            );
+                            _refreshWeeklyCafeteriaMenus();
+                          });
+                        },
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      IconButton(
+                        tooltip: "Sonraki hafta",
+                        onPressed: () {
+                          setState(() {
+                            _cafeteriaWeekStart = _cafeteriaWeekStart.add(
+                              const Duration(days: 7),
+                            );
+                            _refreshWeeklyCafeteriaMenus();
+                          });
+                        },
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "${DataService.formatDisplayDate(_cafeteriaWeekStart)} - ${DataService.formatDisplayDate(weekEnd)}",
+                    style: TextStyle(
+                      color: _adminTextMutedColor(),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Gün tikini kapatırsanız öğrenciler o gün için yemek olmadığını görür. Gün açıkken o güne ait Kahvaltı, Yemek ve Fast Food içeriklerini düzenleyebilirsiniz.",
+                    style: TextStyle(
+                      color: _adminTextMutedColor(),
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ),
-              _buildManagementTab(
-                title: "Duyurular", count: filteredAnnouncements.length, searchController: _searchControllers[5]!,
-                items: filteredAnnouncements.map((e) => _buildListItem(e['title'] ?? '', e['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e), () => _showDeleteDialog('announcements', e['id'].toString()))).toList(),
-                onAdd: () => _openAnnouncementForm(isEdit: false),
+            ),
+            Expanded(
+              child: GridView.count(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 2.25,
+                children: days.map((day) => _buildCafeteriaDayCard(day)).toList(),
               ),
-              _buildManagementTab(
-                title: "Yemekhane Menüleri", count: filteredMeals.length, searchController: _searchControllers[6]!,
-                items: filteredMeals.map((meal) {
-                  final menu = menus[meal] ?? {};
-                  return _buildListItem(meal, "Saat: ${menu['time'] ?? '-'} | Fiyat: ${menu['price'] ?? '-'}", () => _openMenuForm(mealName: meal, item: menu, fullCafeteriaData: cafeteriaData), null);
-                }).toList(),
-                onAdd: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Yeni öğün eklenemez, mevcutları düzenleyin."))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCafeteriaDayCard(Map<String, dynamic> day) {
+    final date = day['date'] as DateTime;
+    final isWeekend = day['isWeekend'] == true;
+    final isDayActive = day['isDayActive'] != false;
+
+    final titleColor = !isDayActive
+        ? _adminTextMutedColor()
+        : (isWeekend ? _adminPrimaryColor() : _adminTextPrimaryColor());
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: isDayActive ? () => _openDailyCafeteriaDialog(date) : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDayActive
+              ? Theme.of(context).cardColor
+              : Theme.of(context).cardColor.withOpacity(0.55),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: !isDayActive
+                ? _adminTextMutedColor().withOpacity(0.35)
+                : (isWeekend
+                ? _adminPrimaryColor().withOpacity(0.35)
+                : Theme.of(context).dividerColor),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    day['weekday']?.toString() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    day['displayDate']?.toString() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _adminTextMutedColor(), fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-              _buildManagementTab(
-                title: "Fiyatlar", count: filteredPrices.length, searchController: _searchControllers[7]!,
-                items: filteredPrices.map((p) => _buildListItem(p["name"] ?? '', "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true, item: p), () => _showDeleteDialog('prices', p['id'].toString()))).toList(),
-                onAdd: () => _openPriceForm(isEdit: false),
+            ),
+            IconButton(
+              tooltip: isDayActive ? "Günü kapat" : "Günü aç",
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _toggleCafeteriaDayActive(date, !isDayActive),
+              icon: Icon(
+                isDayActive ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isDayActive ? _adminPrimaryColor() : _adminTextMutedColor(),
+                size: 20,
               ),
-              _buildIssuesTab(filteredIssues, _searchControllers[8]!),
-              _buildManagementTab(
-                title: "Öğrenciler", count: filteredStudents.length, searchController: _searchControllers[9]!,
-                items: filteredStudents.map((s) => _buildListItem(s["name"] ?? '', "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true, item: s), () => _showDeleteDialog('students', s['id'].toString()))).toList(),
-                onAdd: () => _openStudentForm(isEdit: false),
+            ),
+            IconButton(
+              tooltip: isDayActive ? "Günü düzenle" : "Gün kapalı",
+              visualDensity: VisualDensity.compact,
+              onPressed: isDayActive ? () => _openDailyCafeteriaDialog(date) : null,
+              icon: Icon(
+                Icons.edit,
+                size: 18,
+                color: isDayActive ? _adminPrimaryColor() : _adminTextMutedColor(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _toggleCafeteriaDayActive(DateTime date, bool nextValue) async {
+    await DataService.setCafeteriaDayActiveStatus(date, nextValue);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? "${DataService.weekdayName(date.weekday)} tekrar öğrencilere açıldı."
+                : "${DataService.weekdayName(date.weekday)} öğrenciler için kapatıldı.",
+          ),
+        ),
+      );
+      setState(() {
+        _refreshWeeklyCafeteriaMenus();
+      });
+    }
+  }
+
+  Future<void> _toggleDailyMenuActive({
+    required DateTime date,
+    required String mealType,
+    required bool nextValue,
+    VoidCallback? onSaved,
+  }) async {
+    await DataService.setDailyMenuActiveStatus(
+      date: date,
+      mealType: mealType,
+      isActive: nextValue,
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? "$mealType öğrenciler için görünür yapıldı."
+                : "$mealType öğrencilerden gizlendi.",
+          ),
+        ),
+      );
+      onSaved?.call();
+      setState(() {
+        _refreshWeeklyCafeteriaMenus();
+      });
+    }
+  }
+
+  void _openDailyCafeteriaDialog(DateTime date) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                "${DataService.weekdayName(date.weekday)} Menüsü",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: DataService.fetchCafeteriaDayStatus(date),
+                  builder: (context, daySnapshot) {
+                    if (daySnapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 120,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    final dayStatus = daySnapshot.data ?? {};
+                    final isDayActive = dayStatus['isDayActive'] != false;
+
+                    if (!isDayActive) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Bu gün öğrenciler için kapalı.",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Gün tikini tekrar açarsanız öğrenciler bu günü görebilir ve menüler tekrar düzenlenebilir.",
+                            style: TextStyle(color: _adminTextMutedColor(), height: 1.35),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await DataService.setCafeteriaDayActiveStatus(date, true);
+                              setDialogState(() {});
+                              setState(() {
+                                _refreshWeeklyCafeteriaMenus();
+                              });
+                            },
+                            icon: const Icon(Icons.check_circle),
+                            label: const Text("Günü Aç"),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return FutureBuilder<Map<String, Map<String, dynamic>>>(
+                      future: DataService.fetchDailyCafeteriaMenus(date),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(
+                            height: 120,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        final menus = snapshot.data ?? {};
+
+                        return SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: DataService.cafeteriaMealTypes.map((mealType) {
+                              final menu = menus[mealType] ??
+                                  DataService.defaultMenuForMealType(mealType);
+                              final items = menu['items'] as List<dynamic>? ?? [];
+                              final isMenuActive = menu['isActive'] != false;
+
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                color: isMenuActive
+                                    ? Theme.of(context).cardColor
+                                    : Theme.of(context).cardColor.withOpacity(0.55),
+                                child: ListTile(
+                                  title: Text(
+                                    menu['menuName']?.toString() ?? mealType,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isMenuActive
+                                          ? AppTheme.textPrimary
+                                          : AppTheme.textMuted,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    "$mealType • ${menu['time'] ?? '-'} • ${menu['price'] ?? '-'} • ${items.length} içerik",
+                                    style: TextStyle(
+                                      color: isMenuActive
+                                          ? AppTheme.textMuted
+                                          : AppTheme.textMuted.withOpacity(0.75),
+                                    ),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: isMenuActive ? "Öğrencilerden gizle" : "Öğrencilere göster",
+                                        onPressed: () => _toggleDailyMenuActive(
+                                          date: date,
+                                          mealType: mealType,
+                                          nextValue: !isMenuActive,
+                                          onSaved: () {
+                                            setDialogState(() {});
+                                            setState(() {
+                                              _refreshWeeklyCafeteriaMenus();
+                                            });
+                                          },
+                                        ),
+                                        icon: Icon(
+                                          isMenuActive
+                                              ? Icons.check_circle
+                                              : Icons.radio_button_unchecked,
+                                          color: isMenuActive
+                                              ? AppTheme.successColor
+                                              : AppTheme.textMuted,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: "Menüyü düzenle",
+                                        onPressed: () => _openDailyMenuForm(
+                                          date: date,
+                                          mealType: mealType,
+                                          item: menu,
+                                          onSaved: () {
+                                            setDialogState(() {});
+                                            setState(() {
+                                              _refreshWeeklyCafeteriaMenus();
+                                            });
+                                          },
+                                        ),
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: AppTheme.primaryLight,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text("Kapat"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  void _openDailyMenuForm({
+    required DateTime date,
+    required String mealType,
+    required Map<dynamic, dynamic> item,
+    VoidCallback? onSaved,
+  }) {
+    final normalizedMealType = DataService.normalizeMealType(mealType);
+    final isFastFood = normalizedMealType == "Fast Food";
+
+    final menuNameCtrl = TextEditingController(
+      text: item['menuName']?.toString() ??
+          DataService.defaultMenuForMealType(normalizedMealType)['menuName']?.toString() ??
+          normalizedMealType,
+    );
+    final timeCtrl = TextEditingController(text: item['time']?.toString() ?? "");
+    final priceCtrl = TextEditingController(text: item['price']?.toString() ?? "");
+    final itemsListText = isFastFood ? "" : (item['items'] as List<dynamic>? ?? []).join(", ");
+    final itemsCtrl = TextEditingController(text: itemsListText);
+
+    final List<Map<String, TextEditingController>> productControllers = [];
+    if (isFastFood) {
+      final sourceItems = item['items'] as List<dynamic>? ?? [];
+      for (final product in sourceItems) {
+        if (product is Map) {
+          productControllers.add({
+            "name": TextEditingController(text: product['name']?.toString() ?? ""),
+            "price": TextEditingController(text: product['price']?.toString() ?? ""),
+          });
+        } else {
+          productControllers.add({
+            "name": TextEditingController(text: product.toString()),
+            "price": TextEditingController(text: "₺0"),
+          });
+        }
+      }
+
+      if (productControllers.isEmpty) {
+        productControllers.add({
+          "name": TextEditingController(),
+          "price": TextEditingController(),
+        });
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              "${DataService.weekdayName(date.weekday)} - $normalizedMealType",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: menuNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Menü Adı",
+                      hintText: "Örn: Bugünün Yemeği",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: timeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Saat Aralığı",
+                      hintText: "Örn: 13:00-18:00",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceCtrl,
+                    decoration: InputDecoration(
+                      labelText: isFastFood ? "Genel Fiyat Bilgisi" : "Fiyat",
+                      hintText: isFastFood ? "Ürün bazlı" : "Örn: ₺35",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (!isFastFood)
+                    TextField(
+                      controller: itemsCtrl,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: "İçerik / Yemekler",
+                        hintText: "Virgülle ayırın: Çorba, Tavuk, Pilav",
+                      ),
+                    )
+                  else ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Fast Food Ürünleri",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...productControllers.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final controllers = entry.value;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextField(
+                                controller: controllers["name"],
+                                decoration: InputDecoration(
+                                  labelText: "Ürün ${index + 1}",
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: controllers["price"],
+                                decoration: const InputDecoration(
+                                  labelText: "Fiyat",
+                                  hintText: "₺40",
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: productControllers.length == 1
+                                  ? null
+                                  : () {
+                                setDialogState(() {
+                                  productControllers.removeAt(index);
+                                });
+                              },
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setDialogState(() {
+                            productControllers.add({
+                              "name": TextEditingController(),
+                              "price": TextEditingController(),
+                            });
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("Ürün Ekle"),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final rawPrice = priceCtrl.text.trim();
+                  final normalizedPrice = isFastFood
+                      ? (rawPrice.isEmpty ? "Ürün bazlı" : rawPrice)
+                      : (rawPrice.isEmpty
+                      ? ""
+                      : rawPrice.startsWith("₺")
+                      ? rawPrice
+                      : "₺$rawPrice");
+
+                  List<dynamic> newItems;
+
+                  if (isFastFood) {
+                    newItems = productControllers.map((controllers) {
+                      final name = controllers["name"]!.text.trim();
+                      final price = controllers["price"]!.text.trim();
+                      final normalizedProductPrice = price.isEmpty
+                          ? "₺0"
+                          : price.startsWith("₺")
+                          ? price
+                          : "₺$price";
+
+                      return {
+                        "name": name,
+                        "price": normalizedProductPrice,
+                      };
+                    }).where((product) {
+                      return product["name"].toString().trim().isNotEmpty;
+                    }).toList();
+                  } else {
+                    newItems = itemsCtrl.text
+                        .split(",")
+                        .map((e) => e.trim())
+                        .where((e) => e.isNotEmpty)
+                        .toList();
+                  }
+
+                  if (newItems.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Menü içeriği boş bırakılamaz.")),
+                    );
+                    return;
+                  }
+
+                  final menuData = {
+                    "menuName": menuNameCtrl.text.trim().isEmpty
+                        ? normalizedMealType
+                        : menuNameCtrl.text.trim(),
+                    "time": timeCtrl.text.trim(),
+                    "price": normalizedPrice,
+                    "items": newItems,
+                    "isActive": item['isActive'] ?? true,
+                    "isActiveManuallyEdited": item['isActiveManuallyEdited'] == true,
+                    "isChips": item['isChips'] ?? false,
+                  };
+
+                  final docId = DataService.cafeteriaMenuDocId(
+                    date: date,
+                    mealType: normalizedMealType,
+                  );
+
+                  await FirebaseFirestore.instance
+                      .collection('cafeteriaMenus')
+                      .doc(docId)
+                      .set(
+                    DataService.buildCafeteriaMenuDocument(
+                      date: date,
+                      mealType: normalizedMealType,
+                      menu: menuData,
+                    ),
+                    SetOptions(merge: true),
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Günlük menü Firebase veritabanında güncellendi."),
+                      ),
+                    );
+                    onSaved?.call();
+                    setState(() {
+                      _refreshWeeklyCafeteriaMenus();
+                    });
+                  }
+                },
+                child: const Text("Kaydet"),
               ),
             ],
           );
@@ -416,56 +1870,147 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildGenelTab(Map<String, dynamic> data) {
-    final bCount = (data['buildings'] as List?)?.length ?? 0;
-    final cCount = (data['classrooms'] as List?)?.length ?? 0;
-    final iCount = (data['instructors'] as List?)?.length ?? 0;
+  Widget _buildGenelTab(Map<String, int> summary) {
+    final bCount = summary['buildings'] ?? 0;
+    final cCount = summary['classrooms'] ?? 0;
+    final iCount = summary['instructors'] ?? 0;
+    final eCount = summary['events'] ?? 0;
+    final issueCount = summary['issues'] ?? 0;
+    final studentCount = summary['students'] ?? 0;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppTheme.primaryLight.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3))),
-            child: const Row(
+    return RefreshIndicator(
+      onRefresh: () async => _refreshTab(0),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.cloud_done, color: AppTheme.primaryColor),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Google Firebase Cloud Aktif",
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final crossAxisCount = width >= 720 ? 3 : 2;
+                final aspectRatio = width < 380 ? 1.08 : 1.22;
+
+                return GridView.count(
+                  crossAxisCount: crossAxisCount,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: aspectRatio,
+                  children: [
+                    _buildStatCard(Icons.business, "Birimler", bCount.toString(), 1),
+                    _buildStatCard(Icons.meeting_room, "Derslikler", cCount.toString(), 2),
+                    _buildStatCard(Icons.people, "Hocalar", iCount.toString(), 3),
+                    _buildStatCard(Icons.event, "Etkinlikler", eCount.toString(), 4),
+                    _buildStatCard(Icons.report_problem, "Sorunlar", issueCount.toString(), 8),
+                    _buildStatCard(Icons.person, "Öğrenciler", studentCount.toString(), 9),
+                    _buildSupportCard(),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportCard() {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminChatListScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _adminBorderColor()),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.cloud_done, color: AppTheme.primaryColor),
-                SizedBox(width: 12),
-                Expanded(child: Text("Google Firebase Cloud Aktif", style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold))),
+                Icon(
+                  Icons.support_agent,
+                  color: _adminPrimaryColor(),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: _adminTextMutedColor(),
+                  size: 20,
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
-          GridView.count(
-            crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 1.25,
-            children: [
-              _buildStatCard(Icons.business, "Birimler", bCount.toString(), 1),
-              _buildStatCard(Icons.meeting_room, "Derslikler", cCount.toString(), 2),
-              _buildStatCard(Icons.people, "Hocalar", iCount.toString(), 3),
-              _buildStatCard(Icons.event, "Etkinlikler", ((data['events'] as List?)?.length ?? 0).toString(), 4),
-              _buildStatCard(Icons.report_problem, "Sorunlar", ((data['issues'] as List?)?.length ?? 0).toString(), 8),
-              _buildStatCard(Icons.person, "Öğrenciler", ((data['students'] as List?)?.length ?? 0).toString(), 9),
-            ],
-          ),
-        ],
+            const Spacer(),
+            Text(
+              "Canlı Destek",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: _adminTextPrimaryColor(),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Mesajlar",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _adminTextMutedColor(),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStatCard(IconData icon, String label, String value, int tabIndex) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => _switchTab(tabIndex),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : AppTheme.borderColor)
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _adminBorderColor()),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,11 +2018,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Icon(icon, color: AppTheme.primaryColor), const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20)],
+              children: [
+                Icon(
+                  icon,
+                  color: _adminPrimaryColor(),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: _adminTextMutedColor(),
+                  size: 20,
+                ),
+              ],
             ),
             const Spacer(),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-            Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: _adminTextPrimaryColor(),
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: _adminTextMutedColor(),
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
@@ -515,22 +2083,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildListItem(String title, String subtitle, VoidCallback onEdit, VoidCallback? onDelete) {
+  Widget _buildListItem(
+      String title,
+      String subtitle,
+      VoidCallback onEdit,
+      VoidCallback? onDelete,
+      ) {
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: _adminTextPrimaryColor(),
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle, style: const TextStyle(color: AppTheme.textMuted, fontSize: 14)),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: _adminTextMutedColor(),
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ),
-        IconButton(icon: const Icon(Icons.edit, color: AppTheme.primaryLight), onPressed: onEdit),
+        IconButton(
+          icon: Icon(
+            Icons.edit,
+            color: _adminPrimaryColor(),
+          ),
+          onPressed: onEdit,
+        ),
         if (onDelete != null)
-          IconButton(icon: const Icon(Icons.delete, color: AppTheme.destructiveColor), onPressed: onDelete),
+          IconButton(
+            icon: const Icon(
+              Icons.delete,
+              color: AppTheme.destructiveColor,
+            ),
+            onPressed: onDelete,
+          ),
       ],
     );
   }
@@ -647,7 +2245,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   padding: const EdgeInsets.only(top: 4.0),
                   child: Text(
                     "${issue["category"]} • ${issue["location"]}\n${issue["date"]}",
-                    style: const TextStyle(color: AppTheme.textMuted),
+                    style: TextStyle(color: _adminTextMutedColor()),
                   ),
                 ),
                 trailing: Row(
@@ -712,7 +2310,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Sorun çözüldü olarak işaretlendi.")),
                 );
-                _loadData();
+                _refreshAdminData(collectionKey: 'issues');
               }
             },
             icon: const Icon(Icons.check, size: 18), label: const Text("Çözüldü"),
@@ -770,7 +2368,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         'grade': selectedGrade ?? '1. Sınıf'
                       };
                       await FirebaseFirestore.instance.collection('students').doc(docId.toString()).set(newData);
-                      if (context.mounted) { Navigator.pop(context); _loadData(); }
+                      if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'students'); }
                     },
                     child: const Text("Kaydet")
                 )
@@ -781,50 +2379,144 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openPriceForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
-    final nameCtrl = TextEditingController(text: item?['name']);
-    final priceCtrl = TextEditingController(text: item?['price']?.replaceAll('₺', ''));
-
-    final List<String> catOptions = ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"];
-    String? selectedCat = item?['category'];
+  void _openPriceCategoryForm() {
+    final categoryCtrl = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(isEdit ? "Düzenle — Fiyat" : "Yeni Fiyat Ekle", style: const TextStyle(fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildDropdown("Kategori", catOptions, value: catOptions.contains(selectedCat) ? selectedCat : null, onChanged: (val) => setDialogState(() => selectedCat = val)),
-                    const SizedBox(height: 12),
-                    _buildTextField("Ürün Adı", controller: nameCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Fiyat", isNumber: true, controller: priceCtrl),
-                  ],
-                ),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          "Yeni Kategori Ekle",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: _buildTextField(
+          "Kategori Adı",
+          controller: categoryCtrl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("İptal"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final categoryName = categoryCtrl.text.trim();
+              if (categoryName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Kategori adı boş bırakılamaz.")),
+                );
+                return;
+              }
+
+              await DataService.addPriceCategory(categoryName);
+
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+              _refreshAdminData(collectionKey: 'priceCategories');
+            },
+            child: const Text("Kaydet"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openPriceForm({
+    required bool isEdit,
+    Map<dynamic, dynamic>? item,
+    String? defaultCategory,
+  }) {
+    final nameCtrl = TextEditingController(text: item?['name']?.toString() ?? "");
+    final priceCtrl = TextEditingController(
+      text: item?['price']?.toString().replaceAll("₺", "") ?? "",
+    );
+
+    String? selectedCat = isEdit
+        ? _inferPriceCategory(item?['category']?.toString(), item?['name']?.toString() ?? "")
+        : (defaultCategory ?? "İçecekler");
+
+    final formCategories = <String>[];
+    void addFormCategory(String? category) {
+      final value = category?.trim();
+      if (value == null || value.isEmpty) return;
+      if (!formCategories.contains(value)) {
+        formCategories.add(value);
+      }
+    }
+    for (final category in _currentPriceCategoryOptions) {
+      addFormCategory(category);
+    }
+    addFormCategory(selectedCat);
+    if (formCategories.isEmpty) {
+      formCategories.addAll(_priceCategoryOptions);
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Düzenle — Fiyat" : "Yeni Fiyat Ekle",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDropdown(
+                    "Kategori",
+                    formCategories,
+                    value: formCategories.contains(selectedCat) ? selectedCat : formCategories.first,
+                    onChanged: (val) => setDialogState(() => selectedCat = val),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField("Ürün Adı", controller: nameCtrl),
+                  const SizedBox(height: 12),
+                  _buildTextField("Fiyat", isNumber: true, controller: priceCtrl),
+                ],
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
-                ElevatedButton(
-                    onPressed: () async {
-                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                      Map<String, dynamic> newData = {
-                        'id': docId,
-                        'name': nameCtrl.text,
-                        'price': "₺${priceCtrl.text}",
-                        'category': selectedCat ?? 'Çay/Kahve'
-                      };
-                      await FirebaseFirestore.instance.collection('prices').doc(docId.toString()).set(newData);
-                      if (context.mounted) { Navigator.pop(context); _loadData(); }
-                    },
-                    child: const Text("Kaydet")
-                )
-              ],
-            );
-          }
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final productName = nameCtrl.text.trim();
+                  if (productName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Ürün adı boş bırakılamaz.")),
+                    );
+                    return;
+                  }
+
+                  final docId = isEdit
+                      ? _priceDocumentId(item)
+                      : DateTime.now().millisecondsSinceEpoch.toString();
+
+                  final parsedNumericId = int.tryParse(docId);
+                  final idValue = item?['id'] ?? parsedNumericId ?? docId;
+
+                  final newData = <String, dynamic>{
+                    'id': idValue,
+                    'name': productName,
+                    'price': _normalizePriceValue(priceCtrl.text),
+                    'category': selectedCat ?? "İçecekler",
+                  };
+
+                  await FirebaseFirestore.instance.collection('prices').doc(docId).set(newData);
+
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  _refreshAdminData(collectionKey: 'prices');
+                },
+                child: const Text("Kaydet"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -836,13 +2528,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String? selectedCampus;
     String? selectedLocation;
 
+    // Liste içinde birebir veya kısmi eşleşen seçeneği bulan yardımcı fonksiyon
+    String? _matchOption(List<String> options, String? rawValue) {
+      if (rawValue == null) return null;
+      final value = rawValue.trim();
+      if (value.isEmpty) return null;
+
+      // 1) Birebir eşleşme
+      if (options.contains(value)) return value;
+
+      // 2) Kısmi eşleşme (içerme - büyük/küçük harf duyarsız)
+      final lowerValue = value.toLowerCase();
+      for (final opt in options) {
+        final lowerOpt = opt.toLowerCase();
+        if (lowerOpt.contains(lowerValue) || lowerValue.contains(lowerOpt)) {
+          return opt;
+        }
+      }
+      return null;
+    }
+
     if (item != null && item['location'] != null) {
       String loc = item['location'].toString();
+      String rawCampus;
+      String? rawLocation;
+
       if (loc.contains(',')) {
         var parts = loc.split(',');
-        selectedCampus = parts[0].trim();
-        selectedLocation = parts[1].trim();
-      } else { selectedCampus = loc; }
+        rawCampus = parts[0].trim();
+        rawLocation = parts.length > 1 ? parts[1].trim() : null;
+      } else {
+        rawCampus = loc.trim();
+        rawLocation = null;
+      }
+
+      selectedCampus = _matchOption(campusOptions, rawCampus);
+      selectedLocation = _matchOption(locationOptions, rawLocation);
     }
 
     showDialog(
@@ -857,9 +2578,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Birim Adı (Örn: Hukuk Fakültesi)")),
                   const SizedBox(height: 12),
-                  _buildDropdown("Kampüs Seçin", campusOptions, value: campusOptions.contains(selectedCampus) ? selectedCampus : null, onChanged: (val) => setDialogState(() => selectedCampus = val)),
+                  _buildDropdown("Kampüs Seçin", campusOptions, value: selectedCampus, onChanged: (val) => setDialogState(() => selectedCampus = val)),
                   const SizedBox(height: 12),
-                  _buildDropdown("Konum/Kat Seçin", locationOptions, value: locationOptions.contains(selectedLocation) ? selectedLocation : null, onChanged: (val) => setDialogState(() => selectedLocation = val)),
+                  _buildDropdown("Konum/Kat Seçin", locationOptions, value: selectedLocation, onChanged: (val) => setDialogState(() => selectedLocation = val)),
                 ],
               ),
             ),
@@ -874,7 +2595,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       'abbr': item?['abbr'] ?? 'YENİ', 'type': item?['type'] ?? 'faculty'
                     };
                     await FirebaseFirestore.instance.collection('buildings').doc(docId.toString()).set(newData);
-                    if (context.mounted) { Navigator.pop(context); _loadData(); }
+                    if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'buildings'); }
                   },
                   child: const Text("Kaydet")
               )
@@ -1095,7 +2816,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Derslik Firebase veritabanına kaydedildi.")),
                     );
-                    _loadData();
+                    _refreshAdminData(collectionKey: 'classrooms');
                   }
                 },
                 child: const Text("Kaydet"),
@@ -1112,32 +2833,80 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final deptCtrl = TextEditingController(text: item?['department']);
     final photoCtrl = TextEditingController(text: item?['imageUrl'] ?? '');
 
+    // Ofis saatleri controller'ı
+    final officeHoursCtrl = TextEditingController(
+        text: (item?['officeHours'] is List)
+            ? (item?['officeHours'] as List).join(", ")
+            : ""
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEdit ? "Düzenle: Hoca" : "Yeni Hoca", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Hoca Adı Soyadı")),
-            const SizedBox(height: 12),
-            TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
-            const SizedBox(height: 12),
-            TextField(controller: photoCtrl, decoration: const InputDecoration(labelText: "Fotoğraf Yolu (Örn: assets/instructors/hoca.jpg)", hintText: "assets/instructors/varsayilan.jpg")),
-          ],
+        content: SingleChildScrollView( // Klavye açılınca taşma olmaması için eklendi
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Hoca Adı Soyadı")),
+              const SizedBox(height: 12),
+              TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Bölümü")),
+              const SizedBox(height: 12),
+              // YENİ  Ofis Saatleri
+              TextField(
+                  controller: officeHoursCtrl,
+                  maxLines: 2, // Birden fazla satır desteği
+                  decoration: const InputDecoration(
+                      labelText: "Ofis Saatleri",
+                      hintText: "Örn: Pzt 10:00-12:00, Sal 14:00-16:00",
+                      helperText: "Günleri virgülle ayırarak yazın.",
+                      helperStyle: TextStyle(fontSize: 10)
+                  )
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: photoCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "Fotoğraf Yolu",
+                      hintText: "assets/instructors/varsayilan.jpg"
+                  )
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
           ElevatedButton(
               onPressed: () async {
-                int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
+                // 1. Ofis saatlerini metinden listeye çeviriyoruz
+                List<String> hoursList = officeHoursCtrl.text
+                    .split(",")
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+
+                // ID oluşturma
+                String docId = isEdit ? item!['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
+
                 Map<String, dynamic> newData = {
-                  'id': docId, 'name': nameCtrl.text, 'department': deptCtrl.text, 'imageUrl': photoCtrl.text,
-                  'title': item?['title'] ?? 'Öğretim Üyesi', 'office': item?['office'] ?? 'Bilinmiyor',
-                  'filter': item?['filter'] ?? 'engineering', 'email': item?['email'] ?? 'iletisim@uni.edu.tr'
+                  'id': docId,
+                  'name': nameCtrl.text,
+                  'department': deptCtrl.text,
+                  'imageUrl': photoCtrl.text,
+                  'officeHours': hoursList, // YENİ: Saatleri listeye ekledik
+                  'title': item?['title'] ?? 'Öğretim Üyesi',
+                  'office': item?['office'] ?? 'Bilinmiyor',
+                  'filter': item?['filter'] ?? 'engineering',
+                  'email': item?['email'] ?? 'iletisim@uni.edu.tr'
                 };
-                await FirebaseFirestore.instance.collection('instructors').doc(docId.toString()).set(newData);
-                if (context.mounted) { Navigator.pop(context); _loadData(); }
+
+                // Firestore'a kaydetme
+                await FirebaseFirestore.instance.collection('instructors').doc(docId).set(newData);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  _refreshAdminData(collectionKey: 'instructors');
+                }
               },
               child: const Text("Kaydet")
           )
@@ -1313,7 +3082,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         content: Text("Etkinlik Firebase veritabanına kaydedildi."),
                       ),
                     );
-                    _loadData();
+                    _refreshAdminData(collectionKey: 'events');
                   }
                 },
                 child: const Text("Kaydet"),
@@ -1548,7 +3317,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         content: Text("Duyuru Firebase veritabanına kaydedildi."),
                       ),
                     );
-                    _loadData();
+                    _refreshAdminData(collectionKey: 'announcements');
                   }
                 },
                 child: const Text("Kaydet"),
@@ -1560,41 +3329,360 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openMenuForm({required String mealName, required Map<dynamic, dynamic> item, required Map<dynamic, dynamic> fullCafeteriaData}) {
-    final timeCtrl = TextEditingController(text: item['time']);
-    final priceCtrl = TextEditingController(text: item['price']);
-    final itemsListText = (item['items'] as List<dynamic>? ?? []).join(", ");
+  void _openMenuForm({
+    required bool isEdit,
+    required String mealName,
+    required Map<dynamic, dynamic> item,
+    required Map<dynamic, dynamic> fullCafeteriaData,
+  }) {
+    final nameCtrl = TextEditingController(text: mealName);
+
+    final menuNameCtrl = TextEditingController(
+      text: item['menuName']?.toString() ??
+          (mealName == "Yemek"
+              ? "Bugünün Yemeği"
+              : mealName.isNotEmpty
+              ? "$mealName Menüsü"
+              : ""),
+    );
+
+    final timeCtrl = TextEditingController(text: item['time']?.toString() ?? "");
+    final priceCtrl = TextEditingController(text: item['price']?.toString() ?? "");
+
+    final List<dynamic> currentItems = item['items'] as List<dynamic>? ?? [];
+    final bool isFastFood = mealName == "Fast Food";
+
+    final itemsListText = currentItems.map((item) {
+      if (item is Map) {
+        return item['name']?.toString() ?? '';
+      }
+      return item.toString();
+    }).where((name) => name.trim().isNotEmpty).join(", ");
+
     final itemsCtrl = TextEditingController(text: itemsListText);
+
+    final List<TextEditingController> productNameControllers = [];
+    final List<TextEditingController> productPriceControllers = [];
+
+    String normalizePrice(String rawPrice) {
+      final trimmed = rawPrice.trim();
+      if (trimmed.isEmpty) return "₺0";
+      if (trimmed == "Ürün bazlı") return trimmed;
+      return trimmed.startsWith("₺") ? trimmed : "₺$trimmed";
+    }
+
+    void addProductController({String name = "", String price = ""}) {
+      productNameControllers.add(TextEditingController(text: name));
+      productPriceControllers.add(TextEditingController(text: price));
+    }
+
+    if (isFastFood) {
+      for (final product in currentItems) {
+        if (product is Map) {
+          addProductController(
+            name: product['name']?.toString() ?? '',
+            price: product['price']?.toString() ?? '',
+          );
+        } else {
+          addProductController(name: product.toString(), price: '₺0');
+        }
+      }
+
+      if (productNameControllers.isEmpty) {
+        addProductController();
+      }
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Menü Düzenle: $mealName", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: timeCtrl, decoration: const InputDecoration(labelText: "Saat Aralığı (Örn: 12:00-14:00)")),
-            const SizedBox(height: 12),
-            TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Fiyat (Örn: ₺35)")),
-            const SizedBox(height: 12),
-            TextField(controller: itemsCtrl, maxLines: 3, decoration: const InputDecoration(labelText: "Yemekler (Virgülle ayırın)", hintText: "Çorba, Pilav, Salata")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("İptal")),
-          ElevatedButton(
-              onPressed: () async {
-                List<String> newItems = itemsCtrl.text.split(",").map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-                fullCafeteriaData['menus'][mealName] = {
-                  'time': timeCtrl.text, 'price': priceCtrl.text, 'items': newItems, 'isChips': item['isChips'] ?? false,
-                };
-                await FirebaseFirestore.instance.collection('settings').doc('cafeteria').set(Map<String, dynamic>.from(fullCafeteriaData));
-                if (context.mounted) { Navigator.pop(context); _loadData(); }
-              },
-              child: const Text("Kaydet")
-          )
-        ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Menü Düzenle: $mealName" : "Yeni Menü Ekle",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isEdit) ...[
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Kategori / Menü Tipi",
+                        hintText: "Örn: Kahvaltı, Yemek, Fast Food",
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: menuNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Menü Adı",
+                      hintText: "Örn: Bugünün Yemeği",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: timeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Saat Aralığı",
+                      hintText: "Örn: 13:00-18:00",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (isFastFood) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryLight.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Text(
+                        "Fast Food ürünleri ürün bazlı fiyatlandırılır.",
+                        style: TextStyle(
+                          color: _adminTextMutedColor(),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...List.generate(productNameControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextField(
+                                controller: productNameControllers[index],
+                                decoration: InputDecoration(
+                                  labelText: "Ürün ${index + 1}",
+                                  hintText: "Örn: Tost",
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: productPriceControllers[index],
+                                decoration: const InputDecoration(
+                                  labelText: "Fiyat",
+                                  hintText: "₺40",
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: AppTheme.destructiveColor,
+                              ),
+                              onPressed: productNameControllers.length == 1
+                                  ? null
+                                  : () {
+                                setDialogState(() {
+                                  productNameControllers.removeAt(index);
+                                  productPriceControllers.removeAt(index);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setDialogState(() {
+                            addProductController();
+                          });
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("Ürün Ekle"),
+                      ),
+                    ),
+                  ] else ...[
+                    TextField(
+                      controller: priceCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Fiyat",
+                        hintText: "Örn: ₺35",
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: itemsCtrl,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: "İçerik / Yemekler",
+                        hintText: "Virgülle ayırın: Çorba, Tavuk, Pilav, Ayran",
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  String newMealName = isEdit ? mealName : nameCtrl.text.trim();
+
+                  if (newMealName == "Öğle" ||
+                      newMealName == "Akşam" ||
+                      newMealName == "Günün Menüsü") {
+                    newMealName = "Yemek";
+                  }
+
+                  if (newMealName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Kategori adı boş bırakılamaz.")),
+                    );
+                    return;
+                  }
+
+                  final bool saveAsFastFood = newMealName == "Fast Food";
+                  late final List<dynamic> newItems;
+                  late final String normalizedPrice;
+
+                  if (saveAsFastFood) {
+                    final products = <Map<String, dynamic>>[];
+
+                    for (int i = 0; i < productNameControllers.length; i++) {
+                      final productName = productNameControllers[i].text.trim();
+                      final productPrice = productPriceControllers[i].text.trim();
+
+                      if (productName.isEmpty) continue;
+
+                      products.add({
+                        "name": productName,
+                        "price": normalizePrice(productPrice),
+                      });
+                    }
+
+                    if (products.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("En az bir Fast Food ürünü eklenmelidir.")),
+                      );
+                      return;
+                    }
+
+                    newItems = products;
+                    normalizedPrice = "Ürün bazlı";
+                  } else {
+                    final plainItems = itemsCtrl.text
+                        .split(",")
+                        .map((e) => e.trim())
+                        .where((e) => e.isNotEmpty)
+                        .toList();
+
+                    if (plainItems.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Menü içeriği boş bırakılamaz.")),
+                      );
+                      return;
+                    }
+
+                    newItems = plainItems;
+                    final rawPrice = priceCtrl.text.trim();
+                    normalizedPrice = rawPrice.isEmpty
+                        ? ""
+                        : rawPrice.startsWith("₺")
+                        ? rawPrice
+                        : "₺$rawPrice";
+                  }
+
+                  final updatedData = Map<String, dynamic>.from(fullCafeteriaData);
+
+                  final mealTypes = (updatedData['mealTypes'] as List<dynamic>?)
+                      ?.map((e) => e.toString())
+                      .where((e) =>
+                  e != "Öğle" &&
+                      e != "Akşam" &&
+                      e != "Günün Menüsü")
+                      .toList() ??
+                      [];
+
+                  final menus = Map<String, dynamic>.from(
+                    (updatedData['menus'] as Map?) ?? {},
+                  );
+
+                  menus.remove("Öğle");
+                  menus.remove("Akşam");
+                  menus.remove("Günün Menüsü");
+
+                  if (!isEdit && mealTypes.contains(newMealName)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Bu kategori zaten mevcut.")),
+                    );
+                    return;
+                  }
+
+                  if (!mealTypes.contains(newMealName)) {
+                    mealTypes.add(newMealName);
+                  }
+
+                  menus[newMealName] = {
+                    "menuName": menuNameCtrl.text.trim().isEmpty
+                        ? newMealName
+                        : menuNameCtrl.text.trim(),
+                    "time": timeCtrl.text.trim(),
+                    "price": normalizedPrice,
+                    "items": newItems,
+                    "isChips": item['isChips'] ?? false,
+                  };
+
+                  updatedData['mealTypes'] = mealTypes;
+                  updatedData['menus'] = menus;
+                  updatedData['updatedAt'] = FieldValue.serverTimestamp();
+
+                  await FirebaseFirestore.instance
+                      .collection('settings')
+                      .doc('cafeteria')
+                      .set(updatedData, SetOptions(merge: true));
+
+                  if (context.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isEdit
+                              ? "Menü Firebase veritabanında güncellendi."
+                              : "Yeni menü Firebase veritabanına eklendi.",
+                        ),
+                      ),
+                    );
+                    _refreshAdminData(refreshCafeteria: true);
+                  }
+                },
+                child: const Text("Kaydet"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+
 }
