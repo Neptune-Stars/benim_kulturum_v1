@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/section_header.dart';
 
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
 
@@ -53,11 +54,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final now = DateTime.now();
     final diff = now.difference(dateTime);
 
-    if (diff.inMinutes < 1) return "Az önce";
-    if (diff.inMinutes < 60) return "${diff.inMinutes} dk önce";
-    if (diff.inHours < 24) return "${diff.inHours} saat önce";
-    if (diff.inDays == 1) return "Dün";
-    if (diff.inDays < 7) return "${diff.inDays} gün önce";
+    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} mins ago";
+    if (diff.inHours < 24) return "${diff.inHours} hours ago";
+    if (diff.inDays == 1) return "Yesterday";
+    if (diff.inDays < 7) return "${diff.inDays} days ago";
 
     final day = dateTime.day.toString().padLeft(2, '0');
     final month = dateTime.month.toString().padLeft(2, '0');
@@ -67,7 +68,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   String _groupTitle(dynamic value) {
-    if (value == null) return "Daha Önce";
+    if (value == null) return "Earlier";
 
     DateTime? dateTime;
 
@@ -77,7 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       dateTime = value;
     }
 
-    if (dateTime == null) return "Daha Önce";
+    if (dateTime == null) return "Earlier";
 
     final now = DateTime.now();
 
@@ -90,10 +91,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     final diffDays = today.difference(notificationDay).inDays;
 
-    if (diffDays == 0) return "Bugün";
-    if (diffDays <= 7) return "Bu Hafta";
+    if (diffDays == 0) return "Today";
+    if (diffDays <= 7) return "This Week";
 
-    return "Daha Önce";
+    return "Earlier";
   }
 
   IconData _iconForType(String type) {
@@ -132,9 +133,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ) {
     final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>
     grouped = {
-      "Bugün": [],
-      "Bu Hafta": [],
-      "Daha Önce": [],
+      "Today": [],
+      "This Week": [],
+      "Earlier": [],
     };
 
     for (final doc in docs) {
@@ -154,17 +155,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Bildirimi Sil"),
-        content: const Text("Bu bildirimi silmek istediğinizden emin misiniz?"),
+        title: const Text("Delete Notification"),
+        content: const Text("Are you sure you want to delete this notification?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("İptal"),
+            child: const Text("Cancel"),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
-              "Sil",
+              "Delete",
               style: TextStyle(color: AppTheme.destructiveColor),
             ),
           ),
@@ -181,12 +182,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: "Bildirimler",
+        title: "Notifications",
         showBack: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all, color: AppTheme.primaryColor),
-            tooltip: "Tümünü Okundu İşaretle",
+            tooltip: "Mark All as Read",
             onPressed: _markAllAsRead,
           ),
         ],
@@ -200,7 +201,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           if (snapshot.hasError) {
             return Center(
-              child: Text("Bildirimler yüklenemedi: ${snapshot.error}"),
+              child: Text("Failed to load notifications: ${snapshot.error}"),
             );
           }
 
@@ -209,7 +210,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           if (docs.isEmpty) {
             return const Center(
               child: Text(
-                "Henüz bildirim yok.",
+                "No notifications yet.",
                 style: TextStyle(color: AppTheme.textMuted),
               ),
             );
@@ -219,26 +220,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           return ListView(
             children: [
-              if (grouped["Bugün"]!.isNotEmpty) ...[
+              if (grouped["Today"]!.isNotEmpty) ...[
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: SectionHeader(title: "Bugün"),
+                  child: SectionHeader(title: "Today"),
                 ),
-                ...grouped["Bugün"]!.map((doc) => _buildNotificationRow(doc)),
+                ...grouped["Today"]!.map((doc) => _buildNotificationRow(doc)),
               ],
-              if (grouped["Bu Hafta"]!.isNotEmpty) ...[
+              if (grouped["This Week"]!.isNotEmpty) ...[
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: SectionHeader(title: "Bu Hafta"),
+                  child: SectionHeader(title: "This Week"),
                 ),
-                ...grouped["Bu Hafta"]!.map((doc) => _buildNotificationRow(doc)),
+                ...grouped["This Week"]!.map((doc) => _buildNotificationRow(doc)),
               ],
-              if (grouped["Daha Önce"]!.isNotEmpty) ...[
+              if (grouped["Earlier"]!.isNotEmpty) ...[
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: SectionHeader(title: "Daha Önce"),
+                  child: SectionHeader(title: "Earlier"),
                 ),
-                ...grouped["Daha Önce"]!
+                ...grouped["Earlier"]!
                     .map((doc) => _buildNotificationRow(doc)),
               ],
             ],
@@ -338,7 +339,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     color: AppTheme.destructiveColor,
                     size: 22,
                   ),
-                  tooltip: "Bildirimi sil",
+                  tooltip: "Delete notification",
                   onPressed: () => _confirmAndDeleteNotification(doc),
                 ),
               ],

@@ -17,7 +17,7 @@ class HelpSupportScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: const CustomAppBar(
-        title: "Yardım & Destek",
+        title: "Help & Support",
         showBack: true,
       ),
       body: SingleChildScrollView(
@@ -45,7 +45,7 @@ class HelpSupportScreen extends StatelessWidget {
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          "Nasıl yardımcı olabiliriz?",
+                          "How can we help?",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -57,7 +57,7 @@ class HelpSupportScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    "Uygulama kullanımı, kampüs bilgileri ve teknik sorunlar için destek alabilirsin.",
+                    "You can get support for app usage, campus information, and technical issues.",
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -70,7 +70,7 @@ class HelpSupportScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             Text(
-              "Hızlı Yardım",
+              "Quick Help",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -81,8 +81,8 @@ class HelpSupportScreen extends StatelessWidget {
 
             _ActionCard(
               icon: Icons.report_problem_outlined,
-              title: "Sorun Bildir",
-              subtitle: "Teknik veya kampüsle ilgili bir problem ilet",
+              title: "Report an Issue",
+              subtitle: "Report a technical or campus-related problem",
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -94,20 +94,20 @@ class HelpSupportScreen extends StatelessWidget {
 
             _ActionCard(
               icon: Icons.mail_outline,
-              title: "Destek E-postası",
-              subtitle: "destek@kampusrehberi.com",
+              title: "Support Email",
+              subtitle: "support@campusguide.com",
             ),
             const SizedBox(height: 12),
 
             _ActionCard(
               icon: Icons.access_time,
-              title: "Destek Saatleri",
-              subtitle: "Hafta içi 09:00 - 17:00",
+              title: "Support Hours",
+              subtitle: "Weekdays 09:00 - 17:00",
             ),
             const SizedBox(height: 24),
 
             Text(
-              "Sık Sorulan Sorular",
+              "Frequently Asked Questions",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -125,27 +125,27 @@ class HelpSupportScreen extends StatelessWidget {
               child: Column(
                 children: const [
                   _FaqTile(
-                    question: "Profil fotoğrafımı nasıl değiştiririm?",
+                    question: "How can I change my profile photo?",
                     answer:
-                    "Profil ekranındaki fotoğraf alanına dokunup galeriden yeni bir görsel seçebilirsin.",
+                    "You can tap the photo area on the profile screen and select a new image from your gallery.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Etkinliklere nasıl katılırım?",
+                    question: "How do I join events?",
                     answer:
-                    "Etkinlikler ekranından bir etkinlik seçip detay sayfasındaki katılım butonunu kullanabilirsin.",
+                    "You can select an event from the events screen and use the join button on the details page.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Kampüs bilgileri güncel mi?",
+                    question: "Is the campus information up to date?",
                     answer:
-                    "Ekranlardaki içerikler örnek veriyle hazırlanmıştır. Gerçek sistemde bu bilgiler güncel veri kaynağından alınmalıdır.",
+                    "Content on these screens is prepared with sample data. In a real system, this information should be retrieved from an up-to-date data source.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Bildirimleri nasıl açıp kapatırım?",
+                    question: "How do I turn notifications on/off?",
                     answer:
-                    "Profil ekranındaki Ayarlar bölümünden Bildirimler anahtarını kullanarak kontrol edebilirsin.",
+                    "You can control this using the Notifications toggle in the Settings section of your profile screen.",
                   ),
                 ],
               ),

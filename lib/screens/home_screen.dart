@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  "Hızlı Erişim",
+                  "Quick Access",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -64,7 +64,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     QuickActionCard(
                       icon: Icons.meeting_room_outlined,
-                      title: "Derslikler",
+                      title: "Classrooms",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -74,7 +74,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.groups_outlined,
-                      title: "Hocalar",
+                      title: "Instructors",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -84,7 +84,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.access_time_outlined,
-                      title: "Ofis Saatleri",
+                      title: "Office Hours",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -94,7 +94,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.attach_money,
-                      title: "Fiyatlar",
+                      title: "Prices",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -104,7 +104,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.event_note_outlined,
-                      title: "Etkinlikler",
+                      title: "Events",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -114,7 +114,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.report_problem_outlined,
-                      title: "Sorun Bildir",
+                      title: "Report Issue",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -131,8 +131,8 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SectionHeader(
-                  title: "Bugünün Menüsü",
-                  actionLabel: "Tümünü Gör",
+                  title: "Today's Menu",
+                  actionLabel: "See All",
                   onAction: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -150,22 +150,22 @@ class HomeScreen extends StatelessWidget {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return _buildTodayMenuCard(
                         context,
-                        meal: "Menü yükleniyor...",
-                        desc: "Firebase üzerinden güncel menü hazırlanıyor.",
+                        meal: "Loading menu...",
+                        desc: "Up-to-date menu is being prepared via Firebase.",
                         time: "-",
                         price: "-",
-                        note: "Bugünün menüsü merkezi veritabanından alınır.",
+                        note: "Today's menu is retrieved from the central database.",
                       );
                     }
 
                     if (snapshot.hasError) {
                       return _buildTodayMenuCard(
                         context,
-                        meal: "Menü bilgisi alınamadı",
-                        desc: "Lütfen daha sonra tekrar deneyin.",
+                        meal: "Could not retrieve menu",
+                        desc: "Please try again later.",
                         time: "-",
                         price: "-",
-                        note: "Firebase bağlantısı kontrol edilmeli.",
+                        note: "Check Firebase connection.",
                       );
                     }
 
@@ -173,12 +173,12 @@ class HomeScreen extends StatelessWidget {
                     final items = menu['items'] as List<dynamic>? ?? [];
                     final mealName = menu['menuName']?.toString() ??
                         menu['mealType']?.toString() ??
-                        "Bugünün Menüsü";
+                        "Today's Menu";
                     final desc = _menuDescription(items);
                     final price = menu['price']?.toString() ?? "-";
                     final time = menu['time']?.toString() ?? "-";
                     final note = menu['dashboardMessage']?.toString() ??
-                        "Bugünün menüsü güncel güne göre gösteriliyor.";
+                        "Today's menu is shown based on the current day.";
 
                     return _buildTodayMenuCard(
                       context,
@@ -206,7 +206,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: const SectionHeader(title: "Son Duyurular"),
+                        child: const SectionHeader(title: "Recent Announcements"),
                       ),
                       const SizedBox(height: 10),
                       Padding(
@@ -219,7 +219,7 @@ class HomeScreen extends StatelessWidget {
                               subtitle: _announcementDateText(item),
                               metadata: item['content']?.toString() ?? '',
                               badge: item['isNew'] == true
-                                  ? const AppBadge(label: "Yeni")
+                                  ? const AppBadge(label: "New")
                                   : null,
                               onTap: () => Navigator.push(
                                 context,
@@ -237,8 +237,8 @@ class HomeScreen extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SectionHeader(
-                          title: "Yaklaşan Etkinlikler",
-                          actionLabel: "Tümünü Gör",
+                          title: "Upcoming Events",
+                          actionLabel: "See All",
                           onAction: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -302,7 +302,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  "Merhaba, Öğrenci 👋",
+                  "Hello, Student 👋",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -318,7 +318,7 @@ class HomeScreen extends StatelessWidget {
           ),
           SizedBox(height: 16),
           AppSearchBar(
-            placeholder: "Kampüste ara...",
+            placeholder: "Search on campus...",
             readOnly: true,
           ),
         ],
@@ -339,7 +339,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   String _menuDescription(List<dynamic> items) {
-    if (items.isEmpty) return "Menü bilgisi bulunamadı.";
+    if (items.isEmpty) return "Menu information not found.";
 
     final names = items.take(4).map((item) {
       if (item is Map) {
@@ -369,7 +369,7 @@ class HomeScreen extends StatelessWidget {
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
     final dividerColor = Theme.of(context).dividerColor;
     final hasPrice = price.trim().isNotEmpty && price.trim() != "-";
-    final badgeText = hasPrice ? price : "Kapalı";
+    final badgeText = hasPrice ? price : "Closed";
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),

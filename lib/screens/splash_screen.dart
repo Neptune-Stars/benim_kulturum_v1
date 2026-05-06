@@ -48,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              "Benim Kültürüm",
+              "My Kultur",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 32,
@@ -57,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Kampüs Asistanı",
+              "Campus Assistant",
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 18,

@@ -111,7 +111,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               Text(
-                "Benim Kültürüm'e Hoş Geldin",
+                "Welcome to My Kultur",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
@@ -122,7 +122,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                "Kampüs hayatını kolaylaştıran asistanın",
+                "Your assistant that makes campus life easier",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -133,20 +133,20 @@ class WelcomeScreen extends StatelessWidget {
               _buildFeatureCard(
                 context,
                 Icons.business,
-                "Derslik Bilgileri",
-                "Tüm kampüs binalarını ve derslikleri keşfet",
+                "Classroom Information",
+                "Discover all campus buildings and classrooms",
               ),
               _buildFeatureCard(
                 context,
                 Icons.notifications,
-                "Duyurular & Etkinlikler",
-                "Kampüsteki etkinliklerden anında haberdar ol",
+                "Announcements & Events",
+                "Be instantly informed about events on campus",
               ),
               _buildFeatureCard(
                 context,
                 Icons.restaurant,
-                "Yemekhane & Fiyatlar",
-                "Günlük menüyü ve kampüs fiyatlarını gör",
+                "Cafeteria & Prices",
+                "See the daily menu and campus prices",
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -155,7 +155,7 @@ class WelcomeScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => context.go('/login'),
                   child: const Text(
-                    "Başla",
+                    "Start",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
