@@ -33,7 +33,10 @@ class _MainScreenState extends State<MainScreen> {
     final navBackgroundColor = isDark ? AppTheme.darkCardColor : Colors.white;
 
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(

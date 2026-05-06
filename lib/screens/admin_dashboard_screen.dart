@@ -74,7 +74,18 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Future<Map<String, dynamic>> _databaseFuture;
+  Future<Map<String, int>>? _dashboardSummaryFuture;
+  Future<List<Map<String, dynamic>>>? _buildingsFuture;
+  Future<Map<String, dynamic>>? _classroomTabDataFuture;
+  Future<List<Map<String, dynamic>>>? _instructorsFuture;
+  Future<List<Map<String, dynamic>>>? _eventsFuture;
+  Future<List<Map<String, dynamic>>>? _announcementsFuture;
+  Future<List<Map<String, dynamic>>>? _pricesFuture;
+  Future<List<String>>? _priceCategoriesFuture;
+  List<String> _currentPriceCategoryOptions = List<String>.from(_priceCategoryOptions);
+  Future<List<Map<String, dynamic>>>? _issuesFuture;
+  Future<List<Map<String, dynamic>>>? _studentsFuture;
+  Future<List<Map<String, dynamic>>>? _weeklyCafeteriaFuture;
 
   final List<String> _tabs = [
     "General", "Units", "Classrooms", "Instructors", "Events", "Announcements", "Cafeteria", "Prices", "Issues", "Students"
@@ -92,12 +103,126 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _loadData();
+    _tabController.addListener(() {
+      _ensureTabFuture(_tabController.index);
+    });
+    _ensureTabFuture(0, updateState: false);
   }
 
-  void _loadData() {
+  void _refreshWeeklyCafeteriaMenus() {
+    _weeklyCafeteriaFuture = DataService.fetchWeeklyCafeteriaMenus(
+      weekStart: _cafeteriaWeekStart,
+    );
+  }
+
+  void _ensureTabFuture(int index, {bool forceRefresh = false, bool updateState = true}) {
+    void assignFuture() {
+      switch (index) {
+        case 0:
+          if (forceRefresh || _dashboardSummaryFuture == null) {
+            _dashboardSummaryFuture = DataService.fetchDashboardSummary(forceRefresh: forceRefresh);
+          }
+          break;
+        case 1:
+          if (forceRefresh || _buildingsFuture == null) {
+            _buildingsFuture = DataService.fetchCollection('buildings', forceRefresh: forceRefresh);
+          }
+          break;
+        case 2:
+          if (forceRefresh || _classroomTabDataFuture == null) {
+            _classroomTabDataFuture = DataService.fetchAdminClassroomTabData(forceRefresh: forceRefresh);
+          }
+          break;
+        case 3:
+          if (forceRefresh || _instructorsFuture == null) {
+            _instructorsFuture = DataService.fetchCollection('instructors', forceRefresh: forceRefresh);
+          }
+          break;
+        case 4:
+          if (forceRefresh || _eventsFuture == null) {
+            _eventsFuture = DataService.fetchCollection('events', forceRefresh: forceRefresh);
+          }
+          break;
+        case 5:
+          if (forceRefresh || _announcementsFuture == null) {
+            _announcementsFuture = DataService.fetchCollection('announcements', forceRefresh: forceRefresh);
+          }
+          break;
+        case 6:
+          if (forceRefresh || _weeklyCafeteriaFuture == null) {
+            _refreshWeeklyCafeteriaMenus();
+          }
+          break;
+        case 7:
+          if (forceRefresh || _pricesFuture == null) {
+            _pricesFuture = DataService.fetchCollection('prices', forceRefresh: forceRefresh);
+          }
+          if (forceRefresh || _priceCategoriesFuture == null) {
+            _priceCategoriesFuture = DataService.fetchPriceCategories(forceRefresh: forceRefresh);
+          }
+          break;
+        case 8:
+          if (forceRefresh || _issuesFuture == null) {
+            _issuesFuture = DataService.fetchCollection('issues', forceRefresh: forceRefresh);
+          }
+          break;
+        case 9:
+          if (forceRefresh || _studentsFuture == null) {
+            _studentsFuture = DataService.fetchCollection('students', forceRefresh: forceRefresh);
+          }
+          break;
+      }
+    }
+
+    if (updateState && mounted) {
+      setState(assignFuture);
+    } else {
+      assignFuture();
+    }
+  }
+
+  void _refreshTab(int index) {
+    _ensureTabFuture(index, forceRefresh: true);
+  }
+
+  void _refreshAdminData({String? collectionKey, bool refreshCafeteria = false}) {
+    if (refreshCafeteria) {
+      DataService.clearCafeteriaCache();
+      setState(() {
+        _refreshWeeklyCafeteriaMenus();
+      });
+      return;
+    }
+
+    if (collectionKey == null) {
+      DataService.clearCache();
+      for (int i = 0; i < _tabs.length; i++) {
+        _ensureTabFuture(i, forceRefresh: true, updateState: false);
+      }
+      setState(() {});
+      return;
+    }
+
+    DataService.clearCollectionCache(collectionKey);
+
+    final tabIndexByCollection = <String, int>{
+      'buildings': 1,
+      'classrooms': 2,
+      'instructors': 3,
+      'events': 4,
+      'announcements': 5,
+      'prices': 7,
+      'priceCategories': 7,
+      'issues': 8,
+      'students': 9,
+    };
+
+    final tabIndex = tabIndexByCollection[collectionKey];
     setState(() {
-      _databaseFuture = DataService.loadDatabase();
+      _dashboardSummaryFuture = DataService.fetchDashboardSummary(forceRefresh: true);
+      if (tabIndex != null) {
+        _ensureTabFuture(tabIndex, forceRefresh: true, updateState: false);
+      }
     });
   }
 
@@ -113,7 +238,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     context.go('/login');
   }
 
-  void _switchTab(int index) { _tabController.animateTo(index); }
+  void _switchTab(int index) {
+    _ensureTabFuture(index);
+    _tabController.animateTo(index);
+  }
 
   Color _adminPrimaryColor() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -154,7 +282,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Record deleted from cloud database.")));
-                  _loadData();
+                  _refreshAdminData(collectionKey: collectionKey);
                 }
               },
               child: const Text("Delete", style: TextStyle(color: AppTheme.destructiveColor))
@@ -314,7 +442,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
             ),
             const SizedBox(width: 8),
-            const Text("Admin Panel"),
+            const Text("Admin Dashboard"),
           ],
         ),
         centerTitle: false,
@@ -337,7 +465,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             },
           ),
           IconButton(
-            tooltip: "Log out",
+            tooltip: "Logout",
             icon: const Icon(
               Icons.logout,
               color: AppTheme.destructiveColor,
@@ -354,147 +482,748 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _databaseFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No data to show."));
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildDashboardSummaryTab(),
+          _buildBuildingsTab(),
+          _buildClassroomsTab(),
+          _buildInstructorsTab(),
+          _buildEventsTab(),
+          _buildAnnouncementsTab(),
+          _buildCafeteriaWeekTab(),
+          _buildPricesTab(),
+          _buildIssuesFutureTab(),
+          _buildStudentsTab(),
+        ],
+      ),
+    );
+  }
 
-          final data = snapshot.data!;
+  Widget _buildDashboardSummaryTab() {
+    final future = _dashboardSummaryFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(0));
+      return _buildDashboardSkeleton();
+    }
 
-          final campusOptions = _getCampusOptions(data);
-          final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
+    return FutureBuilder<Map<String, int>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildDashboardSkeleton();
+        }
 
-          final allBuildings = data['buildings'] as List<dynamic>? ?? [];
-          final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
-          final allInstructors = data['instructors'] as List<dynamic>? ?? [];
-          final allEvents = data['events'] as List<dynamic>? ?? [];
-          final allAnnouncements = data['announcements'] as List<dynamic>? ?? [];
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch general summary.",
+            onRetry: () => _refreshTab(0),
+          );
+        }
 
-          // NEW: Reading fully from Firebase now
-          final allPrices = data['prices'] as List<dynamic>? ?? [];
-          final allIssues = data['issues'] as List<dynamic>? ?? [];
-          final allStudents = data['students'] as List<dynamic>? ?? [];
+        return _buildGenelTab(snapshot.data ?? <String, int>{});
+      },
+    );
+  }
 
-          final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
-          final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
-          final mealTypes = (cafeteriaData['mealTypes'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-              ["Breakfast", "Meal", "Fast Food"];
+  Widget _buildBuildingsTab() {
+    return _buildCollectionFutureTab(
+      future: _buildingsFuture,
+      tabIndex: 1,
+      title: "Campus Units",
+      searchController: _searchControllers[1]!,
+      searchFields: const ['name', 'location'],
+      onAdd: () => _openBuildingForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['name'] ?? '',
+        e['location'] ?? '',
+            () => _openBuildingForm(isEdit: true, item: e),
+            () => _showDeleteDialog('buildings', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
 
-          final sq1 = _normalizeForSearch(_searchControllers[1]!.text);
-          final filteredBuildings = allBuildings.where((b) => _normalizeForSearch(b['name'] ?? '').contains(sq1) || _normalizeForSearch(b['location'] ?? '').contains(sq1)).toList();
+  Widget _buildClassroomsTab() {
+    final future = _classroomTabDataFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(2));
+      return _buildListSkeleton("Loading classrooms...");
+    }
 
-          final sq2 = _normalizeForSearch(_searchControllers[2]!.text);
-          final filteredClassrooms = allClassrooms.where((c) => _normalizeForSearch(c['name'] ?? '').contains(sq2) || _normalizeForSearch(c['building'] ?? '').contains(sq2)).toList();
+    return FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading classrooms...");
+        }
 
-          final sq3 = _normalizeForSearch(_searchControllers[3]!.text);
-          final filteredInstructors = allInstructors.where((i) => _normalizeForSearch(i['name'] ?? '').contains(sq3) || _normalizeForSearch(i['department'] ?? '').contains(sq3)).toList();
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch classroom data.",
+            onRetry: () => _refreshTab(2),
+          );
+        }
 
-          final sq4 = _normalizeForSearch(_searchControllers[4]!.text);
-          final filteredEvents = allEvents.where((e) => _normalizeForSearch(e['title'] ?? '').contains(sq4) || _normalizeForSearch(e['date'] ?? '').contains(sq4)).toList();
+        final data = snapshot.data ?? {};
+        final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
+        final campusOptions = _getCampusOptions(data);
+        final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
 
-          final sq5 = _normalizeForSearch(_searchControllers[5]!.text);
-          final filteredAnnouncements = allAnnouncements.where((a) => _normalizeForSearch(a['title'] ?? '').contains(sq5) || _normalizeForSearch(a['date'] ?? '').contains(sq5)).toList();
+        final sq = _normalizeForSearch(_searchControllers[2]!.text);
+        final filteredClassrooms = allClassrooms.where((c) {
+          return _normalizeForSearch(c['name']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(c['building']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(c['campus']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(c['location']?.toString() ?? '').contains(sq);
+        }).toList();
 
-          final sq6 = _normalizeForSearch(_searchControllers[6]!.text);
-          final filteredMeals = mealTypes.where((m) => _normalizeForSearch(m).contains(sq6)).toList();
+        return _buildManagementTab(
+          title: "Classrooms",
+          count: filteredClassrooms.length,
+          searchController: _searchControllers[2]!,
+          items: filteredClassrooms.map((e) {
+            final subtitle = [
+              e['campus'],
+              e['location'],
+              e['floorLabel'] ?? _floorLabelFromValue(e['floor']),
+            ].where((value) => value != null && value.toString().trim().isNotEmpty).join(" • ");
 
-          final sq7 = _normalizeForSearch(_searchControllers[7]!.text);
-          final filteredPrices = allPrices.where((p) => _normalizeForSearch(p["name"] ?? '').contains(sq7) || _normalizeForSearch(p["category"] ?? '').contains(sq7)).toList();
-
-          final sq8 = _normalizeForSearch(_searchControllers[8]!.text);
-          final filteredIssues = allIssues.where((iss) => _normalizeForSearch(iss["subject"] ?? '').contains(sq8) || _normalizeForSearch(iss["category"] ?? '').contains(sq8)).toList();
-
-          final sq9 = _normalizeForSearch(_searchControllers[9]!.text);
-          final filteredStudents = allStudents.where((s) => _normalizeForSearch(s["name"] ?? '').contains(sq9) || _normalizeForSearch(s["no"] ?? '').contains(sq9)).toList();
-
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildGenelTab(data),
-              _buildManagementTab(
-                title: "Campus Units", count: filteredBuildings.length, searchController: _searchControllers[1]!,
-                items: filteredBuildings.map((e) => _buildListItem(e['name'] ?? '', e['location'] ?? '', () => _openBuildingForm(isEdit: true, item: e), () => _showDeleteDialog('buildings', e['id'].toString()))).toList(),
-                onAdd: () => _openBuildingForm(isEdit: false),
+            return _buildListItem(
+              e['name'] ?? '',
+              subtitle,
+                  () => _openClassroomForm(
+                isEdit: true,
+                item: e,
+                campusOptions: campusOptions,
+                locationsByCampus: classroomLocationsByCampus,
               ),
-              _buildManagementTab(
-                title: "Classrooms",
-                count: filteredClassrooms.length,
-                searchController: _searchControllers[2]!,
-                items: filteredClassrooms.map((e) {
-                  final subtitle = [
-                    e['campus'],
-                    e['location'],
-                    e['floorLabel'] ?? _floorLabelFromValue(e['floor']),
-                  ].where((value) => value != null && value.toString().trim().isNotEmpty).join(" • ");
+                  () => _showDeleteDialog('classrooms', (e['firestoreDocId'] ?? e['id']).toString()),
+            );
+          }).toList(),
+          onAdd: () => _openClassroomForm(
+            isEdit: false,
+            campusOptions: campusOptions,
+            locationsByCampus: classroomLocationsByCampus,
+          ),
+        );
+      },
+    );
+  }
 
-                  return _buildListItem(
-                    e['name'] ?? '',
-                    subtitle,
-                        () => _openClassroomForm(
-                      isEdit: true,
-                      item: e,
-                      campusOptions: campusOptions,
-                      locationsByCampus: classroomLocationsByCampus,
+  Widget _buildInstructorsTab() {
+    return _buildCollectionFutureTab(
+      future: _instructorsFuture,
+      tabIndex: 3,
+      title: "Instructors",
+      searchController: _searchControllers[3]!,
+      searchFields: const ['name', 'department'],
+      onAdd: () => _openInstructorForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['name'] ?? '',
+        e['department'] ?? '',
+            () => _openInstructorForm(isEdit: true, item: e),
+            () => _showDeleteDialog('instructors', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
+
+  Widget _buildEventsTab() {
+    return _buildCollectionFutureTab(
+      future: _eventsFuture,
+      tabIndex: 4,
+      title: "Events",
+      searchController: _searchControllers[4]!,
+      searchFields: const ['title', 'date', 'location'],
+      onAdd: () => _openEventForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['title'] ?? '',
+        "${e['date'] ?? '-'} - ${e['location'] ?? '-'}",
+            () => _openEventForm(isEdit: true, item: e),
+            () => _showDeleteDialog('events', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
+
+  Widget _buildAnnouncementsTab() {
+    return _buildCollectionFutureTab(
+      future: _announcementsFuture,
+      tabIndex: 5,
+      title: "Announcements",
+      searchController: _searchControllers[5]!,
+      searchFields: const ['title', 'date'],
+      onAdd: () => _openAnnouncementForm(isEdit: false),
+      itemBuilder: (e) => _buildListItem(
+        e['title'] ?? '',
+        e['date'] ?? '',
+            () => _openAnnouncementForm(isEdit: true, item: e),
+            () => _showDeleteDialog('announcements', (e['firestoreDocId'] ?? e['id']).toString()),
+      ),
+    );
+  }
+
+  static const List<String> _priceCategoryOptions = [
+    "Beverages",
+    "Coffee Varieties",
+    "Toast Varieties",
+    "Snacks",
+  ];
+
+  List<String> _mergePriceCategories(
+      List<String> storedCategories,
+      List<Map<String, dynamic>> prices,
+      ) {
+    final result = <String>[];
+
+    void addCategory(String? value) {
+      final category = value?.trim();
+      if (category == null || category.isEmpty) return;
+      if (!result.contains(category)) {
+        result.add(category);
+      }
+    }
+
+    for (final category in _priceCategoryOptions) {
+      addCategory(category);
+    }
+    for (final category in storedCategories) {
+      addCategory(category);
+    }
+    for (final price in prices) {
+      addCategory(_inferPriceCategory(
+        price['category']?.toString(),
+        price['name']?.toString() ?? '',
+      ));
+    }
+
+    return result;
+  }
+
+  String _normalizePriceValue(String rawPrice) {
+    final value = rawPrice.trim();
+    if (value.isEmpty) return "₺0";
+    return value.startsWith("₺") ? value : "₺$value";
+  }
+
+  String _inferPriceCategory(String? rawCategory, String productName) {
+    final raw = rawCategory?.trim() ?? "";
+    final name = productName.toLowerCase();
+
+    if (_priceCategoryOptions.contains(raw)) {
+      return raw;
+    }
+
+    if (name.contains("kahve") ||
+        name.contains("latte") ||
+        name.contains("espresso") ||
+        name.contains("americano") ||
+        name.contains("cappuccino") ||
+        name.contains("mocha") ||
+        name.contains("filtre")) {
+      return "Coffee Varieties";
+    }
+
+    if (name.contains("tost") ||
+        name.contains("sandviç") ||
+        name.contains("sandwich")) {
+      return "Toast Varieties";
+    }
+
+    if (name.contains("eti") ||
+        name.contains("puf") ||
+        name.contains("çikolata") ||
+        name.contains("bisküvi") ||
+        name.contains("cips") ||
+        name.contains("kraker") ||
+        name.contains("gofret") ||
+        name.contains("kek")) {
+      return "Snacks";
+    }
+
+    if (name.contains("çay") ||
+        name.contains("su") ||
+        name.contains("ayran") ||
+        name.contains("kola") ||
+        name.contains("soda") ||
+        name.contains("meyve suyu") ||
+        name.contains("ice tea") ||
+        name.contains("fanta") ||
+        name.contains("sprite")) {
+      return "Beverages";
+    }
+
+    if (raw == "Çay/Kahve") {
+      return name.contains("kahve") ? "Coffee Varieties" : "Beverages";
+    }
+    if (raw == "Atıştırmalık" || raw == "Atıştırmalıklar" || raw == "Abur Cubur") {
+      return "Snacks";
+    }
+    if (raw == "Yemek") {
+      return "Toast Varieties";
+    }
+
+    // Custom categories created by the admin must be preserved.
+    if (raw.isNotEmpty) {
+      return raw;
+    }
+
+    return "Beverages";
+  }
+
+  String _priceDocumentId(Map<dynamic, dynamic>? item) {
+    final firestoreDocId = item?['firestoreDocId']?.toString().trim();
+    if (firestoreDocId != null && firestoreDocId.isNotEmpty && firestoreDocId != "null") {
+      return firestoreDocId;
+    }
+
+    final id = item?['id']?.toString().trim();
+    if (id != null && id.isNotEmpty && id != "null") {
+      return id;
+    }
+
+    return DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  Widget _buildPricesTab() {
+    final pricesFuture = _pricesFuture;
+    final categoriesFuture = _priceCategoriesFuture;
+    if (pricesFuture == null || categoriesFuture == null) {
+      Future.microtask(() => _ensureTabFuture(7));
+      return _buildListSkeleton("Loading prices...");
+    }
+
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait<dynamic>([pricesFuture, categoriesFuture]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading prices...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch price data.",
+            onRetry: () => _refreshTab(7),
+          );
+        }
+
+        final rawPrices = snapshot.data?[0];
+        final allPrices = rawPrices is List
+            ? rawPrices
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList()
+            : <Map<String, dynamic>>[];
+
+        final rawCategories = snapshot.data?[1];
+        final storedCategories = rawCategories is List
+            ? rawCategories.map((category) => category.toString()).toList()
+            : <String>[];
+        final categoryOptions = _mergePriceCategories(storedCategories, allPrices);
+        _currentPriceCategoryOptions = categoryOptions;
+
+        final sq = _normalizeForSearch(_searchControllers[7]!.text);
+
+        final groupedPrices = <String, List<Map<String, dynamic>>>{
+          for (final category in categoryOptions) category: <Map<String, dynamic>>[],
+        };
+
+        for (final priceItem in allPrices) {
+          final normalizedItem = Map<String, dynamic>.from(priceItem);
+          final normalizedCategory = _inferPriceCategory(
+            normalizedItem['category']?.toString(),
+            normalizedItem['name']?.toString() ?? "",
+          );
+          normalizedItem['category'] = normalizedCategory;
+
+          final searchableText = [
+            normalizedItem['name']?.toString() ?? "",
+            normalizedItem['price']?.toString() ?? "",
+            normalizedCategory,
+          ].map(_normalizeForSearch).join(" ");
+
+          if (sq.isNotEmpty && !searchableText.contains(sq)) {
+            continue;
+          }
+
+          groupedPrices.putIfAbsent(normalizedCategory, () => <Map<String, dynamic>>[]);
+          groupedPrices[normalizedCategory]!.add(normalizedItem);
+        }
+
+        final visibleCount = groupedPrices.values.fold<int>(0, (sum, items) => sum + items.length);
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Prices ($visibleCount)",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                        () => _showDeleteDialog('classrooms', e['id'].toString()),
-                  );
-                }).toList(),
-                onAdd: () => _openClassroomForm(
-                  isEdit: false,
-                  campusOptions: campusOptions,
-                  locationsByCampus: classroomLocationsByCampus,
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _openPriceCategoryForm,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Add Category"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: AppSearchBar(
+                controller: _searchControllers[7]!,
+                placeholder: "Search product, price, or category...",
+                onChanged: (val) => setState(() {}),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: categoryOptions.length,
+                itemBuilder: (context, index) {
+                  final category = categoryOptions[index];
+                  final items = groupedPrices[category] ?? <Map<String, dynamic>>[];
+                  return _buildPriceCategoryTile(category, items, searchActive: sq.isNotEmpty);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceCategoryTile(
+      String category,
+      List<Map<String, dynamic>> items, {
+        required bool searchActive,
+      }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: _adminBorderColor()),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: searchActive,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        title: Text(
+          category,
+          style: TextStyle(
+            color: _adminTextPrimaryColor(),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: Text(
+          "${items.length} products",
+          style: TextStyle(color: _adminTextMutedColor()),
+        ),
+        trailing: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
+          children: [
+            IconButton(
+              tooltip: "Add product to $category",
+              icon: const Icon(Icons.add_circle_outline),
+              color: _adminPrimaryColor(),
+              onPressed: () => _openPriceForm(
+                isEdit: false,
+                defaultCategory: category,
+              ),
+            ),
+            const Icon(Icons.expand_more),
+          ],
+        ),
+        children: [
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "No products in this category.",
+                  style: TextStyle(color: _adminTextMutedColor()),
                 ),
               ),
-              _buildManagementTab(
-                title: "Instructors", count: filteredInstructors.length, searchController: _searchControllers[3]!,
-                items: filteredInstructors.map((e) => _buildListItem(e['name'] ?? '', e['department'] ?? '', () => _openInstructorForm(isEdit: true, item: e), () => _showDeleteDialog('instructors', e['id'].toString()))).toList(),
-                onAdd: () => _openInstructorForm(isEdit: false),
-              ),
-              _buildManagementTab(
-                title: "Events", count: filteredEvents.length, searchController: _searchControllers[4]!,
-                items: filteredEvents.map((e) => _buildListItem(e['title'] ?? '', "${e['date']} - ${e['location']}", () => _openEventForm(isEdit: true, item: e), () => _showDeleteDialog('events', e['id'].toString()))).toList(),
-                onAdd: () => _openEventForm(isEdit: false),
-              ),
-              _buildManagementTab(
-                title: "Announcements", count: filteredAnnouncements.length, searchController: _searchControllers[5]!,
-                items: filteredAnnouncements.map((e) => _buildListItem(e['title'] ?? '', e['date'] ?? '', () => _openAnnouncementForm(isEdit: true, item: e), () => _showDeleteDialog('announcements', e['id'].toString()))).toList(),
-                onAdd: () => _openAnnouncementForm(isEdit: false),
-              ),
-              _buildCafeteriaWeekTab(),
-              _buildManagementTab(
-                title: "Prices", count: filteredPrices.length, searchController: _searchControllers[7]!,
-                items: filteredPrices.map((p) => _buildListItem(p["name"] ?? '', "${p["price"]} - ${p["category"]}", () => _openPriceForm(isEdit: true, item: p), () => _showDeleteDialog('prices', p['id'].toString()))).toList(),
-                onAdd: () => _openPriceForm(isEdit: false),
-              ),
-              _buildIssuesTab(filteredIssues, _searchControllers[8]!),
-              _buildManagementTab(
-                title: "Students", count: filteredStudents.length, searchController: _searchControllers[9]!,
-                items: filteredStudents.map((s) => _buildListItem(s["name"] ?? '', "${s["no"]} - ${s["grade"]}", () => _openStudentForm(isEdit: true, item: s), () => _showDeleteDialog('students', s['id'].toString()))).toList(),
-                onAdd: () => _openStudentForm(isEdit: false),
-              ),
-            ],
+            )
+          else
+            ...items.map((item) {
+              return Column(
+                children: [
+                  _buildListItem(
+                    item['name']?.toString() ?? "Unnamed product",
+                    "${item['price'] ?? '-'} • ${item['category'] ?? category}",
+                        () => _openPriceForm(isEdit: true, item: item),
+                        () => _showDeleteDialog('prices', _priceDocumentId(item)),
+                  ),
+                  if (item != items.last) const Divider(height: 18),
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIssuesFutureTab() {
+    final future = _issuesFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(8));
+      return _buildListSkeleton("Loading issues...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading issues...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch issue records.",
+            onRetry: () => _refreshTab(8),
           );
-        },
+        }
+
+        final allIssues = snapshot.data ?? [];
+        final sq = _normalizeForSearch(_searchControllers[8]!.text);
+        final filteredIssues = allIssues.where((iss) {
+          return _normalizeForSearch(iss['subject']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(iss['category']?.toString() ?? '').contains(sq);
+        }).toList();
+
+        return _buildIssuesTab(filteredIssues, _searchControllers[8]!);
+      },
+    );
+  }
+
+  Widget _buildStudentsTab() {
+    return _buildCollectionFutureTab(
+      future: _studentsFuture,
+      tabIndex: 9,
+      title: "Students",
+      searchController: _searchControllers[9]!,
+      searchFields: const ['name', 'no', 'email'],
+      onAdd: () => _openStudentForm(isEdit: false),
+      itemBuilder: (s) => _buildListItem(
+        s['name'] ?? '',
+        "${s['no'] ?? '-'} - ${s['grade'] ?? '-'}",
+            () => _openStudentForm(isEdit: true, item: s),
+            () => _showDeleteDialog('students', (s['firestoreDocId'] ?? s['id']).toString()),
+      ),
+    );
+  }
+
+  Widget _buildCollectionFutureTab({
+    required Future<List<Map<String, dynamic>>>? future,
+    required int tabIndex,
+    required String title,
+    required TextEditingController searchController,
+    required List<String> searchFields,
+    required VoidCallback onAdd,
+    required Widget Function(Map<String, dynamic> item) itemBuilder,
+  }) {
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(tabIndex));
+      return _buildListSkeleton("Loading $title...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading $title...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch $title data.",
+            onRetry: () => _refreshTab(tabIndex),
+          );
+        }
+
+        final allItems = snapshot.data ?? [];
+        final sq = _normalizeForSearch(searchController.text);
+        final filteredItems = allItems.where((item) {
+          if (sq.isEmpty) return true;
+          return searchFields.any((field) {
+            return _normalizeForSearch(item[field]?.toString() ?? '').contains(sq);
+          });
+        }).toList();
+
+        return _buildManagementTab(
+          title: title,
+          count: filteredItems.length,
+          searchController: searchController,
+          items: filteredItems.map(itemBuilder).toList(),
+          onAdd: onAdd,
+        );
+      },
+    );
+  }
+
+  Widget _buildDashboardSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSkeletonBox(height: 54, borderRadius: 12),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final crossAxisCount = width >= 720 ? 3 : 2;
+              final aspectRatio = width < 380 ? 1.08 : 1.22;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: aspectRatio,
+                ),
+                itemCount: 6,
+                itemBuilder: (context, index) => _buildSkeletonBox(borderRadius: 12),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListSkeleton(String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(width: 76, height: 34, child: _buildSkeletonBox(borderRadius: 8)),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildSkeletonBox(height: 46, borderRadius: 10),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: 7,
+            separatorBuilder: (_, __) => const Divider(),
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSkeletonBox(height: 16, width: 180, borderRadius: 6),
+                          const SizedBox(height: 8),
+                          _buildSkeletonBox(height: 13, width: 240, borderRadius: 6),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    _buildSkeletonBox(height: 32, width: 32, borderRadius: 16),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonBox({double? width, double? height, double borderRadius = 8}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message, {required VoidCallback onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_outlined, size: 44, color: _adminTextMutedColor()),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, color: _adminTextPrimaryColor()),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Check your connection and try again.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _adminTextMutedColor()),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text("Try again"),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildCafeteriaWeekTab() {
+    if (_weeklyCafeteriaFuture == null) {
+      Future.microtask(() => _ensureTabFuture(6));
+      return _buildListSkeleton("Loading cafeteria menus...");
+    }
+
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: DataService.fetchWeeklyCafeteriaMenus(
-        weekStart: _cafeteriaWeekStart,
-      ),
+      future: _weeklyCafeteriaFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return _buildListSkeleton("Loading cafeteria menus...");
         }
 
         if (snapshot.hasError) {
           return const Center(
-            child: Text("Failed to load weekly cafeteria data."),
+            child: Text("Failed to fetch weekly cafeteria data."),
           );
         }
 
@@ -526,6 +1255,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             _cafeteriaWeekStart = _cafeteriaWeekStart.subtract(
                               const Duration(days: 7),
                             );
+                            _refreshWeeklyCafeteriaMenus();
                           });
                         },
                         icon: const Icon(Icons.chevron_left),
@@ -537,6 +1267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             _cafeteriaWeekStart = _cafeteriaWeekStart.add(
                               const Duration(days: 7),
                             );
+                            _refreshWeeklyCafeteriaMenus();
                           });
                         },
                         icon: const Icon(Icons.chevron_right),
@@ -553,7 +1284,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "If you uncheck a day, students will see there is no food for that day. While the day is open, you can edit its Breakfast, Meal, and Fast Food contents.",
+                    "If you disable the day tick, students will see no food for that day. When the day is active, you can edit Breakfast, Meal, and Fast Food contents for that day.",
                     style: TextStyle(
                       color: _adminTextMutedColor(),
                       height: 1.35,
@@ -645,7 +1376,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
             ),
             IconButton(
-              tooltip: isDayActive ? "Edit day" : "Day is closed",
+              tooltip: isDayActive ? "Edit day" : "Day closed",
               visualDensity: VisualDensity.compact,
               onPressed: isDayActive ? () => _openDailyCafeteriaDialog(date) : null,
               icon: Icon(
@@ -669,12 +1400,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         SnackBar(
           content: Text(
             nextValue
-                ? "${DataService.weekdayName(date.weekday)} re-opened for students."
+                ? "${DataService.weekdayName(date.weekday)} opened to students again."
                 : "${DataService.weekdayName(date.weekday)} closed for students.",
           ),
         ),
       );
-      setState(() {});
+      setState(() {
+        _refreshWeeklyCafeteriaMenus();
+      });
     }
   }
 
@@ -701,7 +1434,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ),
       );
       onSaved?.call();
-      setState(() {});
+      setState(() {
+        _refreshWeeklyCafeteriaMenus();
+      });
     }
   }
 
@@ -742,7 +1477,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            "If you recheck the day, students can see this day and menus can be edited again.",
+                            "If you re-enable the day tick, students can see this day and menus can be edited again.",
                             style: TextStyle(color: _adminTextMutedColor(), height: 1.35),
                           ),
                           const SizedBox(height: 16),
@@ -750,7 +1485,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             onPressed: () async {
                               await DataService.setCafeteriaDayActiveStatus(date, true);
                               setDialogState(() {});
-                              setState(() {});
+                              setState(() {
+                                _refreshWeeklyCafeteriaMenus();
+                              });
                             },
                             icon: const Icon(Icons.check_circle),
                             label: const Text("Open Day"),
@@ -814,7 +1551,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                           nextValue: !isMenuActive,
                                           onSaved: () {
                                             setDialogState(() {});
-                                            setState(() {});
+                                            setState(() {
+                                              _refreshWeeklyCafeteriaMenus();
+                                            });
                                           },
                                         ),
                                         icon: Icon(
@@ -834,7 +1573,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                           item: menu,
                                           onSaved: () {
                                             setDialogState(() {});
-                                            setState(() {});
+                                            setState(() {
+                                              _refreshWeeklyCafeteriaMenus();
+                                            });
                                           },
                                         ),
                                         icon: const Icon(
@@ -929,7 +1670,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: menuNameCtrl,
                     decoration: const InputDecoration(
                       labelText: "Menu Name",
-                      hintText: "E.g., Today's Meal",
+                      hintText: "e.g. Today's Meal",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -937,7 +1678,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: timeCtrl,
                     decoration: const InputDecoration(
                       labelText: "Time Range",
-                      hintText: "E.g., 13:00-18:00",
+                      hintText: "e.g. 13:00-18:00",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -945,7 +1686,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: priceCtrl,
                     decoration: InputDecoration(
                       labelText: isFastFood ? "General Price Info" : "Price",
-                      hintText: isFastFood ? "Product based" : "E.g., ₺35",
+                      hintText: isFastFood ? "Product based" : "e.g. ₺35",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1086,6 +1827,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     "price": normalizedPrice,
                     "items": newItems,
                     "isActive": item['isActive'] ?? true,
+                    "isActiveManuallyEdited": item['isActiveManuallyEdited'] == true,
                     "isChips": item['isChips'] ?? false,
                   };
 
@@ -1114,7 +1856,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       ),
                     );
                     onSaved?.call();
-                    setState(() {});
+                    setState(() {
+                      _refreshWeeklyCafeteriaMenus();
+                    });
                   }
                 },
                 child: const Text("Save"),
@@ -1126,80 +1870,133 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildGenelTab(Map<String, dynamic> data) {
-    final bCount = (data['buildings'] as List?)?.length ?? 0;
-    final cCount = (data['classrooms'] as List?)?.length ?? 0;
-    final iCount = (data['instructors'] as List?)?.length ?? 0;
+  Widget _buildGenelTab(Map<String, int> summary) {
+    final bCount = summary['buildings'] ?? 0;
+    final cCount = summary['classrooms'] ?? 0;
+    final iCount = summary['instructors'] ?? 0;
+    final eCount = summary['events'] ?? 0;
+    final issueCount = summary['issues'] ?? 0;
+    final studentCount = summary['students'] ?? 0;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppTheme.primaryLight.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3))),
-            child: const Row(
+    return RefreshIndicator(
+      onRefresh: () async => _refreshTab(0),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.cloud_done, color: AppTheme.primaryColor),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Google Firebase Cloud Active",
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final crossAxisCount = width >= 720 ? 3 : 2;
+                final aspectRatio = width < 380 ? 1.08 : 1.22;
+
+                return GridView.count(
+                  crossAxisCount: crossAxisCount,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: aspectRatio,
+                  children: [
+                    _buildStatCard(Icons.business, "Units", bCount.toString(), 1),
+                    _buildStatCard(Icons.meeting_room, "Classrooms", cCount.toString(), 2),
+                    _buildStatCard(Icons.people, "Instructors", iCount.toString(), 3),
+                    _buildStatCard(Icons.event, "Events", eCount.toString(), 4),
+                    _buildStatCard(Icons.report_problem, "Issues", issueCount.toString(), 8),
+                    _buildStatCard(Icons.person, "Students", studentCount.toString(), 9),
+                    _buildSupportCard(),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportCard() {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminChatListScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _adminBorderColor()),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.cloud_done, color: AppTheme.primaryColor),
-                SizedBox(width: 12),
-                Expanded(child: Text("Google Firebase Cloud Active", style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold))),
+                Icon(
+                  Icons.support_agent,
+                  color: _adminPrimaryColor(),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: _adminTextMutedColor(),
+                  size: 20,
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
-          GridView.count(
-            crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 1.25,
-            children: [
-              _buildStatCard(Icons.business, "Units", bCount.toString(), 1),
-              _buildStatCard(Icons.meeting_room, "Classrooms", cCount.toString(), 2),
-              _buildStatCard(Icons.people, "Instructors", iCount.toString(), 3),
-              _buildStatCard(Icons.event, "Events", ((data['events'] as List?)?.length ?? 0).toString(), 4),
-              _buildStatCard(Icons.report_problem, "Issues", ((data['issues'] as List?)?.length ?? 0).toString(), 8),
-              _buildStatCard(Icons.person, "Students", ((data['students'] as List?)?.length ?? 0).toString(), 9),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AdminChatListScreen()),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _adminBorderColor()),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Icon(Icons.support_agent, color: _adminPrimaryColor()),
-                          Icon(Icons.chevron_right, color: _adminTextMutedColor(), size: 20),
-                        ],
-                      ),
-                      const Spacer(),
-                      const Text(
-                        "Live",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        "Support Messages",
-                        style: TextStyle(color: _adminTextMutedColor(), fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
+            const Spacer(),
+            Text(
+              "Live Support",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: _adminTextPrimaryColor(),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Messages",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _adminTextMutedColor(),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1513,7 +2310,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Issue marked as resolved.")),
                 );
-                _loadData();
+                _refreshAdminData(collectionKey: 'issues');
               }
             },
             icon: const Icon(Icons.check, size: 18), label: const Text("Resolved"),
@@ -1528,10 +2325,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final nameCtrl = TextEditingController(text: item?['name']);
     final noCtrl = TextEditingController(text: item?['no']);
     final emailCtrl = TextEditingController(text: item?['email']);
-    // NEW: We fetch the password from the database (or leave it empty for a new record)
     final passCtrl = TextEditingController(text: item?['password']);
 
-    final List<String> gradeOptions = ["Prep", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "Alumni"];
+    final List<String> gradeOptions = ["Prep", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "Graduated"];
     String? selectedGrade = item?['grade'];
 
     showDialog(
@@ -1546,11 +2342,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   children: [
                     _buildTextField("Full Name", controller: nameCtrl),
                     const SizedBox(height: 12),
-                    _buildTextField("Student No", isNumber: true, controller: noCtrl),
+                    _buildTextField("Student ID", isNumber: true, controller: noCtrl),
                     const SizedBox(height: 12),
                     _buildTextField("Email", controller: emailCtrl),
                     const SizedBox(height: 12),
-                    // NEW: Password field is always visible so Admin can change it
                     _buildTextField("Password", controller: passCtrl),
                     const SizedBox(height: 12),
                     _buildDropdown("Grade", gradeOptions, value: gradeOptions.contains(selectedGrade) ? selectedGrade : null, onChanged: (val) => setDialogState(() => selectedGrade = val)),
@@ -1567,11 +2362,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         'name': nameCtrl.text,
                         'no': noCtrl.text,
                         'email': emailCtrl.text,
-                        'password': passCtrl.text, // NEW: Saving the password to Firebase
+                        'password': passCtrl.text, 
                         'grade': selectedGrade ?? '1st Grade'
                       };
                       await FirebaseFirestore.instance.collection('students').doc(docId.toString()).set(newData);
-                      if (context.mounted) { Navigator.pop(context); _loadData(); }
+                      if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'students'); }
                     },
                     child: const Text("Save")
                 )
@@ -1582,50 +2377,144 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openPriceForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
-    final nameCtrl = TextEditingController(text: item?['name']);
-    final priceCtrl = TextEditingController(text: item?['price']?.replaceAll('₺', ''));
-
-    final List<String> catOptions = ["Tea/Coffee", "Beverages", "Snacks", "Food"];
-    String? selectedCat = item?['category'];
+  void _openPriceCategoryForm() {
+    final categoryCtrl = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(isEdit ? "Edit — Price" : "Add New Price", style: const TextStyle(fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildDropdown("Category", catOptions, value: catOptions.contains(selectedCat) ? selectedCat : null, onChanged: (val) => setDialogState(() => selectedCat = val)),
-                    const SizedBox(height: 12),
-                    _buildTextField("Product Name", controller: nameCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Price", isNumber: true, controller: priceCtrl),
-                  ],
-                ),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          "Add New Category",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: _buildTextField(
+          "Category Name",
+          controller: categoryCtrl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final categoryName = categoryCtrl.text.trim();
+              if (categoryName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Category name cannot be empty.")),
+                );
+                return;
+              }
+
+              await DataService.addPriceCategory(categoryName);
+
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+              _refreshAdminData(collectionKey: 'priceCategories');
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openPriceForm({
+    required bool isEdit,
+    Map<dynamic, dynamic>? item,
+    String? defaultCategory,
+  }) {
+    final nameCtrl = TextEditingController(text: item?['name']?.toString() ?? "");
+    final priceCtrl = TextEditingController(
+      text: item?['price']?.toString().replaceAll("₺", "") ?? "",
+    );
+
+    String? selectedCat = isEdit
+        ? _inferPriceCategory(item?['category']?.toString(), item?['name']?.toString() ?? "")
+        : (defaultCategory ?? "Beverages");
+
+    final formCategories = <String>[];
+    void addFormCategory(String? category) {
+      final value = category?.trim();
+      if (value == null || value.isEmpty) return;
+      if (!formCategories.contains(value)) {
+        formCategories.add(value);
+      }
+    }
+    for (final category in _currentPriceCategoryOptions) {
+      addFormCategory(category);
+    }
+    addFormCategory(selectedCat);
+    if (formCategories.isEmpty) {
+      formCategories.addAll(_priceCategoryOptions);
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Edit — Price" : "Add New Price",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDropdown(
+                    "Category",
+                    formCategories,
+                    value: formCategories.contains(selectedCat) ? selectedCat : formCategories.first,
+                    onChanged: (val) => setDialogState(() => selectedCat = val),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField("Product Name", controller: nameCtrl),
+                  const SizedBox(height: 12),
+                  _buildTextField("Price", isNumber: true, controller: priceCtrl),
+                ],
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-                ElevatedButton(
-                    onPressed: () async {
-                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                      Map<String, dynamic> newData = {
-                        'id': docId,
-                        'name': nameCtrl.text,
-                        'price': "₺${priceCtrl.text}",
-                        'category': selectedCat ?? 'Tea/Coffee'
-                      };
-                      await FirebaseFirestore.instance.collection('prices').doc(docId.toString()).set(newData);
-                      if (context.mounted) { Navigator.pop(context); _loadData(); }
-                    },
-                    child: const Text("Save")
-                )
-              ],
-            );
-          }
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final productName = nameCtrl.text.trim();
+                  if (productName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Product name cannot be empty.")),
+                    );
+                    return;
+                  }
+
+                  final docId = isEdit
+                      ? _priceDocumentId(item)
+                      : DateTime.now().millisecondsSinceEpoch.toString();
+
+                  final parsedNumericId = int.tryParse(docId);
+                  final idValue = item?['id'] ?? parsedNumericId ?? docId;
+
+                  final newData = <String, dynamic>{
+                    'id': idValue,
+                    'name': productName,
+                    'price': _normalizePriceValue(priceCtrl.text),
+                    'category': selectedCat ?? "Beverages",
+                  };
+
+                  await FirebaseFirestore.instance.collection('prices').doc(docId).set(newData);
+
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  _refreshAdminData(collectionKey: 'prices');
+                },
+                child: const Text("Save"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1637,16 +2526,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String? selectedCampus;
     String? selectedLocation;
 
-    // Helper function that finds an exact or partial matching option in the list
     String? _matchOption(List<String> options, String? rawValue) {
       if (rawValue == null) return null;
       final value = rawValue.trim();
       if (value.isEmpty) return null;
 
-      // 1) Exact match
       if (options.contains(value)) return value;
 
-      // 2) Partial match (case-insensitive)
       final lowerValue = value.toLowerCase();
       for (final opt in options) {
         final lowerOpt = opt.toLowerCase();
@@ -1685,7 +2571,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Unit Name (E.g., Faculty of Law)")),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Unit Name (e.g. Faculty of Law)")),
                   const SizedBox(height: 12),
                   _buildDropdown("Select Campus", campusOptions, value: selectedCampus, onChanged: (val) => setDialogState(() => selectedCampus = val)),
                   const SizedBox(height: 12),
@@ -1704,7 +2590,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       'abbr': item?['abbr'] ?? 'NEW', 'type': item?['type'] ?? 'faculty'
                     };
                     await FirebaseFirestore.instance.collection('buildings').doc(docId.toString()).set(newData);
-                    if (context.mounted) { Navigator.pop(context); _loadData(); }
+                    if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'buildings'); }
                   },
                   child: const Text("Save")
               )
@@ -1739,7 +2625,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     final List<String> typeOptions = [
       "Classroom",
-      "Lecture Hall",
+      "Amphitheater",
       "Laboratory",
     ];
 
@@ -1748,7 +2634,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     String? selectedFloor = item?['floorLabel']?.toString();
     String? selectedType = item?['type']?.toString();
 
-    // Old data compatibility: previous code stored campus/floor together inside building.
     if ((selectedCampus == null || selectedCampus.trim().isEmpty) && item?['building'] != null) {
       final buildingText = item!['building'].toString();
 
@@ -1925,7 +2810,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Classroom saved to Firebase database.")),
                     );
-                    _loadData();
+                    _refreshAdminData(collectionKey: 'classrooms');
                   }
                 },
                 child: const Text("Save"),
@@ -1942,7 +2827,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final deptCtrl = TextEditingController(text: item?['department']);
     final photoCtrl = TextEditingController(text: item?['imageUrl'] ?? '');
 
-    // Office hours controller
     final officeHoursCtrl = TextEditingController(
         text: (item?['officeHours'] is List)
             ? (item?['officeHours'] as List).join(", ")
@@ -1953,7 +2837,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEdit ? "Edit: Instructor" : "New Instructor", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView( // Added to prevent overflow when keyboard is open
+        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1961,13 +2845,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               const SizedBox(height: 12),
               TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Department")),
               const SizedBox(height: 12),
-              // NEW Office Hours
               TextField(
                   controller: officeHoursCtrl,
-                  maxLines: 2, // Multi-line support
+                  maxLines: 2,
                   decoration: const InputDecoration(
                       labelText: "Office Hours",
-                      hintText: "E.g., Mon 10:00-12:00, Tue 14:00-16:00",
+                      hintText: "e.g. Mon 10:00-12:00, Tue 14:00-16:00",
                       helperText: "Separate days with commas.",
                       helperStyle: TextStyle(fontSize: 10)
                   )
@@ -1987,14 +2870,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
               onPressed: () async {
-                // 1. Converting office hours text to list
                 List<String> hoursList = officeHoursCtrl.text
                     .split(",")
                     .map((e) => e.trim())
                     .where((e) => e.isNotEmpty)
                     .toList();
 
-                // ID generation
                 String docId = isEdit ? item!['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
 
                 Map<String, dynamic> newData = {
@@ -2002,19 +2883,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   'name': nameCtrl.text,
                   'department': deptCtrl.text,
                   'imageUrl': photoCtrl.text,
-                  'officeHours': hoursList, // NEW: Added hours to the list
+                  'officeHours': hoursList,
                   'title': item?['title'] ?? 'Faculty Member',
                   'office': item?['office'] ?? 'Unknown',
                   'filter': item?['filter'] ?? 'engineering',
-                  'email': item?['email'] ?? 'contact@uni.edu.tr'
+                  'email': item?['email'] ?? 'iletisim@uni.edu.tr'
                 };
 
-                // Saving to Firestore
                 await FirebaseFirestore.instance.collection('instructors').doc(docId).set(newData);
 
                 if (context.mounted) {
                   Navigator.pop(context);
-                  _loadData();
+                  _refreshAdminData(collectionKey: 'instructors');
                 }
               },
               child: const Text("Save")
@@ -2034,7 +2914,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final List<String> categoryOptions = [
       "General",
       "Academic",
-      "Culture & Arts",
+      "Culture & Art",
       "Sports",
       "Seminar",
       "Club",
@@ -2068,7 +2948,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: dateCtrl,
                     decoration: const InputDecoration(
                       labelText: "Date",
-                      hintText: "E.g., April 28",
+                      hintText: "e.g. April 28",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2077,7 +2957,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: timeCtrl,
                     decoration: const InputDecoration(
                       labelText: "Time",
-                      hintText: "E.g., 14:00",
+                      hintText: "e.g. 14:00",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2086,7 +2966,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: locCtrl,
                     decoration: const InputDecoration(
                       labelText: "Location",
-                      hintText: "E.g., Ataköy Campus / Conference Hall",
+                      hintText: "e.g. Ataköy Campus / Conference Hall",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2191,7 +3071,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         content: Text("Event saved to Firebase database."),
                       ),
                     );
-                    _loadData();
+                    _refreshAdminData(collectionKey: 'events');
                   }
                 },
                 child: const Text("Save"),
@@ -2364,7 +3244,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   if (publishDateTime == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Date must be DD/MM/YYYY, time must be HH:MM format. E.g., 28/04/2026 and 13:45"),
+                        content: Text("Date must be DD/MM/YYYY and time HH:MM format. e.g., 28/04/2026 and 13:45"),
                       ),
                     );
                     return;
@@ -2426,7 +3306,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         content: Text("Announcement saved to Firebase database."),
                       ),
                     );
-                    _loadData();
+                    _refreshAdminData(collectionKey: 'announcements');
                   }
                 },
                 child: const Text("Save"),
@@ -2520,7 +3400,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       controller: nameCtrl,
                       decoration: const InputDecoration(
                         labelText: "Category / Menu Type",
-                        hintText: "E.g., Breakfast, Meal, Fast Food",
+                        hintText: "e.g. Breakfast, Meal, Fast Food",
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -2529,7 +3409,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: menuNameCtrl,
                     decoration: const InputDecoration(
                       labelText: "Menu Name",
-                      hintText: "E.g., Today's Meal",
+                      hintText: "e.g. Today's Meal",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2537,7 +3417,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: timeCtrl,
                     decoration: const InputDecoration(
                       labelText: "Time Range",
-                      hintText: "E.g., 13:00-18:00",
+                      hintText: "e.g. 13:00-18:00",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2573,7 +3453,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 controller: productNameControllers[index],
                                 decoration: InputDecoration(
                                   labelText: "Product ${index + 1}",
-                                  hintText: "E.g., Toast",
+                                  hintText: "e.g. Toast",
                                   border: const OutlineInputBorder(),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 10,
@@ -2633,7 +3513,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       controller: priceCtrl,
                       decoration: const InputDecoration(
                         labelText: "Price",
-                        hintText: "E.g., ₺35",
+                        hintText: "e.g. ₺35",
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -2782,7 +3662,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         ),
                       ),
                     );
-                    _loadData();
+                    _refreshAdminData(refreshCafeteria: true);
                   }
                 },
                 child: const Text("Save"),

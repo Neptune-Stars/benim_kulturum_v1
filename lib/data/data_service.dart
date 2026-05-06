@@ -3,6 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class DataService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // Same-session cache: prevents admin/student screens from re-reading
+  // the same Firestore data after every tab click or rebuild.
+  static Map<String, dynamic>? _databaseCache;
+  static final Map<String, List<Map<String, dynamic>>> _collectionCache = {};
+  static Map<String, dynamic>? _cafeteriaSettingsCache;
+  static Map<String, int>? _dashboardSummaryCache;
+  static Future<void>? _defaultDataInitializationFuture;
+  static bool _defaultDataChecked = false;
+
   static const String defaultCampus = "Ataköy Campus";
   static const List<String> cafeteriaMealTypes = [
     "Breakfast",
@@ -10,60 +19,247 @@ class DataService {
     "Fast Food",
   ];
 
-  static Future<Map<String, dynamic>> loadDatabase() async {
+  static const List<String> defaultPriceCategories = [
+    "Beverages",
+    "Coffee Varieties",
+    "Toast Varieties",
+    "Snacks",
+  ];
+
+  static void clearCache() {
+    _databaseCache = null;
+    _collectionCache.clear();
+    _cafeteriaSettingsCache = null;
+    _dashboardSummaryCache = null;
+  }
+
+  static void clearCollectionCache(String collectionName) {
+    _collectionCache.remove(collectionName);
+    _databaseCache = null;
+    _dashboardSummaryCache = null;
+  }
+
+  static void clearCafeteriaCache() {
+    _cafeteriaSettingsCache = null;
+    _databaseCache = null;
+  }
+
+  static Future<void> initializeDefaultDataIfNeeded() async {
+    if (_defaultDataChecked) {
+      return;
+    }
+
+    _defaultDataInitializationFuture ??= _initializeDefaultDataInternal();
+    await _defaultDataInitializationFuture;
+  }
+
+  static Future<void> _initializeDefaultDataInternal() async {
     final studentSnap = await _db.collection('students').limit(1).get();
     if (studentSnap.docs.isEmpty) {
       print("Students missing, loading default data to Firebase...");
       await _seedExtraData();
+      clearCollectionCache('students');
     }
 
     final campusSnap = await _db.collection('campuses').limit(1).get();
     if (campusSnap.docs.isEmpty) {
       print("Campus reference data missing, loading to Firebase...");
       await _seedCampusReferenceData();
+      clearCollectionCache('campuses');
+      clearCollectionCache('classroomLocations');
     }
 
     await ensureCafeteriaData();
-    await ensureWeeklyCafeteriaMenus();
-
-    final buildings = await _fetchList('buildings');
-    final classrooms = await _fetchList('classrooms');
-    final instructors = await _fetchList('instructors');
-    final events = await _fetchList('events');
-    final announcements = await _fetchList('announcements');
-    final prices = await _fetchList('prices');
-    final issues = await _fetchList('issues');
-    final students = await _fetchList('students');
-
-    // Admin dropdown data comes from Firebase.
-    final campuses = await _fetchList('campuses');
-    final classroomLocations = await _fetchList('classroomLocations');
-
-    final cafeteriaDoc = await _db.collection('settings').doc('cafeteria').get();
-
-    return {
-      'buildings': buildings,
-      'classrooms': classrooms,
-      'instructors': instructors,
-      'events': events,
-      'announcements': announcements,
-      'prices': prices,
-      'issues': issues,
-      'students': students,
-      'campuses': campuses,
-      'classroomLocations': classroomLocations,
-      'cafeteria': cafeteriaDoc.exists ? cafeteriaDoc.data() : {},
-    };
+    _defaultDataChecked = true;
   }
 
-  static Future<List<Map<String, dynamic>>> _fetchList(String collectionName) async {
-    final querySnapshot = await _db.collection(collectionName).get();
+  static Future<Map<String, dynamic>> loadDatabase({bool forceRefresh = false}) async {
+    if (!forceRefresh && _databaseCache != null) {
+      return _databaseCache!;
+    }
 
-    return querySnapshot.docs.map((doc) {
+    await initializeDefaultDataIfNeeded();
+
+    final results = await Future.wait([
+      fetchCollection('buildings', forceRefresh: forceRefresh),
+      fetchCollection('classrooms', forceRefresh: forceRefresh),
+      fetchCollection('instructors', forceRefresh: forceRefresh),
+      fetchCollection('events', forceRefresh: forceRefresh),
+      fetchCollection('announcements', forceRefresh: forceRefresh),
+      fetchCollection('prices', forceRefresh: forceRefresh),
+      fetchCollection('issues', forceRefresh: forceRefresh),
+      fetchCollection('students', forceRefresh: forceRefresh),
+      fetchCollection('campuses', forceRefresh: forceRefresh),
+      fetchCollection('classroomLocations', forceRefresh: forceRefresh),
+    ]);
+
+    _databaseCache = {
+      'buildings': results[0],
+      'classrooms': results[1],
+      'instructors': results[2],
+      'events': results[3],
+      'announcements': results[4],
+      'prices': results[5],
+      'issues': results[6],
+      'students': results[7],
+      'campuses': results[8],
+      'classroomLocations': results[9],
+      'cafeteria': await fetchCafeteriaSettings(forceRefresh: forceRefresh),
+    };
+
+    return _databaseCache!;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchCollection(
+      String collectionName, {
+        bool forceRefresh = false,
+        String? orderBy,
+        bool descending = false,
+        int? limit,
+      }) async {
+    final canUseCache = orderBy == null && limit == null;
+
+    if (!forceRefresh && canUseCache && _collectionCache.containsKey(collectionName)) {
+      return List<Map<String, dynamic>>.from(_collectionCache[collectionName]!);
+    }
+
+    await initializeDefaultDataIfNeeded();
+
+    Query<Map<String, dynamic>> query = _db.collection(collectionName);
+    if (orderBy != null) {
+      query = query.orderBy(orderBy, descending: descending);
+    }
+    if (limit != null) {
+      query = query.limit(limit);
+    }
+
+    final querySnapshot = await query.get();
+
+    final rows = querySnapshot.docs.map((doc) {
       final data = doc.data();
       data['firestoreDocId'] = doc.id;
       return data;
     }).toList();
+
+    if (canUseCache) {
+      _collectionCache[collectionName] = rows;
+    }
+
+    return rows;
+  }
+
+  static Future<List<String>> fetchPriceCategories({bool forceRefresh = false}) async {
+    final categoryDocs = await fetchCollection(
+      'priceCategories',
+      forceRefresh: forceRefresh,
+    );
+
+    final categories = <String>[];
+
+    void addCategory(String? value) {
+      final category = value?.trim();
+      if (category == null || category.isEmpty) return;
+      if (!categories.contains(category)) {
+        categories.add(category);
+      }
+    }
+
+    for (final category in defaultPriceCategories) {
+      addCategory(category);
+    }
+
+    for (final doc in categoryDocs) {
+      addCategory(
+        doc['name']?.toString() ??
+            doc['title']?.toString() ??
+            doc['category']?.toString(),
+      );
+    }
+
+    return categories;
+  }
+
+  static Future<void> addPriceCategory(String categoryName) async {
+    final normalizedName = categoryName.trim();
+    if (normalizedName.isEmpty) return;
+
+    final docId = normalizedName
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9ğüşöçıİĞÜŞÖÇ]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+
+    final safeDocId = docId.isEmpty
+        ? DateTime.now().millisecondsSinceEpoch.toString()
+        : docId;
+
+    await _db.collection('priceCategories').doc(safeDocId).set({
+      'id': safeDocId,
+      'name': normalizedName,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    clearCollectionCache('priceCategories');
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchList(String collectionName) {
+    return fetchCollection(collectionName);
+  }
+
+  static Future<Map<String, dynamic>> fetchCafeteriaSettings({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cafeteriaSettingsCache != null) {
+      return Map<String, dynamic>.from(_cafeteriaSettingsCache!);
+    }
+
+    await initializeDefaultDataIfNeeded();
+    final cafeteriaDoc = await _db.collection('settings').doc('cafeteria').get();
+    _cafeteriaSettingsCache = cafeteriaDoc.exists
+        ? Map<String, dynamic>.from(cafeteriaDoc.data() ?? {})
+        : <String, dynamic>{};
+    return Map<String, dynamic>.from(_cafeteriaSettingsCache!);
+  }
+
+  static Future<Map<String, dynamic>> fetchAdminClassroomTabData({bool forceRefresh = false}) async {
+    final results = await Future.wait([
+      fetchCollection('classrooms', forceRefresh: forceRefresh),
+      fetchCollection('campuses', forceRefresh: forceRefresh),
+      fetchCollection('classroomLocations', forceRefresh: forceRefresh),
+    ]);
+
+    return {
+      'classrooms': results[0],
+      'campuses': results[1],
+      'classroomLocations': results[2],
+    };
+  }
+
+  static Future<Map<String, int>> fetchDashboardSummary({bool forceRefresh = false}) async {
+    if (!forceRefresh && _dashboardSummaryCache != null) {
+      return Map<String, int>.from(_dashboardSummaryCache!);
+    }
+
+    await initializeDefaultDataIfNeeded();
+
+    final entries = await Future.wait([
+      _countCollectionEntry('buildings'),
+      _countCollectionEntry('classrooms'),
+      _countCollectionEntry('instructors'),
+      _countCollectionEntry('events'),
+      _countCollectionEntry('issues'),
+      _countCollectionEntry('students'),
+    ]);
+
+    _dashboardSummaryCache = Map<String, int>.fromEntries(entries);
+    return Map<String, int>.from(_dashboardSummaryCache!);
+  }
+
+  static Future<MapEntry<String, int>> _countCollectionEntry(String collectionName) async {
+    try {
+      final snapshot = await _db.collection(collectionName).count().get();
+      return MapEntry(collectionName, snapshot.count ?? 0);
+    } catch (_) {
+      final rows = await fetchCollection(collectionName);
+      return MapEntry(collectionName, rows.length);
+    }
   }
 
   static Map<String, dynamic> _defaultCafeteriaData() {
@@ -128,6 +324,7 @@ class DataService {
 
     if (!cafeteriaDoc.exists || cafeteriaDoc.data() == null) {
       await cafeteriaRef.set(defaultData);
+      clearCafeteriaCache();
       print("Cafeteria data created for the first time.");
       return;
     }
@@ -201,6 +398,7 @@ class DataService {
       "updatedAt": FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
+    clearCafeteriaCache();
     print("Cafeteria data checked and missing parts fixed.");
   }
 
@@ -314,10 +512,45 @@ class DataService {
     return cleanDate.subtract(Duration(days: cleanDate.weekday - 1));
   }
 
-  static bool isWeekend(DateTime date) => date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+  static bool isWeekend(DateTime date) =>
+      date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+
+  static bool isSaturday(DateTime date) => date.weekday == DateTime.saturday;
+
+  static bool isSunday(DateTime date) => date.weekday == DateTime.sunday;
+
+  static bool defaultIsCafeteriaDayActive(DateTime date) {
+    // Default weekly rule:
+    // - Saturday: day is open, only Fast Food is active.
+    // - Sunday: day is closed, no meal type is active.
+    // - Weekdays: day is open, normal menu types are active.
+    return !isSunday(date);
+  }
+
+  static bool defaultIsMenuActiveForDate(DateTime date, String mealType) {
+    final normalizedMealType = normalizeMealType(mealType);
+
+    if (isSunday(date)) {
+      return false;
+    }
+
+    if (isSaturday(date)) {
+      return normalizedMealType == "Fast Food";
+    }
+
+    return true;
+  }
 
   static String defaultMealTypeForDate(DateTime date) {
-    return isWeekend(date) ? "Fast Food" : "Meal";
+    if (isSunday(date)) {
+      return "Closed";
+    }
+
+    if (isSaturday(date)) {
+      return "Fast Food";
+    }
+
+    return "Meal";
   }
 
   static String formatDateKey(DateTime date) {
@@ -400,7 +633,8 @@ class DataService {
       "weekdayIndex": date.weekday,
       "campus": campus,
       "isWeekend": weekend,
-      "isDayActive": isDayActive ?? true,
+      "isDayActive": isDayActive ?? defaultIsCafeteriaDayActive(date),
+      "weekendDefaultRuleVersion": 2,
       "updatedAt": FieldValue.serverTimestamp(),
     };
   }
@@ -427,25 +661,37 @@ class DataService {
     final docRef = _db.collection('cafeteriaDayStatuses').doc(docId);
     final doc = await docRef.get();
 
+    final defaultDayActive = defaultIsCafeteriaDayActive(date);
+
     if (!doc.exists || doc.data() == null) {
       await docRef.set(
         buildCafeteriaDayStatusDocument(
           date: date,
           campus: campus,
-          isDayActive: true,
-        )..addAll({"createdAt": FieldValue.serverTimestamp()}),
+          isDayActive: defaultDayActive,
+        )..addAll({
+          "createdAt": FieldValue.serverTimestamp(),
+          "isDayActiveManuallyEdited": false,
+        }),
       );
       return;
     }
 
     final current = Map<String, dynamic>.from(doc.data()!);
+    final isManuallyEdited = current['isDayActiveManuallyEdited'] == true ||
+        current['manualOverride'] == true;
+    final resolvedDayActive = isManuallyEdited
+        ? current['isDayActive'] != false
+        : defaultDayActive;
+
     await docRef.set({
       ...buildCafeteriaDayStatusDocument(
         date: date,
         campus: campus,
-        isDayActive: current['isDayActive'] != false,
+        isDayActive: resolvedDayActive,
       ),
       "createdAt": current['createdAt'],
+      "isDayActiveManuallyEdited": isManuallyEdited,
     }, SetOptions(merge: true));
   }
 
@@ -457,11 +703,15 @@ class DataService {
     final dayStatusId = cafeteriaDayStatusDocId(date: date, campus: campus);
 
     await _db.collection('cafeteriaDayStatuses').doc(dayStatusId).set(
-      buildCafeteriaDayStatusDocument(
-        date: date,
-        campus: campus,
-        isDayActive: isActive,
-      ),
+      {
+        ...buildCafeteriaDayStatusDocument(
+          date: date,
+          campus: campus,
+          isDayActive: isActive,
+        ),
+        "isDayActiveManuallyEdited": true,
+        "manualUpdatedAt": FieldValue.serverTimestamp(),
+      },
       SetOptions(merge: true),
     );
 
@@ -475,6 +725,7 @@ class DataService {
       await _db.collection('cafeteriaMenus').doc(menuDocId).set({
         "isDayActive": isActive,
         "dayStatusId": dayStatusId,
+        "dayActiveManuallyEdited": true,
         "updatedAt": FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
@@ -495,6 +746,8 @@ class DataService {
 
     await _db.collection('cafeteriaMenus').doc(docId).set({
       "isActive": isActive,
+      "isActiveManuallyEdited": true,
+      "manualUpdatedAt": FieldValue.serverTimestamp(),
       "updatedAt": FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -518,9 +771,12 @@ class DataService {
     );
 
     final dayStatusId = cafeteriaDayStatusDocId(date: date, campus: campus);
-    final visibleByDefault = isWeekend(date)
-        ? normalizedMealType == "Fast Food"
-        : true;
+    final visibleByDefault = defaultIsMenuActiveForDate(date, normalizedMealType);
+    final isActiveManuallyEdited = menu['isActiveManuallyEdited'] == true ||
+        menu['manualActiveOverride'] == true;
+    final resolvedIsActive = isActiveManuallyEdited
+        ? menu['isActive'] ?? visibleByDefault
+        : visibleByDefault;
 
     final data = <String, dynamic>{
       "id": cafeteriaMenuDocId(date: date, campus: campus, mealType: normalizedMealType),
@@ -538,8 +794,10 @@ class DataService {
       "isChips": completedMenu['isChips'] ?? false,
       "isWeekend": isWeekend(date),
       "dayStatusId": dayStatusId,
-      "isDayActive": isDayActive ?? menu['isDayActive'] ?? true,
-      "isActive": menu['isActive'] ?? visibleByDefault,
+      "isDayActive": isDayActive ?? menu['isDayActive'] ?? defaultIsCafeteriaDayActive(date),
+      "isActive": resolvedIsActive,
+      "isActiveManuallyEdited": isActiveManuallyEdited,
+      "weekendDefaultRuleVersion": 2,
       "updatedAt": FieldValue.serverTimestamp(),
     };
 
@@ -633,14 +891,42 @@ class DataService {
     String campus = defaultCampus,
   }) async {
     final start = startOfWeek(weekStart ?? DateTime.now());
+
+    // Ensure is intentionally kept here, not in loadDatabase(). Weekly menu
+    // defaults are only prepared when the cafeteria week screen actually needs them.
     await ensureWeeklyCafeteriaMenus(weekStart: start, campus: campus);
 
     final days = <Map<String, dynamic>>[];
 
     for (int i = 0; i < 7; i++) {
       final date = start.add(Duration(days: i));
-      final menus = await fetchDailyCafeteriaMenus(date, campus: campus);
-      final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
+      final menus = <String, Map<String, dynamic>>{};
+
+      for (final mealType in cafeteriaMealTypes) {
+        final docId = cafeteriaMenuDocId(
+          date: date,
+          campus: campus,
+          mealType: mealType,
+        );
+        final doc = await _db.collection('cafeteriaMenus').doc(docId).get();
+        menus[mealType] = doc.data() == null
+            ? buildCafeteriaMenuDocument(
+          date: date,
+          campus: campus,
+          mealType: mealType,
+          menu: defaultMenuForMealType(mealType),
+        )
+            : Map<String, dynamic>.from(doc.data()!);
+      }
+
+      final dayStatusDocId = cafeteriaDayStatusDocId(date: date, campus: campus);
+      final dayStatusDoc = await _db
+          .collection('cafeteriaDayStatuses')
+          .doc(dayStatusDocId)
+          .get();
+      final dayStatus = dayStatusDoc.data() == null
+          ? buildCafeteriaDayStatusDocument(date: date, campus: campus)
+          : Map<String, dynamic>.from(dayStatusDoc.data()!);
 
       days.add({
         "date": date,
@@ -688,7 +974,7 @@ class DataService {
           "isDayActive": false,
           "isActive": false,
           "dashboardMode": "day_closed",
-          "dashboardMessage": "Cafeteria or Fast Food service is not active for today.",
+          "dashboardMessage": "Cafeteria or Fast Food service is not active today.",
         });
       }
 
@@ -719,14 +1005,14 @@ class DataService {
             final data = menusByType[mealType]!;
             data['dashboardMode'] = isWeekend(today) ? 'weekend_fastfood' : 'weekday_meal';
             data['dashboardMessage'] = isWeekend(today)
-                ? 'Today is weekend. Active Fast Food options are shown.'
-                : 'Today is a weekday. Active campus menu is shown.';
+                ? 'Today is the weekend. Active Fast Food options are displayed.'
+                : 'Today is a weekday. Active campus menu is displayed.';
             return data;
           }
         }
 
         return {
-          "menuName": "No Menu Today",
+          "menuName": "No Menu Available Today",
           "mealType": "Closed",
           "time": "-",
           "price": "-",
@@ -748,11 +1034,11 @@ class DataService {
 
   static Future<void> _seedExtraData() async {
     final List<Map<String, dynamic>> starterPrices = [
-      {"id": 1, "name": "Tea", "price": "₺3", "category": "Tea/Coffee"},
-      {"id": 2, "name": "Turkish Coffee", "price": "₺12", "category": "Tea/Coffee"},
+      {"id": 1, "name": "Tea", "price": "₺3", "category": "Beverages"},
+      {"id": 2, "name": "Turkish Coffee", "price": "₺12", "category": "Coffee Varieties"},
       {"id": 3, "name": "Ayran", "price": "₺5", "category": "Beverages"},
-      {"id": 4, "name": "Toast", "price": "₺15", "category": "Snacks"},
-      {"id": 5, "name": "Today's Meal", "price": "₺35", "category": "Food"},
+      {"id": 4, "name": "Toast", "price": "₺15", "category": "Toast Varieties"},
+      {"id": 5, "name": "Today's Meal", "price": "₺35", "category": "Meal"},
     ];
 
     for (final item in starterPrices) {
@@ -765,7 +1051,7 @@ class DataService {
         "category": "Infrastructure Issue",
         "priority": "High",
         "subject": "Projector not working in the classroom",
-        "location": "FE-101",
+        "location": "MF-101",
         "description": "No image is displayed when the computer is connected.",
         "date": "Today 10:30",
         "status": "Open",
