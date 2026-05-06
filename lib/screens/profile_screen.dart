@@ -20,7 +20,8 @@ import 'favorites_screen.dart';
 import 'events_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'help_support_screen.dart';
-
+import 'support_chat_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -262,6 +263,26 @@ class ProfileScreen extends StatelessWidget {
                     Card(
                       child: Column(
                         children: [
+                          //  Live Support eklendi
+                          SettingsRow(
+                            icon: Icons.chat_bubble_outline,
+                            label: "Live Support",
+                            onTap: () {
+                              final String currentUserId = userData['id']?.toString() ?? "anon";
+                              final String currentUserName = userData['name'] ?? "Student";
+
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => SupportChatScreen(
+                                        userId: currentUserId,
+                                        userName: currentUserName,
+                                      )
+                                  )
+                              );
+                            },
+                          ),
+                          const Divider(height: 1),
                           SettingsRow(icon: Icons.help_outline, label: "Yardım & Destek", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()))),
                           const Divider(height: 1),
                           SettingsRow(icon: Icons.report_problem_outlined, label: "Sorun Bildir", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportIssueScreen()))),

@@ -1032,6 +1032,686 @@ class DataService {
     );
   }
 
+  static Map<String, dynamic> _defaultCafeteriaData() {
+    return {
+      "mealTypes": cafeteriaMealTypes,
+      "defaultCampus": defaultCampus,
+      "weekdayDefaultMealType": "Yemek",
+      "weekendDefaultMealType": "Fast Food",
+      "menus": {
+        "Kahvaltı": {
+          "menuName": "Kahvaltı Menüsü",
+          "time": "08:00-10:00",
+          "price": "₺25",
+          "items": [
+            "Peynir",
+            "Zeytin",
+            "Domates",
+            "Salatalık",
+            "Reçel",
+            "Tereyağı",
+            "Haşlanmış yumurta",
+            "Çay"
+          ],
+          "isChips": true,
+        },
+        "Yemek": {
+          "menuName": "Bugünün Yemeği",
+          "time": "13:00-18:00",
+          "price": "₺35",
+          "items": [
+            "Mercimek Çorbası",
+            "Tavuk Şinitzel",
+            "Pilav",
+            "Mevsim Salata",
+            "Ayran"
+          ],
+          "isChips": false,
+        },
+        "Fast Food": {
+          "menuName": "Fast Food Menüsü",
+          "time": "10:00-18:00",
+          "price": "Ürün bazlı",
+          "items": [
+            {"name": "Izgara Köfte Menü", "price": "₺75"},
+            {"name": "Tavuk Şinitzel Menü", "price": "₺70"},
+            {"name": "Penne Makarna", "price": "₺55"},
+            {"name": "Patates Kızartması", "price": "₺35"},
+            {"name": "Kaşarlı Tost", "price": "₺40"}
+          ],
+          "isChips": false,
+        },
+      },
+      "updatedAt": FieldValue.serverTimestamp(),
+    };
+  }
+
+  static Future<void> ensureCafeteriaData() async {
+    final cafeteriaRef = _db.collection('settings').doc('cafeteria');
+    final cafeteriaDoc = await cafeteriaRef.get();
+
+    final defaultData = _defaultCafeteriaData();
+
+    if (!cafeteriaDoc.exists || cafeteriaDoc.data() == null) {
+      await cafeteriaRef.set(defaultData);
+      print("Yemekhane verisi ilk kez oluşturuldu.");
+      return;
+    }
+
+    final currentData = Map<String, dynamic>.from(cafeteriaDoc.data()!);
+
+    final currentMealTypes = (currentData['mealTypes'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList() ??
+        [];
+
+    final currentMenus =
+    Map<String, dynamic>.from((currentData['menus'] as Map?) ?? {});
+
+    final defaultMenus =
+    Map<String, dynamic>.from(defaultData['menus'] as Map);
+
+    final Map<String, dynamic> fixedMenus = {};
+
+    fixedMenus["Kahvaltı"] = _mergeMenu(
+      defaultMenus["Kahvaltı"],
+      currentMenus["Kahvaltı"],
+      fallbackMenuName: "Kahvaltı Menüsü",
+    );
+
+    final existingFoodMenu = currentMenus["Yemek"] ?? currentMenus["Öğle"];
+
+    fixedMenus["Yemek"] = _mergeMenu(
+      defaultMenus["Yemek"],
+      existingFoodMenu,
+      fallbackMenuName: "Bugünün Yemeği",
+      forcedTime: "13:00-18:00",
+    );
+
+    fixedMenus["Fast Food"] = _mergeMenu(
+      defaultMenus["Fast Food"],
+      currentMenus["Fast Food"],
+      fallbackMenuName: "Fast Food Menüsü",
+      itemsHavePrices: true,
+    );
+
+    final fixedMealTypes = <String>[
+      "Kahvaltı",
+      "Yemek",
+      "Fast Food",
+    ];
+
+    // Admin ileride özel kategori eklerse korunur.
+    for (final mealType in currentMealTypes) {
+      if (mealType == "Öğle" ||
+          mealType == "Akşam" ||
+          mealType == "Günün Menüsü") {
+        continue;
+      }
+
+      if (!fixedMealTypes.contains(mealType)) {
+        fixedMealTypes.add(mealType);
+
+        if (currentMenus[mealType] is Map) {
+          fixedMenus[mealType] = currentMenus[mealType];
+        }
+      }
+    }
+
+    await cafeteriaRef.set({
+      "mealTypes": fixedMealTypes,
+      "defaultCampus": currentData['defaultCampus'] ?? defaultCampus,
+      "weekdayDefaultMealType": currentData['weekdayDefaultMealType'] ?? "Yemek",
+      "weekendDefaultMealType": currentData['weekendDefaultMealType'] ?? "Fast Food",
+      "menus": fixedMenus,
+      "updatedAt": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    print("Yemekhane verisi kontrol edildi ve eksikler onarıldı.");
+  }
+
+  static Map<String, dynamic> _mergeMenu(
+      dynamic defaultMenu,
+      dynamic existingMenu, {
+        required String fallbackMenuName,
+        String? forcedTime,
+        bool itemsHavePrices = false,
+      }) {
+    final defaultMap = Map<String, dynamic>.from((defaultMenu as Map?) ?? {});
+    final existingMap = Map<String, dynamic>.from((existingMenu as Map?) ?? {});
+
+    final merged = {
+      ...defaultMap,
+      ...existingMap,
+    };
+
+    final menuName = merged["menuName"]?.toString().trim() ?? "";
+    merged["menuName"] = menuName.isNotEmpty ? menuName : fallbackMenuName;
+
+    if (forcedTime != null) {
+      merged["time"] = forcedTime;
+    } else {
+      final time = merged["time"]?.toString().trim() ?? "";
+      merged["time"] = time.isNotEmpty ? time : defaultMap["time"];
+    }
+
+    final price = merged["price"]?.toString().trim() ?? "";
+    merged["price"] = price.isNotEmpty ? price : defaultMap["price"];
+
+    if (itemsHavePrices) {
+      merged["price"] = "Ürün bazlı";
+      merged["items"] = _normalizePricedItems(
+        merged["items"],
+        defaultMap["items"],
+      );
+    } else if (merged["items"] is! List || (merged["items"] as List).isEmpty) {
+      merged["items"] = defaultMap["items"] ?? [];
+    }
+
+    merged["isChips"] = merged["isChips"] ?? false;
+
+    return merged;
+  }
+
+  static List<Map<String, dynamic>> _normalizePricedItems(
+      dynamic currentItems,
+      dynamic defaultItems,
+      ) {
+    final defaults = <String, String>{};
+
+    if (defaultItems is List) {
+      for (final item in defaultItems) {
+        if (item is Map) {
+          final name = item["name"]?.toString().trim() ?? "";
+          final price = item["price"]?.toString().trim() ?? "";
+          if (name.isNotEmpty) {
+            defaults[name] = price.isNotEmpty ? price : "₺0";
+          }
+        }
+      }
+    }
+
+    final sourceItems = currentItems is List && currentItems.isNotEmpty
+        ? currentItems
+        : (defaultItems is List ? defaultItems : <dynamic>[]);
+
+    return sourceItems
+        .map<Map<String, dynamic>>((item) {
+      if (item is Map) {
+        final name = item["name"]?.toString().trim() ?? "";
+        final price = item["price"]?.toString().trim() ?? "";
+
+        return {
+          "name": name,
+          "price": price.isNotEmpty ? price : (defaults[name] ?? "₺0"),
+        };
+      }
+
+      final name = item.toString().trim();
+      return {
+        "name": name,
+        "price": defaults[name] ?? "₺0",
+      };
+    })
+        .where((item) => item["name"].toString().trim().isNotEmpty)
+        .toList();
+  }
+
+  static Map<String, dynamic> defaultMenuForMealType(String mealType) {
+    final defaultMenus =
+    Map<String, dynamic>.from(_defaultCafeteriaData()['menus'] as Map);
+
+    final normalizedMealType = normalizeMealType(mealType);
+    return Map<String, dynamic>.from(
+      (defaultMenus[normalizedMealType] ?? defaultMenus['Yemek']) as Map,
+    );
+  }
+
+  static String normalizeMealType(String mealType) {
+    final trimmed = mealType.trim();
+    if (trimmed == "Öğle" || trimmed == "Akşam" || trimmed == "Günün Menüsü") {
+      return "Yemek";
+    }
+    return trimmed;
+  }
+
+  static DateTime startOfWeek(DateTime date) {
+    final cleanDate = DateTime(date.year, date.month, date.day);
+    return cleanDate.subtract(Duration(days: cleanDate.weekday - 1));
+  }
+
+  static bool isWeekend(DateTime date) => date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+
+  static String defaultMealTypeForDate(DateTime date) {
+    return isWeekend(date) ? "Fast Food" : "Yemek";
+  }
+
+  static String formatDateKey(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return "$y-$m-$d";
+  }
+
+  static String formatDisplayDate(DateTime date) {
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final y = date.year.toString().padLeft(4, '0');
+    return "$d/$m/$y";
+  }
+
+  static String weekdayName(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return "Pazartesi";
+      case DateTime.tuesday:
+        return "Salı";
+      case DateTime.wednesday:
+        return "Çarşamba";
+      case DateTime.thursday:
+        return "Perşembe";
+      case DateTime.friday:
+        return "Cuma";
+      case DateTime.saturday:
+        return "Cumartesi";
+      case DateTime.sunday:
+        return "Pazar";
+      default:
+        return "Bilinmiyor";
+    }
+  }
+
+  static String _slug(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  static String cafeteriaMenuDocId({
+    required DateTime date,
+    String campus = defaultCampus,
+    required String mealType,
+  }) {
+    return "${formatDateKey(date)}_${_slug(campus)}_${_slug(normalizeMealType(mealType))}";
+  }
+
+  static String cafeteriaDayStatusDocId({
+    required DateTime date,
+    String campus = defaultCampus,
+  }) {
+    return "${formatDateKey(date)}_${_slug(campus)}";
+  }
+
+  static Map<String, dynamic> buildCafeteriaDayStatusDocument({
+    required DateTime date,
+    String campus = defaultCampus,
+    bool? isDayActive,
+  }) {
+    final weekend = isWeekend(date);
+
+    return {
+      "id": cafeteriaDayStatusDocId(date: date, campus: campus),
+      "date": formatDateKey(date),
+      "displayDate": formatDisplayDate(date),
+      "weekStart": formatDateKey(startOfWeek(date)),
+      "weekday": weekdayName(date.weekday),
+      "weekdayIndex": date.weekday,
+      "campus": campus,
+      "isWeekend": weekend,
+      "isDayActive": isDayActive ?? true,
+      "updatedAt": FieldValue.serverTimestamp(),
+    };
+  }
+
+  static Future<Map<String, dynamic>> fetchCafeteriaDayStatus(
+      DateTime date, {
+        String campus = defaultCampus,
+      }) async {
+    await ensureCafeteriaDayStatus(date, campus: campus);
+
+    final docId = cafeteriaDayStatusDocId(date: date, campus: campus);
+    final doc = await _db.collection('cafeteriaDayStatuses').doc(docId).get();
+
+    return doc.data() == null
+        ? buildCafeteriaDayStatusDocument(date: date, campus: campus)
+        : Map<String, dynamic>.from(doc.data()!);
+  }
+
+  static Future<void> ensureCafeteriaDayStatus(
+      DateTime date, {
+        String campus = defaultCampus,
+      }) async {
+    final docId = cafeteriaDayStatusDocId(date: date, campus: campus);
+    final docRef = _db.collection('cafeteriaDayStatuses').doc(docId);
+    final doc = await docRef.get();
+
+    if (!doc.exists || doc.data() == null) {
+      await docRef.set(
+        buildCafeteriaDayStatusDocument(
+          date: date,
+          campus: campus,
+          isDayActive: true,
+        )..addAll({"createdAt": FieldValue.serverTimestamp()}),
+      );
+      return;
+    }
+
+    final current = Map<String, dynamic>.from(doc.data()!);
+    await docRef.set({
+      ...buildCafeteriaDayStatusDocument(
+        date: date,
+        campus: campus,
+        isDayActive: current['isDayActive'] != false,
+      ),
+      "createdAt": current['createdAt'],
+    }, SetOptions(merge: true));
+  }
+
+  static Future<void> setCafeteriaDayActiveStatus(
+      DateTime date,
+      bool isActive, {
+        String campus = defaultCampus,
+      }) async {
+    final dayStatusId = cafeteriaDayStatusDocId(date: date, campus: campus);
+
+    await _db.collection('cafeteriaDayStatuses').doc(dayStatusId).set(
+      buildCafeteriaDayStatusDocument(
+        date: date,
+        campus: campus,
+        isDayActive: isActive,
+      ),
+      SetOptions(merge: true),
+    );
+
+    for (final mealType in cafeteriaMealTypes) {
+      final menuDocId = cafeteriaMenuDocId(
+        date: date,
+        campus: campus,
+        mealType: mealType,
+      );
+
+      await _db.collection('cafeteriaMenus').doc(menuDocId).set({
+        "isDayActive": isActive,
+        "dayStatusId": dayStatusId,
+        "updatedAt": FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+  }
+
+  static Future<void> setDailyMenuActiveStatus({
+    required DateTime date,
+    String campus = defaultCampus,
+    required String mealType,
+    required bool isActive,
+  }) async {
+    final normalizedMealType = normalizeMealType(mealType);
+    final docId = cafeteriaMenuDocId(
+      date: date,
+      campus: campus,
+      mealType: normalizedMealType,
+    );
+
+    await _db.collection('cafeteriaMenus').doc(docId).set({
+      "isActive": isActive,
+      "updatedAt": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  static Map<String, dynamic> buildCafeteriaMenuDocument({
+    required DateTime date,
+    String campus = defaultCampus,
+    required String mealType,
+    required Map<String, dynamic> menu,
+    bool includeCreatedAt = false,
+    bool? isDayActive,
+  }) {
+    final normalizedMealType = normalizeMealType(mealType);
+    final defaultMenu = defaultMenuForMealType(normalizedMealType);
+    final completedMenu = _mergeMenu(
+      defaultMenu,
+      menu,
+      fallbackMenuName: defaultMenu['menuName']?.toString() ?? normalizedMealType,
+      forcedTime: normalizedMealType == "Yemek" ? "13:00-18:00" : null,
+      itemsHavePrices: normalizedMealType == "Fast Food",
+    );
+
+    final dayStatusId = cafeteriaDayStatusDocId(date: date, campus: campus);
+    final visibleByDefault = isWeekend(date)
+        ? normalizedMealType == "Fast Food"
+        : true;
+
+    final data = <String, dynamic>{
+      "id": cafeteriaMenuDocId(date: date, campus: campus, mealType: normalizedMealType),
+      "date": formatDateKey(date),
+      "displayDate": formatDisplayDate(date),
+      "weekStart": formatDateKey(startOfWeek(date)),
+      "weekday": weekdayName(date.weekday),
+      "weekdayIndex": date.weekday,
+      "campus": campus,
+      "mealType": normalizedMealType,
+      "menuName": completedMenu['menuName'],
+      "time": completedMenu['time'],
+      "price": completedMenu['price'],
+      "items": completedMenu['items'],
+      "isChips": completedMenu['isChips'] ?? false,
+      "isWeekend": isWeekend(date),
+      "dayStatusId": dayStatusId,
+      "isDayActive": isDayActive ?? menu['isDayActive'] ?? true,
+      "isActive": menu['isActive'] ?? visibleByDefault,
+      "updatedAt": FieldValue.serverTimestamp(),
+    };
+
+    if (includeCreatedAt) {
+      data["createdAt"] = FieldValue.serverTimestamp();
+    }
+
+    return data;
+  }
+
+  static Future<void> ensureDailyCafeteriaMenus(
+      DateTime date, {
+        String campus = defaultCampus,
+      }) async {
+    await ensureCafeteriaData();
+    await ensureCafeteriaDayStatus(date, campus: campus);
+
+    final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
+    final isDayActive = dayStatus['isDayActive'] != false;
+
+    for (final mealType in cafeteriaMealTypes) {
+      final docId = cafeteriaMenuDocId(date: date, campus: campus, mealType: mealType);
+      final docRef = _db.collection('cafeteriaMenus').doc(docId);
+      final doc = await docRef.get();
+
+      if (!doc.exists || doc.data() == null) {
+        final defaultMenu = defaultMenuForMealType(mealType);
+        await docRef.set(
+          buildCafeteriaMenuDocument(
+            date: date,
+            campus: campus,
+            mealType: mealType,
+            menu: defaultMenu,
+            includeCreatedAt: true,
+            isDayActive: isDayActive,
+          ),
+        );
+      } else {
+        final currentMenu = Map<String, dynamic>.from(doc.data()!);
+        await docRef.set(
+          buildCafeteriaMenuDocument(
+            date: date,
+            campus: campus,
+            mealType: mealType,
+            menu: currentMenu,
+            isDayActive: isDayActive,
+          ),
+          SetOptions(merge: true),
+        );
+      }
+    }
+  }
+
+  static Future<void> ensureWeeklyCafeteriaMenus({
+    DateTime? weekStart,
+    String campus = defaultCampus,
+  }) async {
+    final start = startOfWeek(weekStart ?? DateTime.now());
+
+    for (int i = 0; i < 7; i++) {
+      await ensureDailyCafeteriaMenus(start.add(Duration(days: i)), campus: campus);
+    }
+  }
+
+  static Future<Map<String, Map<String, dynamic>>> fetchDailyCafeteriaMenus(
+      DateTime date, {
+        String campus = defaultCampus,
+      }) async {
+    await ensureDailyCafeteriaMenus(date, campus: campus);
+
+    final result = <String, Map<String, dynamic>>{};
+
+    for (final mealType in cafeteriaMealTypes) {
+      final docId = cafeteriaMenuDocId(date: date, campus: campus, mealType: mealType);
+      final doc = await _db.collection('cafeteriaMenus').doc(docId).get();
+      result[mealType] = doc.data() == null
+          ? buildCafeteriaMenuDocument(
+        date: date,
+        campus: campus,
+        mealType: mealType,
+        menu: defaultMenuForMealType(mealType),
+      )
+          : Map<String, dynamic>.from(doc.data()!);
+    }
+
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchWeeklyCafeteriaMenus({
+    DateTime? weekStart,
+    String campus = defaultCampus,
+  }) async {
+    final start = startOfWeek(weekStart ?? DateTime.now());
+    await ensureWeeklyCafeteriaMenus(weekStart: start, campus: campus);
+
+    final days = <Map<String, dynamic>>[];
+
+    for (int i = 0; i < 7; i++) {
+      final date = start.add(Duration(days: i));
+      final menus = await fetchDailyCafeteriaMenus(date, campus: campus);
+      final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
+
+      days.add({
+        "date": date,
+        "dateKey": formatDateKey(date),
+        "displayDate": formatDisplayDate(date),
+        "weekday": weekdayName(date.weekday),
+        "weekdayIndex": date.weekday,
+        "isWeekend": isWeekend(date),
+        "isDayActive": dayStatus['isDayActive'] != false,
+        "dayStatus": dayStatus,
+        "menus": menus,
+      });
+    }
+
+    return days;
+  }
+
+  static Stream<Map<String, dynamic>> todayDashboardMenuStream({
+    String campus = defaultCampus,
+  }) async* {
+    final today = DateTime.now();
+    final dateKey = formatDateKey(today);
+    final dayStatusId = cafeteriaDayStatusDocId(date: today, campus: campus);
+
+    await ensureDailyCafeteriaMenus(today, campus: campus);
+
+    yield* _db
+        .collection('cafeteriaDayStatuses')
+        .doc(dayStatusId)
+        .snapshots()
+        .asyncExpand((daySnapshot) {
+      final dayData = daySnapshot.data() == null
+          ? buildCafeteriaDayStatusDocument(date: today, campus: campus)
+          : Map<String, dynamic>.from(daySnapshot.data()!);
+
+      final isDayActive = dayData['isDayActive'] != false;
+
+      if (!isDayActive) {
+        return Stream<Map<String, dynamic>>.value({
+          "menuName": "Bugün Yemekhane Hizmeti Yok",
+          "mealType": "Kapalı",
+          "time": "-",
+          "price": "-",
+          "items": <dynamic>[],
+          "isDayActive": false,
+          "isActive": false,
+          "dashboardMode": "day_closed",
+          "dashboardMessage": "Bugün için yemekhane veya Fast Food hizmeti aktif değil.",
+        });
+      }
+
+      return _db
+          .collection('cafeteriaMenus')
+          .where('date', isEqualTo: dateKey)
+          .where('campus', isEqualTo: campus)
+          .snapshots()
+          .map((query) {
+        final menusByType = <String, Map<String, dynamic>>{};
+
+        for (final doc in query.docs) {
+          final data = Map<String, dynamic>.from(doc.data());
+          final mealType = data['mealType']?.toString() ?? '';
+          final visible = data['isDayActive'] != false && data['isActive'] != false;
+
+          if (mealType.isNotEmpty && visible) {
+            menusByType[mealType] = data;
+          }
+        }
+
+        final priority = isWeekend(today)
+            ? <String>["Fast Food"]
+            : <String>["Yemek", "Fast Food", "Kahvaltı"];
+
+        for (final mealType in priority) {
+          if (menusByType.containsKey(mealType)) {
+            final data = menusByType[mealType]!;
+            data['dashboardMode'] = isWeekend(today) ? 'weekend_fastfood' : 'weekday_meal';
+            data['dashboardMessage'] = isWeekend(today)
+                ? 'Bugün hafta sonu. Aktif Fast Food seçenekleri gösteriliyor.'
+                : 'Bugün hafta içi. Aktif kampüs menüsü gösteriliyor.';
+            return data;
+          }
+        }
+
+        return {
+          "menuName": "Bugün Menü Bulunmuyor",
+          "mealType": "Kapalı",
+          "time": "-",
+          "price": "-",
+          "items": <dynamic>[],
+          "isDayActive": true,
+          "isActive": false,
+          "dashboardMode": "no_active_menu",
+          "dashboardMessage": "Bugün için aktif menü bulunmuyor.",
+        };
+      });
+    });
+  }
+
+  static Future<void> _seedCafeteriaData() async {
+    await _db.collection('settings').doc('cafeteria').set(
+      _defaultCafeteriaData(),
+    );
+  }
+
   static Future<void> _seedExtraData() async {
     final List<Map<String, dynamic>> starterPrices = [
       {"id": 1, "name": "Çay", "price": "₺3", "category": "İçecekler"},
