@@ -43,7 +43,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: "Yemekhane Menüsü",
+        title: "Cafeteria Menu",
         showBack: widget.showBackButton,
       ),
       body: FutureBuilder<void>(
@@ -56,7 +56,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
           if (ensureSnapshot.hasError) {
             return Center(
               child: Text(
-                "Menü verisi hazırlanırken hata oluştu.",
+                "Error preparing menu data.",
                 style: TextStyle(color: textColor),
               ),
             );
@@ -74,7 +74,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
               if (snapshot.hasError) {
                 return Center(
                   child: Text(
-                    "Menü verisi alınırken hata oluştu.",
+                    "Error fetching menu data.",
                     style: TextStyle(color: textColor),
                   ),
                 );
@@ -104,8 +104,6 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                 }
               }
 
-              // If the day has no document yet, DataService.ensureDailyCafeteriaMenus
-              // will create it; until the stream updates, treat the day as open.
               if (!hasDayData) {
                 isDayActive = true;
               }
@@ -146,7 +144,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                     ],
                     if (!isDayActive)
                       _buildEmptyState(
-                        "Bu gün yemekhane hizmeti yok.",
+                        "No cafeteria service today.",
                         "",
                         textColor,
                         cardColor,
@@ -154,8 +152,8 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
                       )
                     else if (currentMenu == null)
                       _buildEmptyState(
-                        "Bu gün için aktif menü bulunmuyor.",
-                        "Yönetici panelinde aktif edilen menüler burada görünür.",
+                        "No active menu for today.",
+                        "Menus activated in the admin panel will appear here.",
                         textColor,
                         cardColor,
                         dividerColor,
@@ -180,13 +178,13 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
   Widget _buildTopInfoCard(DateTime selectedDate, bool isDayActive) {
     final weekend = DataService.isWeekend(selectedDate);
     final title = !isDayActive
-        ? "Bugün Yemekhane Hizmeti Yok"
-        : (weekend ? "Hafta Sonu Fast Food Bilgisi" : "Kampüs Yemek Bilgisi");
+        ? "No Cafeteria Service Today"
+        : (weekend ? "Weekend Fast Food Info" : "Campus Meal Info");
     final description = !isDayActive
-        ? "Seçilen gün yönetici tarafından kapalı olarak işaretlenmiş. Öğrenci tarafında menü gösterilmez."
+        ? "The selected day is marked as closed by the admin. Menu is not shown to students."
         : (weekend
-        ? "Seçilen gün hafta sonu. Aktifse varsayılan olarak Fast Food seçenekleri gösterilir."
-        : "Seçilen gün hafta içi. Aktif menüler arasından kampüs yemeği gösterilir.");
+        ? "The selected day is a weekend. If active, Fast Food options are shown by default."
+        : "The selected day is a weekday. Campus meal is shown from active menus.");
 
     return Container(
       width: double.infinity,
@@ -401,9 +399,20 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
       Color cardColor,
       ) {
     final items = menu['items'] as List<dynamic>? ?? [];
-    final menuName = menu['menuName']?.toString() ?? "Menü";
+    String menuName = menu['menuName']?.toString() ?? "Menu";
     final mealType = menu['mealType']?.toString() ?? "";
     final isFastFood = mealType == "Fast Food";
+
+    // YENİ EKLENEN KISIM: Başlığı seçilen güne göre dinamik hale getiriyoruz
+    final now = DateTime.now();
+    final isToday = _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+
+    // Eğer menü adı "Today's Meal" ise ve seçili gün bugün değilse, günün adını yaz
+    if (menuName == "Today's Meal" && !isToday) {
+      menuName = "${DataService.weekdayName(_selectedDate.weekday)}'s Meal";
+    }
 
     return Container(
       width: double.infinity,
@@ -460,7 +469,7 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
           const SizedBox(height: 18),
           if (items.isEmpty)
             Text(
-              "Bu menüde yemek bilgisi yok.",
+              "No food information in this menu.",
               style: TextStyle(color: textColor),
             )
           else

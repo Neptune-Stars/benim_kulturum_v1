@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import '../data/data_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/filter_chip_widget.dart';
-import '../data/data_service.dart';
 
 class CampusPricesScreen extends StatefulWidget {
   const CampusPricesScreen({Key? key}) : super(key: key);
@@ -12,86 +14,232 @@ class CampusPricesScreen extends StatefulWidget {
 }
 
 class _CampusPricesScreenState extends State<CampusPricesScreen> {
-  String _selectedCategory = "Çay/Kahve";
-  late Future<Map<String, dynamic>> _databaseFuture;
+  String? _selectedCategory;
 
-  final List<String> _categories = ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"];
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    _databaseFuture = DataService.loadDatabase();
+  String _readCategory(Map<String, dynamic> data) {
+    final value = data['category']?.toString().trim();
+    if (value == null || value.isEmpty) return 'Other';
+    return value;
+  }
+
+  String _readPrice(Map<String, dynamic> data) {
+    final value = data['price']?.toString().trim();
+    if (value == null || value.isEmpty) return '-';
+    return value;
+  }
+
+  String _readName(Map<String, dynamic> data) {
+    final value = data['name']?.toString().trim();
+    if (value == null || value.isEmpty) return 'Unnamed Product';
+    return value;
+  }
+
+  List<String> _buildCategories({
+    required List<Map<String, dynamic>> priceCategoryDocs,
+    required List<Map<String, dynamic>> priceItems,
+  }) {
+    final categories = <String>[];
+
+    void addCategory(String? rawValue) {
+      final value = rawValue?.trim();
+      if (value == null || value.isEmpty) return;
+      if (!categories.contains(value)) {
+        categories.add(value);
+      }
+    }
+
+    for (final category in DataService.defaultPriceCategories) {
+      addCategory(category);
+    }
+
+    for (final categoryDoc in priceCategoryDocs) {
+      addCategory(
+        categoryDoc['name']?.toString() ??
+            categoryDoc['title']?.toString() ??
+            categoryDoc['category']?.toString(),
+      );
+    }
+
+    for (final item in priceItems) {
+      addCategory(item['category']?.toString());
+    }
+
+    return categories;
+  }
+
+  List<Map<String, dynamic>> _sortPriceItems(List<Map<String, dynamic>> items) {
+    final sorted = List<Map<String, dynamic>>.from(items);
+    sorted.sort((a, b) {
+      final categoryCompare = _readCategory(a).compareTo(_readCategory(b));
+      if (categoryCompare != 0) return categoryCompare;
+      return _readName(a).compareTo(_readName(b));
+    });
+    return sorted;
   }
 
   @override
   Widget build(BuildContext context) {
-    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final dividerColor = Theme.of(context).dividerColor;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Kampüs Fiyatları", showBack: true),
-      body: FutureBuilder<Map<String, dynamic>>(
-          future: _databaseFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!['prices'] == null) {
-              return const Center(child: Text("Fiyat verisi bulunamadı."));
-            }
+      appBar: const CustomAppBar(title: 'Campus Prices', showBack: true),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _db.collection('priceCategories').snapshots(),
+        builder: (context, categorySnapshot) {
+          if (categorySnapshot.hasError) {
+            return Center(
+              child: Text(
+                'Price categories could not be loaded.',
+                style: TextStyle(color: textColor),
+              ),
+            );
+          }
 
-            final allPrices = snapshot.data!['prices'] as List<dynamic>? ?? [];
-            final items = allPrices.where((p) => p['category'] == _selectedCategory).toList();
+          final priceCategoryDocs = categorySnapshot.data?.docs
+              .map((doc) => {
+            ...doc.data(),
+            'firestoreDocId': doc.id,
+          })
+              .toList() ??
+              <Map<String, dynamic>>[];
 
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 42,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final category = _categories[index];
-                        return AppFilterChip(
-                          label: category,
-                          active: _selectedCategory == category,
-                          onTap: () => setState(() => _selectedCategory = category),
-                        );
-                      },
-                    ),
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _db.collection('prices').snapshots(),
+            builder: (context, priceSnapshot) {
+              if (priceSnapshot.connectionState == ConnectionState.waiting &&
+                  !priceSnapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (priceSnapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Price data could not be loaded.',
+                    style: TextStyle(color: textColor),
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: dividerColor)),
-                      child: items.isEmpty
-                          ? const Center(child: Text("Bu kategoride ürün yok.", style: TextStyle(color: AppTheme.textMuted)))
-                          : ListView.separated(
-                        itemCount: items.length,
-                        separatorBuilder: (_, __) => Divider(color: dividerColor, height: 1),
+                );
+              }
+
+              final allPrices = priceSnapshot.data?.docs
+                  .map((doc) => {
+                ...doc.data(),
+                'firestoreDocId': doc.id,
+              })
+                  .toList() ??
+                  <Map<String, dynamic>>[];
+
+              final categories = _buildCategories(
+                priceCategoryDocs: priceCategoryDocs,
+                priceItems: allPrices,
+              );
+
+              if (categories.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'Price category data not found.',
+                    style: TextStyle(color: AppTheme.textMuted),
+                  ),
+                );
+              }
+
+              final selectedCategory = categories.contains(_selectedCategory)
+                  ? _selectedCategory!
+                  : categories.first;
+
+              final filteredItems = _sortPriceItems(
+                allPrices
+                    .where((item) => _readCategory(item) == selectedCategory)
+                    .toList(),
+              );
+
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 42,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: categories.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
-                          final item = items[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(child: Text(item["name"] ?? '', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textColor))),
-                                Text(item["price"] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                              ],
-                            ),
+                          final category = categories[index];
+                          return AppFilterChip(
+                            label: category,
+                            active: selectedCategory == category,
+                            onTap: () {
+                              setState(() => _selectedCategory = category);
+                            },
                           );
                         },
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: dividerColor),
+                        ),
+                        child: filteredItems.isEmpty
+                            ? const Center(
+                          child: Text(
+                            'No products in this category.',
+                            style: TextStyle(color: AppTheme.textMuted),
+                          ),
+                        )
+                            : ListView.separated(
+                          itemCount: filteredItems.length,
+                          separatorBuilder: (_, __) =>
+                              Divider(color: dividerColor, height: 1),
+                          itemBuilder: (context, index) {
+                            final item = filteredItems[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _readName(item),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _readPrice(item),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

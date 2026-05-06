@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
 
+
 import 'theme/app_theme.dart';
 
 import 'providers/auth_provider.dart';
@@ -20,7 +21,7 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
-
+import 'data/data_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -30,8 +31,17 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // TEMPORARY: Runs once to clean demo price categories and seed realistic prices.
+  // Remove this line after running the app once successfully.
+
+
   // Hive is kept only for user-specific/local preferences.
   // Shared app data must be stored in Cloud Firestore.
+
+  await DataService.resetDemoCampusUnitsForPresentation();
+
+
+
   await Hive.initFlutter();
   await Hive.openBox('favoritesBox');
   await Hive.openBox('userBox');
@@ -87,7 +97,7 @@ class BenimKulturumApp extends StatelessWidget {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, _) {
         return MaterialApp.router(
-          title: 'Benim Kültürüm',
+          title: 'My Kultur',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

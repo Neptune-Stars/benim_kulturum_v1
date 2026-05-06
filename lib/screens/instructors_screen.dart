@@ -17,18 +17,18 @@ class InstructorsScreen extends StatefulWidget {
 
 class _InstructorsScreenState extends State<InstructorsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
   late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _filters = [
-    "Tümü",
-    "Mühendislik",
-    "İktisat",
-    "Fen-Edebiyat",
-    "Hukuk",
-    "Mimarlık",
-    "Psikoloji",
-    "Edebiyat"
+    "All",
+    "Engineering",
+    "Economics",
+    "Science",
+    "Law",
+    "Architecture",
+    "Psychology",
+    "Literature"
   ];
 
   @override
@@ -40,7 +40,7 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "Öğretim Görevlileri", showBack: true),
+      appBar: const CustomAppBar(title: "Instructors", showBack: true),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
@@ -48,7 +48,7 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text("Hoca verisi bulunamadı."));
+              return const Center(child: Text("Instructor data not found."));
             }
 
             final allInstructors = snapshot.data!['instructors'] as List<dynamic>? ?? [];
@@ -61,15 +61,15 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
               final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   dept.toLowerCase().contains(_searchQuery.toLowerCase());
 
-              bool matchesFilter = _selectedFilter == "Tümü";
+              bool matchesFilter = _selectedFilter == "All";
 
-              if (_selectedFilter == "Mühendislik" && filterValue == "engineering") matchesFilter = true;
-              if (_selectedFilter == "İktisat" && filterValue == "economics") matchesFilter = true;
-              if (_selectedFilter == "Fen-Edebiyat" && filterValue == "science") matchesFilter = true;
-              if (_selectedFilter == "Hukuk" && filterValue == "law") matchesFilter = true;
-              if (_selectedFilter == "Mimarlık" && filterValue == "architecture") matchesFilter = true;
-              if (_selectedFilter == "Psikoloji" && filterValue == "psychology") matchesFilter = true;
-              if (_selectedFilter == "Edebiyat" && filterValue == "literature") matchesFilter = true;
+              if (_selectedFilter == "Engineering" && filterValue == "engineering") matchesFilter = true;
+              if (_selectedFilter == "Economics" && filterValue == "economics") matchesFilter = true;
+              if (_selectedFilter == "Science" && filterValue == "science") matchesFilter = true;
+              if (_selectedFilter == "Law" && filterValue == "law") matchesFilter = true;
+              if (_selectedFilter == "Architecture" && filterValue == "architecture") matchesFilter = true;
+              if (_selectedFilter == "Psychology" && filterValue == "psychology") matchesFilter = true;
+              if (_selectedFilter == "Literature" && filterValue == "literature") matchesFilter = true;
 
               return matchesSearch && matchesFilter;
             }).toList();
@@ -79,7 +79,7 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: AppSearchBar(
-                    placeholder: "Hoca veya bölüm ara...",
+                    placeholder: "Search instructor or department...",
                     onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),
@@ -107,14 +107,11 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                     itemBuilder: (context, index) {
                       final instructor = filteredInstructors[index];
 
-                      // HATA ÇÖZÜMÜ: Map türünü güvenli bir şekilde String key'lere dönüştürüyoruz (Casting)
                       final Map<String, dynamic> safeInstructorData = Map<String, dynamic>.from(instructor as Map);
 
-                      // YENİ: Fotoğraf verisini çekiyoruz
                       final String? imageUrl = safeInstructorData['imageUrl'];
 
                       return InfoCard(
-                        // YENİ: InfoCard içine hocanın profil fotoğrafını ekliyoruz
                         leading: CircleAvatar(
                           radius: 25,
                           backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
@@ -127,7 +124,7 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                         ),
                         title: safeInstructorData['name'] ?? '',
                         subtitle: safeInstructorData['department'] ?? '',
-                        metadata: "Ofis: ${safeInstructorData['office']}",
+                        metadata: "Office: ${safeInstructorData['office']}",
                         badge: AppBadge(label: safeInstructorData['title'] ?? ''),
                         onTap: () => Navigator.push(
                             context,

@@ -7,7 +7,6 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/quick_action_card.dart';
 import '../widgets/section_header.dart';
 import '../widgets/info_card.dart';
-import '../widgets/badge_widget.dart';
 
 import 'classrooms_screen.dart';
 import 'buildings_screen.dart';
@@ -42,7 +41,7 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  "Hızlı Erişim",
+                  "Quick Access",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -55,16 +54,16 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GridView.count(
-                  crossAxisCount: 4,
+                  crossAxisCount: 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 0.72,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.82,
                   children: [
                     QuickActionCard(
                       icon: Icons.meeting_room_outlined,
-                      title: "Derslikler",
+                      title: "Classrooms",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -74,7 +73,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.groups_outlined,
-                      title: "Hocalar",
+                      title: "Instructors",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -84,7 +83,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.access_time_outlined,
-                      title: "Ofis Saatleri",
+                      title: "Office Hours",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -94,7 +93,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.attach_money,
-                      title: "Fiyatlar",
+                      title: "Prices",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -104,7 +103,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.event_note_outlined,
-                      title: "Etkinlikler",
+                      title: "Events",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -114,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     QuickActionCard(
                       icon: Icons.report_problem_outlined,
-                      title: "Sorun Bildir",
+                      title: "Report Issue",
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -131,8 +130,8 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SectionHeader(
-                  title: "Bugünün Menüsü",
-                  actionLabel: "Tümünü Gör",
+                  title: "Today's Menu",
+                  actionLabel: "See All",
                   onAction: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -150,22 +149,22 @@ class HomeScreen extends StatelessWidget {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return _buildTodayMenuCard(
                         context,
-                        meal: "Menü yükleniyor...",
-                        desc: "Firebase üzerinden güncel menü hazırlanıyor.",
+                        meal: "Loading menu...",
+                        desc: "Up-to-date menu is being prepared via Firebase.",
                         time: "-",
                         price: "-",
-                        note: "Bugünün menüsü merkezi veritabanından alınır.",
+                        note: "Today's menu is retrieved from the central database.",
                       );
                     }
 
                     if (snapshot.hasError) {
                       return _buildTodayMenuCard(
                         context,
-                        meal: "Menü bilgisi alınamadı",
-                        desc: "Lütfen daha sonra tekrar deneyin.",
+                        meal: "Could not retrieve menu",
+                        desc: "Please try again later.",
                         time: "-",
                         price: "-",
-                        note: "Firebase bağlantısı kontrol edilmeli.",
+                        note: "Check Firebase connection.",
                       );
                     }
 
@@ -173,12 +172,12 @@ class HomeScreen extends StatelessWidget {
                     final items = menu['items'] as List<dynamic>? ?? [];
                     final mealName = menu['menuName']?.toString() ??
                         menu['mealType']?.toString() ??
-                        "Bugünün Menüsü";
+                        "Today's Menu";
                     final desc = _menuDescription(items);
                     final price = menu['price']?.toString() ?? "-";
                     final time = menu['time']?.toString() ?? "-";
                     final note = menu['dashboardMessage']?.toString() ??
-                        "Bugünün menüsü güncel güne göre gösteriliyor.";
+                        "Today's menu is shown based on the current day.";
 
                     return _buildTodayMenuCard(
                       context,
@@ -198,7 +197,9 @@ class HomeScreen extends StatelessWidget {
                 future: DataService.loadDatabase(),
                 builder: (context, snapshot) {
                   final data = snapshot.data ?? {};
-                  final announcements = data['announcements'] as List<dynamic>? ?? [];
+                  final announcements = _sortAnnouncements(
+                    data['announcements'] as List<dynamic>? ?? [],
+                  );
                   final events = data['events'] as List<dynamic>? ?? [];
 
                   return Column(
@@ -206,7 +207,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: const SectionHeader(title: "Son Duyurular"),
+                        child: const SectionHeader(title: "Recent Announcements"),
                       ),
                       const SizedBox(height: 10),
                       Padding(
@@ -218,9 +219,7 @@ class HomeScreen extends StatelessWidget {
                               title: item['title']?.toString() ?? '',
                               subtitle: _announcementDateText(item),
                               metadata: item['content']?.toString() ?? '',
-                              badge: item['isNew'] == true
-                                  ? const AppBadge(label: "Yeni")
-                                  : null,
+                              badge: null,
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -237,8 +236,8 @@ class HomeScreen extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SectionHeader(
-                          title: "Yaklaşan Etkinlikler",
-                          actionLabel: "Tümünü Gör",
+                          title: "Upcoming Events",
+                          actionLabel: "See All",
                           onAction: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -302,7 +301,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  "Merhaba, Öğrenci 👋",
+                  "Hello, Student 👋",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -318,7 +317,7 @@ class HomeScreen extends StatelessWidget {
           ),
           SizedBox(height: 16),
           AppSearchBar(
-            placeholder: "Kampüste ara...",
+            placeholder: "Search on campus...",
             readOnly: true,
           ),
         ],
@@ -338,8 +337,55 @@ class HomeScreen extends StatelessWidget {
     return date;
   }
 
+  DateTime? _parseAnnouncementDate(dynamic value) {
+    if (value == null) return null;
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+
+    final isoDate = DateTime.tryParse(text);
+    if (isoDate != null) return isoDate;
+
+    final slashDate = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(text);
+    if (slashDate != null) {
+      final day = int.tryParse(slashDate.group(1)!);
+      final month = int.tryParse(slashDate.group(2)!);
+      final year = int.tryParse(slashDate.group(3)!);
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    return null;
+  }
+
+  DateTime? _announcementDateTime(Map<dynamic, dynamic> item) {
+    return _parseAnnouncementDate(item['publishAt']) ??
+        _parseAnnouncementDate(item['publishDate']) ??
+        _parseAnnouncementDate(item['date']) ??
+        _parseAnnouncementDate(item['createdAt']) ??
+        _parseAnnouncementDate(item['updatedAt']);
+  }
+
+  List<dynamic> _sortAnnouncements(List<dynamic> announcements) {
+    final sorted = List<dynamic>.from(announcements);
+
+    sorted.sort((a, b) {
+      final aDate = _announcementDateTime(Map<dynamic, dynamic>.from(a as Map));
+      final bDate = _announcementDateTime(Map<dynamic, dynamic>.from(b as Map));
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      return bDate.compareTo(aDate);
+    });
+
+    return sorted;
+  }
+
   String _menuDescription(List<dynamic> items) {
-    if (items.isEmpty) return "Menü bilgisi bulunamadı.";
+    if (items.isEmpty) return "Menu information not found.";
 
     final names = items.take(4).map((item) {
       if (item is Map) {
@@ -369,7 +415,7 @@ class HomeScreen extends StatelessWidget {
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
     final dividerColor = Theme.of(context).dividerColor;
     final hasPrice = price.trim().isNotEmpty && price.trim() != "-";
-    final badgeText = hasPrice ? price : "Kapalı";
+    final badgeText = hasPrice ? price : "Closed";
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),

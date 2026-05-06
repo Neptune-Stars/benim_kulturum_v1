@@ -7,41 +7,37 @@ import '../providers/favorites_provider.dart';
 import '../providers/joined_events_provider.dart';
 
 class EventDetailScreen extends StatelessWidget {
-  // Hata çözümü için veri tipi Map<dynamic, dynamic> olarak esnetildi
   final Map<dynamic, dynamic> eventData;
 
   const EventDetailScreen({Key? key, required this.eventData}) : super(key: key);
 
   String _getCategoryLabel(String cat) {
     switch (cat) {
-      case "academic": return "Akademik";
-      case "cultural": return "Kültürel";
-      case "sports": return "Spor";
-      case "social": return "Sosyal";
-      default: return "Genel";
+      case "academic": return "Academic";
+      case "cultural": return "Cultural";
+      case "sports": return "Sports";
+      case "social": return "Social";
+      default: return "General";
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Veriyi güvenli bir şekilde String anahtarlı Map'e çeviriyoruz (Casting)
     final data = Map<String, dynamic>.from(eventData);
 
     final favProvider = context.watch<FavoritesProvider>();
     final joinedProvider = context.watch<JoinedEventsProvider>();
 
-    // ID'nin int olduğundan emin olmak için güvenli dönüşüm yapıyoruz
     final eventId = data['id'] is int ? data['id'] : int.tryParse(data['id'].toString()) ?? 0;
     final isFav = favProvider.isFavorite("evt_$eventId");
 
-    final String title = data['title'] ?? 'Etkinlik';
+    final String title = data['title'] ?? 'Event';
     final String category = data['category'] ?? '';
     final String date = data['date'] ?? '';
     final String time = data['time'] ?? '';
     final String location = data['location'] ?? '';
     final String description = data['description'] ?? '';
 
-    // Hata düzeltildi: event.id yerine eventId kullanılıyor
     final isJoined = joinedProvider.isJoined(eventId);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -74,7 +70,7 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   if (isJoined)
                     AppBadge(
-                      label: "Katıldın",
+                      label: "Joined",
                       backgroundColor: AppTheme.successColor.withOpacity(0.15),
                       textColor: AppTheme.successColor,
                     ),
@@ -88,14 +84,13 @@ class EventDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            // Hata düzeltildi: _buildDetailRow içine context eklendi
-            _buildDetailRow(context, Icons.calendar_today, "Tarih", date),
+            _buildDetailRow(context, Icons.calendar_today, "Date", date),
             const Divider(height: 24),
-            _buildDetailRow(context, Icons.access_time, "Saat", time),
+            _buildDetailRow(context, Icons.access_time, "Time", time),
             const Divider(height: 24),
-            _buildDetailRow(context, Icons.location_on, "Konum", location),
+            _buildDetailRow(context, Icons.location_on, "Location", location),
             const SizedBox(height: 32),
-            Text("Açıklama", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+            Text("Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
             const SizedBox(height: 8),
             Text(description, style: const TextStyle(fontSize: 16, color: AppTheme.textMuted, height: 1.5)),
             const SizedBox(height: 48),
@@ -113,13 +108,13 @@ class EventDetailScreen extends StatelessWidget {
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(alreadyJoined ? "Etkinlik kaydın iptal edildi." : "Etkinliğe katıldın. Artık Etkinliklerim bölümünde görünüyor."),
+                      content: Text(alreadyJoined ? "Event registration cancelled." : "You have joined the event. It now appears in My Events."),
                     ),
                   );
                 },
                 icon: Icon(isJoined ? Icons.event_busy : Icons.event_available),
                 label: Text(
-                  isJoined ? "Katılımı İptal Et" : "Etkinliğe Katıl",
+                  isJoined ? "Cancel Registration" : "Join Event",
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -140,7 +135,7 @@ class EventDetailScreen extends StatelessWidget {
                   isFav ? Icons.star : Icons.star_border,
                   color: isFav ? AppTheme.warningColor : textColor,
                 ),
-                label: Text(isFav ? "Favorilerden Çıkar" : "Favorilere Ekle", style: const TextStyle(fontSize: 16)),
+                label: Text(isFav ? "Remove from Favorites" : "Add to Favorites", style: const TextStyle(fontSize: 16)),
               ),
             ),
           ],
