@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// classroom.dart model importunu kaldırdık çünkü artık JSON Map kullanıyoruz
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/section_header.dart';
 import '../providers/favorites_provider.dart';
 
 class ClassroomDetailScreen extends StatelessWidget {
-  // Classroom nesnesi yerine JSON'dan gelen Map'i alıyoruz
   final Map<String, dynamic> classroomData;
 
   const ClassroomDetailScreen({Key? key, required this.classroomData}) : super(key: key);
@@ -15,12 +13,11 @@ class ClassroomDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
-    // id değerini Map'ten okuyoruz
     final isFav = favProvider.isFavorite("class_${classroomData['id']}");
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: classroomData['name'] ?? 'Derslik', // name değerini Map'ten okuyoruz
+        title: classroomData['name'] ?? 'Classroom',
         showBack: true,
         actions: [
           IconButton(
@@ -53,7 +50,7 @@ class ClassroomDetailScreen extends StatelessWidget {
                             children: [
                               Text(classroomData['building'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 4),
-                              Text("${classroomData['type']} • Kat ${classroomData['floor']}", style: const TextStyle(color: AppTheme.textMuted)),
+                              Text("${classroomData['type']} • Floor ${classroomData['floor']}", style: const TextStyle(color: AppTheme.textMuted)),
                             ],
                           ),
                         ),
@@ -67,14 +64,14 @@ class ClassroomDetailScreen extends StatelessWidget {
                           children: [
                             const Icon(Icons.people_outline, color: AppTheme.textMuted),
                             const SizedBox(height: 4),
-                            Text("${classroomData['capacity']} Kişi", style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text("${classroomData['capacity']} People", style: const TextStyle(fontWeight: FontWeight.w600)),
                           ],
                         ),
                         Column(
                           children: [
                             const Icon(Icons.stairs_outlined, color: AppTheme.textMuted),
                             const SizedBox(height: 4),
-                            Text("Kat ${classroomData['floor']}", style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text("Floor ${classroomData['floor']}", style: const TextStyle(fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
@@ -84,7 +81,7 @@ class ClassroomDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const SectionHeader(title: "Uygun Saatler (Örnek)"),
+            const SectionHeader(title: "Available Hours (Example)"),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -94,7 +91,7 @@ class ClassroomDetailScreen extends StatelessWidget {
               ),
               child: const Center(
                 child: Text(
-                  "Program verisi henüz yüklenmedi.",
+                  "Schedule data not loaded yet.",
                   style: TextStyle(color: AppTheme.textMuted),
                 ),
               ),

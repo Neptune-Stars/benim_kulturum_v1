@@ -20,8 +20,8 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  String _selectedFilter = "Tümü";
-  final List<String> _filters = ["Tümü", "Hocalar", "Derslikler", "Etkinlikler"];
+  String _selectedFilter = "All";
+  final List<String> _filters = ["All", "Instructors", "Classrooms", "Events"];
   late Future<Map<String, dynamic>> _databaseFuture;
 
   @override
@@ -35,7 +35,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final favIds = context.watch<FavoritesProvider>().favorites;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Favorilerim", showBack: true),
+      appBar: const CustomAppBar(title: "My Favorites", showBack: true),
       body: Column(
         children: [
           const SizedBox(height: 16),
@@ -71,39 +71,38 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 List<Widget> favoriteCards = [];
 
                 for (String id in favIds) {
-                  // Derslikler
-                  if (id.startsWith("class_") && (_selectedFilter == "Tümü" || _selectedFilter == "Derslikler")) {
+                  // Classrooms
+                  if (id.startsWith("class_") && (_selectedFilter == "All" || _selectedFilter == "Classrooms")) {
                     final classId = int.parse(id.split("_")[1]);
-                    // YENİ GÜVENLİ KONTROL: orElse yerine where().isNotEmpty kullanıyoruz
                     final matches = (data['classrooms'] as List).where((x) => x['id'] == classId);
                     if (matches.isNotEmpty) {
                       final c = matches.first;
                       favoriteCards.add(InfoCard(
-                        title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Derslik"),
+                        title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Classroom"),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))),
                       ));
                     }
                   }
-                  // Hocalar
-                  else if (id.startsWith("inst_") && (_selectedFilter == "Tümü" || _selectedFilter == "Hocalar")) {
+                  // Instructors
+                  else if (id.startsWith("inst_") && (_selectedFilter == "All" || _selectedFilter == "Instructors")) {
                     final instId = int.parse(id.split("_")[1]);
                     final matches = (data['instructors'] as List).where((x) => x['id'] == instId);
                     if (matches.isNotEmpty) {
                       final i = matches.first;
                       favoriteCards.add(InfoCard(
-                        title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Hoca"),
+                        title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Instructor"),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: i))),
                       ));
                     }
                   }
-                  // Etkinlikler
-                  else if (id.startsWith("evt_") && (_selectedFilter == "Tümü" || _selectedFilter == "Etkinlikler")) {
+                  // Events
+                  else if (id.startsWith("evt_") && (_selectedFilter == "All" || _selectedFilter == "Events")) {
                     final evtId = int.parse(id.split("_")[1]);
                     final matches = (data['events'] as List).where((x) => x['id'] == evtId);
                     if (matches.isNotEmpty) {
                       final e = matches.first;
                       favoriteCards.add(InfoCard(
-                        title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Etkinlik"),
+                        title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Event"),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e))),
                       ));
                     }
@@ -131,7 +130,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         children: [
           Icon(Icons.star_border, size: 64, color: AppTheme.borderColor),
           SizedBox(height: 16),
-          Text("Henüz favori eklemediniz", style: TextStyle(fontSize: 18, color: AppTheme.textMuted)),
+          Text("You haven't added any favorites yet", style: TextStyle(fontSize: 18, color: AppTheme.textMuted)),
         ],
       ),
     );

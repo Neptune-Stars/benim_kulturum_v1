@@ -21,34 +21,34 @@ class BuildingsScreen extends StatefulWidget {
 
 class _BuildingsScreenState extends State<BuildingsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
   late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _filters = [
-    "Tümü",
-    "Fakülteler",
-    "İdari Birimler",
-    "Sosyal Alanlar",
-    "Yeme-İçme",
-    "Çalışma Alanları",
+    "All",
+    "Faculties",
+    "Administrative Units",
+    "Social Areas",
+    "Food & Beverage",
+    "Study Areas",
   ];
 
   final List<Map<String, String>> _campuses = [
     {
       "title": "Ataköy",
-      "address": "İstanbul Kültür Üniversitesi Ataköy Yerleşkesi, E5 Karayolu üzeri Bakırköy 34158 İstanbul",
+      "address": "Istanbul Kultur University Ataköy Campus, E5 Highway Bakırköy 34158 Istanbul",
     },
     {
       "title": "Şirinevler",
-      "address": "İstanbul Kültür Üniversitesi Şirinevler Yerleşkesi, E5 Karayolu Üzeri No:22 Bahçelievler 34191 İstanbul",
+      "address": "Istanbul Kultur University Şirinevler Campus, E5 Highway No:22 Bahçelievler 34191 Istanbul",
     },
     {
       "title": "İncirli",
-      "address": "İstanbul Kültür Üniversitesi İncirli Yerleşkesi, Yolbaşı Sokak, 34147 Bakırköy İstanbul",
+      "address": "Istanbul Kultur University İncirli Campus, Yolbaşı Street, 34147 Bakırköy Istanbul",
     },
     {
       "title": "Basın Ekspres",
-      "address": "İstanbul Kültür Üniversitesi Basın Ekspres Yerleşkesi, Halkalı Merkez Mahallesi Basın Ekspres Caddesi No:11 34303 Küçükçekmece İstanbul",
+      "address": "Istanbul Kultur University Basın Ekspres Campus, Halkalı Merkez District Basın Ekspres Avenue No:11 34303 Küçükçekmece Istanbul",
     },
   ];
 
@@ -85,23 +85,23 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
   String _getTypeLabel(String rawType) {
     final type = _normalizeType(rawType);
     switch (type) {
-      case "faculty": return "Fakülte";
-      case "admin": return "İdari";
-      case "social": return "Sosyal";
-      case "food": return "Yeme-İçme";
-      case "study": return "Çalışma";
-      default: return "Genel";
+      case "faculty": return "Faculty";
+      case "admin": return "Administrative";
+      case "social": return "Social";
+      case "food": return "Food & Bev.";
+      case "study": return "Study";
+      default: return "General";
     }
   }
 
   bool _matchesFilter(String selectedFilter, String rawType) {
     final type = _normalizeType(rawType);
-    if (selectedFilter == "Tümü") return true;
-    if (selectedFilter == "Fakülteler" && type == "faculty") return true;
-    if (selectedFilter == "İdari Birimler" && type == "admin") return true;
-    if (selectedFilter == "Sosyal Alanlar" && type == "social") return true;
-    if (selectedFilter == "Yeme-İçme" && type == "food") return true;
-    if (selectedFilter == "Çalışma Alanları" && type == "study") return true;
+    if (selectedFilter == "All") return true;
+    if (selectedFilter == "Faculties" && type == "faculty") return true;
+    if (selectedFilter == "Administrative Units" && type == "admin") return true;
+    if (selectedFilter == "Social Areas" && type == "social") return true;
+    if (selectedFilter == "Food & Beverage" && type == "food") return true;
+    if (selectedFilter == "Study Areas" && type == "study") return true;
     return false;
   }
 
@@ -112,11 +112,11 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     try {
       final bool opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!opened && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Harita açılamadı.")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open map.")));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Harita açılırken hata oluştu: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error opening map: $e")));
     }
   }
 
@@ -126,7 +126,7 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Scaffold(
-      appBar: CustomAppBar(title: "Kampüs Rehberi", showBack: widget.showBackButton),
+      appBar: CustomAppBar(title: "Campus Guide", showBack: widget.showBackButton),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
@@ -134,7 +134,7 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!['buildings'] == null) {
-              return const Center(child: Text("Bina verisi bulunamadı."));
+              return const Center(child: Text("Building data not found."));
             }
 
             final allBuildings = snapshot.data!['buildings'] as List<dynamic>? ?? [];
@@ -154,21 +154,18 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
               return matchesSearch && matchesFilter;
             }).toList();
 
-            // Sayfanın TAMAMI artık tek bir kaydırılabilir yapı içinde (CustomScrollView)
             return CustomScrollView(
               slivers: [
-                // 1. Kısım: Arama Çubuğu
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: AppSearchBar(
-                      placeholder: "Birim, fakülte veya alan ara...",
+                      placeholder: "Search unit, faculty, or area...",
                       onChanged: (val) => setState(() => _searchQuery = val),
                     ),
                   ),
                 ),
 
-                // 2. Kısım: Filtre Butonları
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: 40,
@@ -188,7 +185,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                   ),
                 ),
 
-                // 3. Kısım: Harita Kartı (Binalarla Birlikte Kayacak)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -209,14 +205,14 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                               SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  "İstanbul’daki Kampüsler",
+                                  "Campuses in Istanbul",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text("Yerleşkelerden birine dokunarak haritada aç.", style: TextStyle(fontSize: 13, color: mutedColor)),
+                          Text("Tap on a campus to open in map.", style: TextStyle(fontSize: 13, color: mutedColor)),
                           const SizedBox(height: 14),
                           GridView.builder(
                             shrinkWrap: true,
@@ -256,14 +252,13 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                   ),
                 ),
 
-                // 4. Kısım: Binaların Listesi (Eğer Boşsa)
                 if (filteredBuildings.isEmpty)
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.all(24.0),
                       child: Center(
                         child: Text(
-                          "Seçtiğin filtrelere uygun kayıt bulunamadı.",
+                          "No records found matching your filters.",
                           textAlign: TextAlign.center,
                           style: TextStyle(color: AppTheme.textMuted, fontSize: 16),
                         ),
@@ -271,7 +266,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                     ),
                   ),
 
-                // 5. Kısım: Binaların Listesi (Doluysa)
                 if (filteredBuildings.isNotEmpty)
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -279,14 +273,13 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                       delegate: SliverChildBuilderDelegate(
                             (context, index) {
                           final b = filteredBuildings[index];
-                          // Özel bir meta data oluştur. (Örn: Sadece 1 katlı kafeler için kat bilgisi yazmasın)
                           String metadata = "";
                           if (b['type'] == "faculty" || b['type'] == "admin") {
-                            metadata = "${b['floors'] ?? 1} kat • ${b['rooms'] ?? 10} alan";
+                            metadata = "${b['floors'] ?? 1} floors • ${b['rooms'] ?? 10} areas";
                           }
 
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0), // Kartlar arası boşluk
+                            padding: const EdgeInsets.only(bottom: 12.0),
                             child: InfoCard(
                               title: b['name']?.toString() ?? "",
                               subtitle: b['location']?.toString() ?? "",

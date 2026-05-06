@@ -18,16 +18,16 @@ class AnnouncementsScreen extends StatefulWidget {
 
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
 
   late Future<Map<String, dynamic>> _databaseFuture;
 
   final List<String> _filters = [
-    "Tümü",
-    "Akademik",
-    "İdari",
-    "Burs",
-    "Genel",
+    "All",
+    "Academic",
+    "Administrative",
+    "Scholarship",
+    "General",
   ];
 
   @override
@@ -82,19 +82,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return "Az önce";
+      return "Just now";
     }
 
     if (difference.inMinutes < 60) {
-      return "${difference.inMinutes} dk önce";
+      return "${difference.inMinutes} mins ago";
     }
 
     if (difference.inHours < 24) {
-      return "${difference.inHours} saat önce";
+      return "${difference.inHours} hours ago";
     }
 
     if (difference.inDays == 1) {
-      return "Dün";
+      return "Yesterday";
     }
 
     final day = dateTime.day.toString().padLeft(2, '0');
@@ -107,11 +107,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   }
 
   String _mapSelectedFilterToCategory(String selectedFilter) {
-    if (selectedFilter == "Akademik") return "academic";
-    if (selectedFilter == "İdari") return "admin";
-    if (selectedFilter == "Burs") return "scholarship";
-    if (selectedFilter == "Genel") return "general";
-    return "Tümü";
+    if (selectedFilter == "Academic") return "academic";
+    if (selectedFilter == "Administrative") return "admin";
+    if (selectedFilter == "Scholarship") return "scholarship";
+    if (selectedFilter == "General") return "general";
+    return "All";
   }
 
   List<dynamic> _sortAnnouncements(List<dynamic> announcements) {
@@ -134,7 +134,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "Duyurular"),
+      appBar: const CustomAppBar(title: "Announcements"),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _databaseFuture,
         builder: (context, snapshot) {
@@ -144,13 +144,13 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
           if (snapshot.hasError) {
             return Center(
-              child: Text("Veri yüklenemedi: ${snapshot.error}"),
+              child: Text("Failed to load data: ${snapshot.error}"),
             );
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-              child: Text("Gösterilecek duyuru bulunamadı."),
+              child: Text("No announcements to show."),
             );
           }
 
@@ -176,7 +176,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 content.contains(normalizedSearch);
 
             final matchesFilter =
-                _selectedFilter == "Tümü" || category == mappedFilter;
+                _selectedFilter == "All" || category == mappedFilter;
 
             return matchesSearch && matchesFilter;
           }).toList();
@@ -188,7 +188,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: AppSearchBar(
-                  placeholder: "Duyuru ara...",
+                  placeholder: "Search announcements...",
                   onChanged: (val) {
                     setState(() {
                       _searchQuery = val;
@@ -222,7 +222,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 child: sortedAnnouncements.isEmpty
                     ? const Center(
                   child: Text(
-                    "Aramanıza uygun duyuru bulunamadı.",
+                    "No announcements found matching your search.",
                     style: TextStyle(color: AppTheme.textMuted),
                   ),
                 )
@@ -240,7 +240,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                       showChevron: false,
                       badge: announcement['isNew'] == true
                           ? const AppBadge(
-                        label: "Yeni",
+                        label: "New",
                         backgroundColor: AppTheme.primaryColor,
                         textColor: Colors.white,
                       )

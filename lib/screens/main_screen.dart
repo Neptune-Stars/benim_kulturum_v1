@@ -27,10 +27,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Koyu tema açık mı kontrol ediyoruz
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Temaya göre çizgi ve arkaplan renklerini belirliyoruz
     final borderColor = isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
     final navBackgroundColor = isDark ? AppTheme.darkCardColor : Colors.white;
 
@@ -42,7 +40,7 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(color: borderColor, width: 1), // Çizgi rengi dinamik oldu
+            top: BorderSide(color: borderColor, width: 1),
           ),
         ),
         child: BottomNavigationBar(
@@ -53,35 +51,35 @@ class _MainScreenState extends State<MainScreen> {
             });
           },
           type: BottomNavigationBarType.fixed,
-          backgroundColor: navBackgroundColor, // Arkaplan rengi dinamik oldu
-          selectedItemColor: isDark ? AppTheme.primaryLight : AppTheme.primaryColor, // Seçili ikon rengi
-          unselectedItemColor: isDark ? AppTheme.darkTextMuted : AppTheme.textMuted, // Seçilmeyen ikon rengi
+          backgroundColor: navBackgroundColor,
+          selectedItemColor: isDark ? AppTheme.primaryLight : AppTheme.primaryColor,
+          unselectedItemColor: isDark ? AppTheme.darkTextMuted : AppTheme.textMuted,
           elevation: 0,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
-              label: "Anasayfa",
+              label: "Home",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.business_outlined),
               activeIcon: Icon(Icons.business),
-              label: "Kampüs", // "Kampüs Rehber" yazısı taşıp taşmadığına göre kısaltılabilir
+              label: "Campus",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.restaurant_outlined),
               activeIcon: Icon(Icons.restaurant),
-              label: "Yemek",
+              label: "Food",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.campaign_outlined),
               activeIcon: Icon(Icons.campaign),
-              label: "Duyurular",
+              label: "Alerts",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               activeIcon: Icon(Icons.person),
-              label: "Profil",
+              label: "Profile",
             ),
           ],
         ),

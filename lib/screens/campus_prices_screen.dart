@@ -12,10 +12,10 @@ class CampusPricesScreen extends StatefulWidget {
 }
 
 class _CampusPricesScreenState extends State<CampusPricesScreen> {
-  String _selectedCategory = "Çay/Kahve";
+  String _selectedCategory = "Tea/Coffee";
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  final List<String> _categories = ["Çay/Kahve", "İçecekler", "Atıştırmalıklar", "Yemek"];
+  final List<String> _categories = ["Tea/Coffee", "Beverages", "Snacks", "Food"];
 
   @override
   void initState() {
@@ -29,7 +29,7 @@ class _CampusPricesScreenState extends State<CampusPricesScreen> {
     final dividerColor = Theme.of(context).dividerColor;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Kampüs Fiyatları", showBack: true),
+      appBar: const CustomAppBar(title: "Campus Prices", showBack: true),
       body: FutureBuilder<Map<String, dynamic>>(
           future: _databaseFuture,
           builder: (context, snapshot) {
@@ -37,7 +37,7 @@ class _CampusPricesScreenState extends State<CampusPricesScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!['prices'] == null) {
-              return const Center(child: Text("Fiyat verisi bulunamadı."));
+              return const Center(child: Text("Price data not found."));
             }
 
             final allPrices = snapshot.data!['prices'] as List<dynamic>? ?? [];
@@ -69,7 +69,7 @@ class _CampusPricesScreenState extends State<CampusPricesScreen> {
                       width: double.infinity,
                       decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: dividerColor)),
                       child: items.isEmpty
-                          ? const Center(child: Text("Bu kategoride ürün yok.", style: TextStyle(color: AppTheme.textMuted)))
+                          ? const Center(child: Text("No products in this category.", style: TextStyle(color: AppTheme.textMuted)))
                           : ListView.separated(
                         itemCount: items.length,
                         separatorBuilder: (_, __) => Divider(color: dividerColor, height: 1),

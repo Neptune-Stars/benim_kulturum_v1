@@ -87,7 +87,7 @@ class BenimKulturumApp extends StatelessWidget {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, _) {
         return MaterialApp.router(
-          title: 'Benim Kültürüm',
+          title: 'My Kultur',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

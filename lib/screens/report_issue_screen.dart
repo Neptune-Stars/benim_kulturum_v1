@@ -12,19 +12,19 @@ class ReportIssueScreen extends StatefulWidget {
 
 class _ReportIssueScreenState extends State<ReportIssueScreen> {
   String? _selectedCategory;
-  String _selectedPriority = "Düşük";
+  String _selectedPriority = "Low";
 
   final _subjectController = TextEditingController();
   final _locationController = TextEditingController();
   final _descController = TextEditingController();
 
   final List<String> _categories = [
-    "Altyapı Sorunu",
-    "Temizlik",
-    "Güvenlik",
-    "Teknik Sorun",
-    "Ulaşım",
-    "Diğer",
+    "Infrastructure Issue",
+    "Cleaning",
+    "Security",
+    "Technical Issue",
+    "Transportation",
+    "Other",
   ];
 
   bool get _isFormValid =>
@@ -63,42 +63,36 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  // YENİ: Gerçek Firebase Kayıt İşlemi
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
 
-    // 1. O anki zamanı id ve tarih yazısı olarak al
     int docId = DateTime.now().millisecondsSinceEpoch;
     DateTime now = DateTime.now();
     String formattedDate = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
-    // 2. Veriyi haritala
     Map<String, dynamic> issueData = {
       "id": docId,
-      "category": _selectedCategory ?? "Diğer",
+      "category": _selectedCategory ?? "Other",
       "priority": _selectedPriority,
       "subject": _subjectController.text.trim(),
       "location": _locationController.text.trim().isEmpty
-          ? "Belirtilmedi"
+          ? "Not specified"
           : _locationController.text.trim(),
       "description": _descController.text.trim(),
       "date": formattedDate,
 
-      // Firestore status tracking
-      "status": "Açık",
+      "status": "Open",
       "createdAt": FieldValue.serverTimestamp(),
       "resolvedAt": null,
     };
 
-    // 3. Firebase'e gönder (LAB 08 Mantığı)
     try {
       await FirebaseFirestore.instance.collection('issues').doc(docId.toString()).set(issueData);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gönderilirken bir hata oluştu.")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("An error occurred while submitting.")));
       return;
     }
 
-    // 4. Başarı ekranını göster
     if (!mounted) return;
 
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
@@ -121,7 +115,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Başarılı!",
+                "Success!",
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -130,7 +124,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "Sorun bildiriminiz başarıyla iletildi. En kısa sürede ilgileneceğiz.",
+                "Your issue report has been successfully submitted. We will look into it as soon as possible.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: mutedColor),
               ),
@@ -140,11 +134,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       ),
     );
 
-    // 2 saniye sonra otomatik kapat
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.of(context).pop(); // Dialog'u kapat
-        Navigator.of(context).pop(); // Ekranı kapatıp geri dön
+        Navigator.of(context).pop();
+        Navigator.of(context).pop();
       }
     });
   }
@@ -158,7 +151,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     final borderColor = Theme.of(context).dividerColor;
 
     return Scaffold(
-      appBar: const CustomAppBar(title: "Sorun Bildir", showBack: true),
+      appBar: const CustomAppBar(title: "Report Issue", showBack: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -186,7 +179,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "Kampüste karşılaştığınız sorunları buradan yetkililere iletebilirsiniz.",
+                      "You can report the issues you encounter on campus to the authorities from here.",
                       style: TextStyle(
                         color: textColor,
                         height: 1.4,
@@ -199,7 +192,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             const SizedBox(height: 24),
 
             DropdownButtonFormField<String>(
-              decoration: _inputDecoration(context, label: "Kategori"),
+              decoration: _inputDecoration(context, label: "Category"),
               value: _selectedCategory,
               dropdownColor: Theme.of(context).cardColor,
               style: TextStyle(color: textColor),
@@ -216,7 +209,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             const SizedBox(height: 20),
 
             Text(
-              "Öncelik",
+              "Priority",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -226,13 +219,13 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                _buildPriorityButton(context, "Düşük", AppTheme.successColor),
+                _buildPriorityButton(context, "Low", AppTheme.successColor),
                 const SizedBox(width: 8),
-                _buildPriorityButton(context, "Orta", AppTheme.warningColor),
+                _buildPriorityButton(context, "Medium", AppTheme.warningColor),
                 const SizedBox(width: 8),
                 _buildPriorityButton(
                   context,
-                  "Yüksek",
+                  "High",
                   AppTheme.destructiveColor,
                 ),
               ],
@@ -242,7 +235,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             TextField(
               controller: _subjectController,
               style: TextStyle(color: textColor),
-              decoration: _inputDecoration(context, label: "Konu"),
+              decoration: _inputDecoration(context, label: "Subject"),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 20),
@@ -252,7 +245,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               style: TextStyle(color: textColor),
               decoration: _inputDecoration(
                 context,
-                label: "Konum (İsteğe Bağlı)",
+                label: "Location (Optional)",
               ),
             ),
             const SizedBox(height: 20),
@@ -263,7 +256,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               style: TextStyle(color: textColor),
               decoration: _inputDecoration(
                 context,
-                label: "Açıklama",
+                label: "Description",
                 alignLabelWithHint: true,
               ),
               onChanged: (_) => setState(() {}),
@@ -281,11 +274,11 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   ),
                 ),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Demo: Fotoğraf yükleme özelliği şu an aktif değil.")));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Demo: Photo upload feature is currently not active.")));
                 },
                 icon: Icon(Icons.camera_alt, color: mutedColor),
                 label: Text(
-                  "Fotoğraf Ekle (İsteğe Bağlı)",
+                  "Add Photo (Optional)",
                   style: TextStyle(color: mutedColor),
                 ),
               ),
@@ -302,7 +295,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   disabledForegroundColor: mutedColor,
                 ),
                 child: const Text(
-                  "Gönder",
+                  "Submit",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

@@ -14,12 +14,12 @@ class BuildingDetailScreen extends StatelessWidget {
 
   String _getTypeLabel(String rawType) {
     switch (rawType.toLowerCase()) {
-      case "faculty": return "Akademik Birim";
-      case "admin": return "İdari Birim";
-      case "social": return "Sosyal Alan";
-      case "food": return "Yeme-İçme";
-      case "study": return "Çalışma Alanı";
-      default: return "Kampüs Alanı";
+      case "faculty": return "Academic Unit";
+      case "admin": return "Administrative Unit";
+      case "social": return "Social Area";
+      case "food": return "Food & Beverage";
+      case "study": return "Study Area";
+      default: return "Campus Area";
     }
   }
 
@@ -39,13 +39,12 @@ class BuildingDetailScreen extends StatelessWidget {
     final String type = buildingData['type']?.toString() ?? "unknown";
 
     return Scaffold(
-      appBar: CustomAppBar(title: buildingData['name'] ?? 'Birim Detayı', showBack: true),
+      appBar: CustomAppBar(title: buildingData['name'] ?? 'Unit Details', showBack: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // YENİ TİP İSTATİSTİK KARTI (Gereksiz kat/oda sayıları kaldırıldı)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -63,7 +62,7 @@ class BuildingDetailScreen extends StatelessWidget {
                       children: [
                         Expanded(child: _buildStat(_getTypeIcon(type), _getTypeLabel(type))),
                         Container(width: 1, height: 40, color: AppTheme.borderColor),
-                        Expanded(child: _buildStat(Icons.location_on, buildingData['location'] ?? 'Bilinmiyor')),
+                        Expanded(child: _buildStat(Icons.location_on, buildingData['location'] ?? 'Unknown')),
                       ],
                     ),
                   ],
@@ -72,7 +71,6 @@ class BuildingDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // EĞER BU BİR AKADEMİK BİRİMSE (Fakülte), İÇİNDEKİ DERSLİKLERİ GÖSTER
             if (type == "faculty")
               FutureBuilder<Map<String, dynamic>>(
                 future: DataService.loadDatabase(),
@@ -84,31 +82,29 @@ class BuildingDetailScreen extends StatelessWidget {
 
                   final allClassrooms = snapshot.data!['classrooms'] as List<dynamic>? ?? [];
 
-                  // Derslikleri artık binaya göre değil, bağlı olduğu "birime" göre filtreliyoruz
                   final relatedClassrooms = allClassrooms.where((c) {
                     String cBuilding = c['building']?.toString() ?? "";
-                    // Dersliğin bağlı olduğu birim, açtığımız bu birimin adıyla eşleşiyorsa
                     return cBuilding.contains(buildingData['name']);
                   }).toList();
 
                   if (relatedClassrooms.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Center(child: Text("Bu birime tanımlanmış derslik bulunamadı.", style: TextStyle(color: AppTheme.textMuted))),
+                      child: Center(child: Text("No classrooms found for this unit.", style: TextStyle(color: AppTheme.textMuted))),
                     );
                   }
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SectionHeader(title: "Bağlı Derslikler ve Amfiler"),
+                      const SectionHeader(title: "Associated Classrooms and Lecture Halls"),
                       const SizedBox(height: 10),
                       ...relatedClassrooms.map((c) => Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: InfoCard(
                           title: c['name']?.toString() ?? '',
-                          subtitle: "${c['type']} • Kat ${c['floor']}",
-                          metadata: "Kapasite: ${c['capacity']} Kişi",
+                          subtitle: "${c['type']} • Floor ${c['floor']}",
+                          metadata: "Capacity: ${c['capacity']} People",
                           onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))
