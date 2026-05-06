@@ -263,26 +263,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     return isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
   }
 
-  Color _adminPrimaryColor() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? AppTheme.primaryLight : AppTheme.primaryColor;
-  }
-
-  Color _adminTextPrimaryColor() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? AppTheme.darkTextPrimary : AppTheme.textPrimary;
-  }
-
-  Color _adminTextMutedColor() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
-  }
-
-  Color _adminBorderColor() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
-  }
-
   String _normalizeForSearch(String text) {
     return text.toLowerCase().replaceAll('i̇', 'i').replaceAll('ı', 'i').replaceAll('ğ', 'g')
         .replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c');

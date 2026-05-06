@@ -55,12 +55,12 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GridView.count(
-                  crossAxisCount: 4,
+                  crossAxisCount: 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
+                  mainAxisSpacing: 6,
                   crossAxisSpacing: 8,
-                  childAspectRatio: 0.72,
+                  childAspectRatio: 1,
                   children: [
                     QuickActionCard(
                       icon: Icons.meeting_room_outlined,

@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _autoFill() {
     setState(() {
       if (_isStudent) {
-        _emailController.text = "ogrenci@uni.edu.tr";
+        _emailController.text = "student@uni.edu.tr";
         _passwordController.text = "123456";
       } else {
         _emailController.text = "admin@uni.edu.tr";
@@ -212,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Text("Demo Hesap Bilgileri", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 8),
-                    Text(_isStudent ? "ogrenci@uni.edu.tr / 123456" : "admin@uni.edu.tr / admin123", style: TextStyle(color: mutedColor), textAlign: TextAlign.center),
+                    Text(_isStudent ? "student@uni.edu.tr / 123456" : "admin@uni.edu.tr / admin123", style: TextStyle(color: mutedColor), textAlign: TextAlign.center),
                     const SizedBox(height: 12),
                     TextButton.icon(onPressed: _autoFill, icon: const Icon(Icons.edit, size: 18), label: const Text("Otomatik Doldur")),
                   ],
