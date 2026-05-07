@@ -22,6 +22,7 @@ import 'privacy_policy_screen.dart';
 import 'help_support_screen.dart';
 import 'support_chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
@@ -41,12 +42,12 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Profil Fotoğrafı", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+                Text("Profile Photo", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                 const SizedBox(height: 12),
                 ListTile(
                   leading: const Icon(Icons.photo_library_outlined, color: AppTheme.primaryColor),
-                  title: Text("Galeriden Seç", style: TextStyle(color: textColor)),
-                  subtitle: Text("Profil fotoğrafı ekle", style: TextStyle(color: mutedColor)),
+                  title: Text("Choose from Gallery", style: TextStyle(color: textColor)),
+                  subtitle: Text("Add a profile photo", style: TextStyle(color: mutedColor)),
                   onTap: () async {
                     Navigator.pop(bottomSheetContext);
                     await context.read<ProfileProvider>().pickProfileImageFromGallery();
@@ -54,7 +55,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: AppTheme.destructiveColor),
-                  title: Text("Fotoğrafı Kaldır", style: TextStyle(color: textColor)),
+                  title: Text("Remove Photo", style: TextStyle(color: textColor)),
                   onTap: () async {
                     Navigator.pop(bottomSheetContext);
                     await context.read<ProfileProvider>().removeProfileImage();
@@ -133,13 +134,12 @@ class ProfileScreen extends StatelessWidget {
     final favCount = context.watch<FavoritesProvider>().favorites.length;
     final joinedCount = context.watch<JoinedEventsProvider>().joinedCount;
 
-    // YENİ: AuthProvider'dan giriş yapan kullanıcının verisini çekiyoruz
     final authProvider = context.watch<AuthProvider>();
     final userData = authProvider.userData ?? {};
 
-    final String userName = userData['name'] ?? 'İsimsiz Kullanıcı';
-    final String userNo = userData['no'] ?? 'Numara Yok';
-    final String userGrade = userData['grade'] ?? 'Bilgi Yok';
+    final String userName = userData['name'] ?? 'Unknown User';
+    final String userNo = userData['no'] ?? 'No Number';
+    final String userGrade = userData['grade'] ?? 'No Info';
 
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
@@ -199,7 +199,7 @@ class ProfileScreen extends StatelessWidget {
                                   children: [
                                     Text(favCount.toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                                     const SizedBox(height: 4),
-                                    Text("Favori", style: TextStyle(color: mutedColor)),
+                                    Text("Favorites", style: TextStyle(color: mutedColor)),
                                   ],
                                 ),
                               ),
@@ -218,7 +218,7 @@ class ProfileScreen extends StatelessWidget {
                                   children: [
                                     Text(joinedCount.toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                                     const SizedBox(height: 4),
-                                    Text("Etkinliklerim", textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: mutedColor)),
+                                    Text("My Events", textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: mutedColor)),
                                   ],
                                 ),
                               ),
@@ -228,7 +228,7 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    Text("Ayarlar", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+                    Text("Settings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 12),
                     Card(
                       child: Column(
@@ -236,7 +236,7 @@ class ProfileScreen extends StatelessWidget {
                           Consumer<NotificationProvider>(
                             builder: (context, notificationProvider, _) {
                               return _buildSwitchRow(
-                                context: context, icon: Icons.notifications_none, label: "Bildirimler",
+                                context: context, icon: Icons.notifications_none, label: "Notifications",
                                 value: notificationProvider.notificationsEnabled,
                                 onChanged: (value) => context.read<NotificationProvider>().setNotifications(value),
                               );
@@ -246,24 +246,23 @@ class ProfileScreen extends StatelessWidget {
                           Consumer<ThemeProvider>(
                             builder: (context, themeProvider, _) {
                               return _buildSwitchRow(
-                                context: context, icon: Icons.dark_mode_outlined, label: "Karanlık Mod",
+                                context: context, icon: Icons.dark_mode_outlined, label: "Dark Mode",
                                 value: themeProvider.isDarkMode,
                                 onChanged: (value) => context.read<ThemeProvider>().setDarkMode(value),
                               );
                             },
                           ),
                           const Divider(height: 1),
-                          const SettingsRow(icon: Icons.language, label: "Dil", value: "Türkçe"),
+                          const SettingsRow(icon: Icons.language, label: "Language", value: "English"),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text("Destek", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+                    Text("Support", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 12),
                     Card(
                       child: Column(
                         children: [
-                          //  Live Support eklendi
                           SettingsRow(
                             icon: Icons.chat_bubble_outline,
                             label: "Live Support",
@@ -283,11 +282,11 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const Divider(height: 1),
-                          SettingsRow(icon: Icons.help_outline, label: "Yardım & Destek", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()))),
+                          SettingsRow(icon: Icons.help_outline, label: "Help & Support", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()))),
                           const Divider(height: 1),
-                          SettingsRow(icon: Icons.report_problem_outlined, label: "Sorun Bildir", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportIssueScreen()))),
+                          SettingsRow(icon: Icons.report_problem_outlined, label: "Report Issue", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportIssueScreen()))),
                           const Divider(height: 1),
-                          SettingsRow(icon: Icons.privacy_tip_outlined, label: "Gizlilik Politikası", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
+                          SettingsRow(icon: Icons.privacy_tip_outlined, label: "Privacy Policy", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
                         ],
                       ),
                     ),
@@ -305,7 +304,7 @@ class ProfileScreen extends StatelessWidget {
                           context.go('/login');
                         },
                         icon: const Icon(Icons.logout),
-                        label: const Text("Çıkış Yap", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        label: const Text("Log Out", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 32),

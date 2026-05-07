@@ -7,6 +7,7 @@ import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../data/data_service.dart';
 
+
 class OfficeHoursScreen extends StatefulWidget {
 
   const OfficeHoursScreen({super.key});
@@ -17,22 +18,22 @@ class OfficeHoursScreen extends StatefulWidget {
 
 class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "Tümü";
+  String _selectedFilter = "All";
 
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  final List<String> _filters = ["Tümü", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+  final List<String> _filters = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   @override
   void initState() {
     super.initState();
-    _databaseFuture = DataService.loadDatabase(); // Silinmedi, burada duruyor.
+    _databaseFuture = DataService.loadDatabase();
   }
 
 
   List<Map<String, String>> _generateDynamicOfficeHours(List<dynamic> instructors) {
     List<Map<String, String>> generatedList = [];
-    final days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+    final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
     for (int i = 0; i < instructors.length; i++) {
       var instructor = instructors[i];
@@ -41,7 +42,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
 
       generatedList.add({
         "name": instructor['name']?.toString() ?? "",
-        "office": instructor['office']?.toString() ?? "Bilinmiyor",
+        "office": instructor['office']?.toString() ?? "Unknown",
         "day": day1,
         "time": "10:00-12:00",
         "dept": instructor['department']?.toString() ?? ""
@@ -49,7 +50,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
 
       generatedList.add({
         "name": instructor['name']?.toString() ?? "",
-        "office": instructor['office']?.toString() ?? "Bilinmiyor",
+        "office": instructor['office']?.toString() ?? "Unknown",
         "day": day2,
         "time": "14:00-16:00",
         "dept": instructor['department']?.toString() ?? ""
@@ -58,7 +59,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
     return generatedList;
   }
 
-  // YENİ: Gerçek Firestore verisini parçalayan yardımcı fonksiyon
   List<Map<String, String>> _processRealOfficeHours(List<QueryDocumentSnapshot> docs) {
     List<Map<String, String>> finalHoursList = [];
 
@@ -66,21 +66,28 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
       final data = doc.data() as Map<String, dynamic>;
       final String name = data['name'] ?? "";
       final String dept = data['department'] ?? "";
-      final String office = data['office'] ?? "Bilinmiyor";
+      final String office = data['office'] ?? "Unknown";
 
-      // Eğer Firestore'da ofis saati varsa onu al, yoksa varsayılan listeyi kullan
       final List<dynamic> hours = (data['officeHours'] is List && (data['officeHours'] as List).isNotEmpty)
           ? data['officeHours']
-          : ["Pazartesi: 10:00-12:00", "Çarşamba: 14:00-16:00"];
+          : ["Monday: 10:00-12:00", "Wednesday: 14:00-16:00"];
 
       for (var hourEntry in hours) {
         String hourStr = hourEntry.toString();
-        String day = "Görüşme";
+        String day = "Meeting";
         String time = hourStr;
 
         if (hourStr.contains(':')) {
           var parts = hourStr.split(':');
           day = parts[0].trim();
+
+          // Translating basic Turkish days from DB if present
+          if (day == "Pazartesi") day = "Monday";
+          if (day == "Salı") day = "Tuesday";
+          if (day == "Çarşamba") day = "Wednesday";
+          if (day == "Perşembe") day = "Thursday";
+          if (day == "Cuma") day = "Friday";
+
           time = parts.sublist(1).join(':').trim();
         }
 
@@ -99,8 +106,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: "Ofis Saatleri", showBack: true),
-      // FutureBuilder yerine StreamBuilder gelerek veriyi "CANLI" hale getirdik
+      appBar: const CustomAppBar(title: "Office Hours", showBack: true),
       body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('instructors').snapshots(),
           builder: (context, snapshot) {
@@ -108,10 +114,9 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text("Veri bulunamadı."));
+              return const Center(child: Text("Data not found."));
             }
 
-            // Artık yapay veri değil, Firestore'dan gelen gerçek veri işleniyor
             final allOfficeHours = _processRealOfficeHours(snapshot.data!.docs);
 
             final filteredHours = allOfficeHours.where((oh) {
@@ -122,7 +127,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
               final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   dept.toLowerCase().contains(_searchQuery.toLowerCase());
 
-              // GÜNCELLENEN ESNEK FİLTRELEME: Türkçe karakterleri normalize ediyoruz
               String normalize(String text) {
                 return text.toLowerCase()
                     .replaceAll('ş', 's').replaceAll('ı', 'i')
@@ -130,7 +134,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                     .replaceAll('ü', 'u').replaceAll('ö', 'o');
               }
 
-              final matchesFilter = _selectedFilter == "Tümü" ||
+              final matchesFilter = _selectedFilter == "All" ||
                   normalize(day) == normalize(_selectedFilter);
 
               return matchesSearch && matchesFilter;
@@ -141,7 +145,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: AppSearchBar(
-                    placeholder: "Hoca veya bölüm ara...",
+                    placeholder: "Search instructor or department...",
                     onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),
@@ -164,7 +168,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: filteredHours.isEmpty
-                      ? const Center(child: Text("Sonuç bulunamadı", style: TextStyle(color: AppTheme.textMuted)))
+                      ? const Center(child: Text("No results found", style: TextStyle(color: AppTheme.textMuted)))
                       : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     itemCount: filteredHours.length,
@@ -173,7 +177,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                       return InfoCard(
                         title: oh['name'] ?? "",
                         subtitle: oh['dept'] ?? "",
-                        metadata: "${oh['day'] ?? ""} • ${oh['time'] ?? ""} | Ofis: ${oh['office'] ?? ""}",
+                        metadata: "${oh['day'] ?? ""} • ${oh['time'] ?? ""} | Office: ${oh['office'] ?? ""}",
                         showChevron: false,
                       );
                     },

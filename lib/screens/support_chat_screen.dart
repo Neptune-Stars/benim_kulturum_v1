@@ -21,7 +21,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final text = _controller.text.trim();
     _controller.clear();
 
-    // 1. Add message to the sub-collection
     await FirebaseFirestore.instance
         .collection('support_chats')
         .doc(widget.userId)
@@ -32,7 +31,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    // 2. Update the main document for the Admin List
     await FirebaseFirestore.instance.collection('support_chats').doc(widget.userId).set({
       'lastMessage': text,
       'lastMessageTime': FieldValue.serverTimestamp(),

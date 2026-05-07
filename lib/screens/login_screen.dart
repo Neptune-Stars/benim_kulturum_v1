@@ -15,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isStudent = true;
   bool _obscureText = true;
-  bool _isLoading = false; // YENİ: Yükleniyor durumu eklendi
+  bool _isLoading = false;
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -34,13 +34,12 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  // YENİ: GERÇEK ZAMANLI FİREBASE GİRİŞ SORGUSU
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = "E-posta ve şifre boş bırakılamaz.");
+      setState(() => _errorMessage = "Email and password cannot be empty.");
       return;
     }
 
@@ -50,21 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // YÖNETİCİ GİRİŞİ
       if (!_isStudent) {
         if (email == "admin@uni.edu.tr" && password == "admin123") {
-          // Admin için sahte (mock) bir kullanıcı profili oluşturuyoruz
           context.read<AuthProvider>().login("admin", data: {
-            "name": "Sistem Yöneticisi",
+            "name": "System Administrator",
             "no": "Admin",
-            "grade": "Personel"
+            "grade": "Staff"
           });
           context.go('/admin');
         } else {
-          setState(() => _errorMessage = "Yönetici e-posta veya şifresi hatalı.");
+          setState(() => _errorMessage = "Invalid admin email or password.");
         }
       }
-      // ÖĞRENCİ GİRİŞİ
       else {
         var querySnapshot = await FirebaseFirestore.instance
             .collection('students')
@@ -73,18 +69,16 @@ class _LoginScreenState extends State<LoginScreen> {
             .get();
 
         if (querySnapshot.docs.isNotEmpty) {
-          // YENİ: Öğrencinin Firebase'deki tüm verisini al
           final studentData = querySnapshot.docs.first.data();
 
-          // YENİ: Veriyi AuthProvider'a göndererek giriş yap
           context.read<AuthProvider>().login("student", data: studentData);
           context.go('/main');
         } else {
-          setState(() => _errorMessage = "Kayıtlı öğrenci bulunamadı veya şifre hatalı.");
+          setState(() => _errorMessage = "Registered student not found or invalid password.");
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = "Veritabanı bağlantı hatası oluştu.");
+      setState(() => _errorMessage = "A database connection error occurred.");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -130,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               const Icon(Icons.school, size: 64, color: AppTheme.primaryColor),
               const SizedBox(height: 24),
-              Text("Giriş Yap", textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor)),
+              Text("Log In", textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 32),
 
               Row(
@@ -144,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: _isStudent ? AppTheme.primaryColor : borderColor)),
                       ),
                       onPressed: () => setState(() { _isStudent = true; _errorMessage = null; }),
-                      child: const Text("Öğrenci"),
+                      child: const Text("Student"),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -157,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: !_isStudent ? AppTheme.primaryColor : borderColor)),
                       ),
                       onPressed: () => setState(() { _isStudent = false; _errorMessage = null; }),
-                      child: const Text("Yönetici"),
+                      child: const Text("Admin"),
                     ),
                   ),
                 ],
@@ -179,13 +173,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
               TextField(
                 controller: _emailController, keyboardType: TextInputType.emailAddress, style: TextStyle(color: textColor),
-                decoration: _inputDecoration(context, label: "E-posta", icon: Icons.email_outlined),
+                decoration: _inputDecoration(context, label: "Email", icon: Icons.email_outlined),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController, obscureText: _obscureText, style: TextStyle(color: textColor),
                 decoration: _inputDecoration(
-                  context, label: "Şifre", icon: Icons.lock_outline,
+                  context, label: "Password", icon: Icons.lock_outline,
                   suffixIcon: IconButton(
                     icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: mutedColor),
                     onPressed: () => setState(() => _obscureText = !_obscureText),
@@ -200,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _isLoading ? null : _login,
                   child: _isLoading
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text("Giriş Yap", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      : const Text("Log In", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 36),
@@ -210,11 +204,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.04) : AppTheme.primaryLight.withOpacity(0.05), borderRadius: BorderRadius.circular(14), border: Border.all(color: borderColor)),
                 child: Column(
                   children: [
-                    Text("Demo Hesap Bilgileri", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+                    Text("Demo Account Details", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 8),
                     Text(_isStudent ? "student@uni.edu.tr / 123456" : "admin@uni.edu.tr / admin123", style: TextStyle(color: mutedColor), textAlign: TextAlign.center),
                     const SizedBox(height: 12),
-                    TextButton.icon(onPressed: _autoFill, icon: const Icon(Icons.edit, size: 18), label: const Text("Otomatik Doldur")),
+                    TextButton.icon(onPressed: _autoFill, icon: const Icon(Icons.edit, size: 18), label: const Text("Auto Fill")),
                   ],
                 ),
               ),
