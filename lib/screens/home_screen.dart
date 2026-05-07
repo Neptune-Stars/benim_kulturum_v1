@@ -7,7 +7,6 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/quick_action_card.dart';
 import '../widgets/section_header.dart';
 import '../widgets/info_card.dart';
-import '../widgets/badge_widget.dart';
 
 import 'classrooms_screen.dart';
 import 'buildings_screen.dart';
@@ -55,12 +54,12 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GridView.count(
-                  crossAxisCount: 4,
+                  crossAxisCount: 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 0.72,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.82,
                   children: [
                     QuickActionCard(
                       icon: Icons.meeting_room_outlined,
@@ -198,7 +197,9 @@ class HomeScreen extends StatelessWidget {
                 future: DataService.loadDatabase(),
                 builder: (context, snapshot) {
                   final data = snapshot.data ?? {};
-                  final announcements = data['announcements'] as List<dynamic>? ?? [];
+                  final announcements = _sortAnnouncements(
+                    data['announcements'] as List<dynamic>? ?? [],
+                  );
                   final events = data['events'] as List<dynamic>? ?? [];
 
                   return Column(
@@ -218,9 +219,7 @@ class HomeScreen extends StatelessWidget {
                               title: item['title']?.toString() ?? '',
                               subtitle: _announcementDateText(item),
                               metadata: item['content']?.toString() ?? '',
-                              badge: item['isNew'] == true
-                                  ? const AppBadge(label: "New")
-                                  : null,
+                              badge: null,
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -336,6 +335,53 @@ class HomeScreen extends StatelessWidget {
     }
 
     return date;
+  }
+
+  DateTime? _parseAnnouncementDate(dynamic value) {
+    if (value == null) return null;
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+
+    final isoDate = DateTime.tryParse(text);
+    if (isoDate != null) return isoDate;
+
+    final slashDate = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(text);
+    if (slashDate != null) {
+      final day = int.tryParse(slashDate.group(1)!);
+      final month = int.tryParse(slashDate.group(2)!);
+      final year = int.tryParse(slashDate.group(3)!);
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    return null;
+  }
+
+  DateTime? _announcementDateTime(Map<dynamic, dynamic> item) {
+    return _parseAnnouncementDate(item['publishAt']) ??
+        _parseAnnouncementDate(item['publishDate']) ??
+        _parseAnnouncementDate(item['date']) ??
+        _parseAnnouncementDate(item['createdAt']) ??
+        _parseAnnouncementDate(item['updatedAt']);
+  }
+
+  List<dynamic> _sortAnnouncements(List<dynamic> announcements) {
+    final sorted = List<dynamic>.from(announcements);
+
+    sorted.sort((a, b) {
+      final aDate = _announcementDateTime(Map<dynamic, dynamic>.from(a as Map));
+      final bDate = _announcementDateTime(Map<dynamic, dynamic>.from(b as Map));
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      return bDate.compareTo(aDate);
+    });
+
+    return sorted;
   }
 
   String _menuDescription(List<dynamic> items) {
