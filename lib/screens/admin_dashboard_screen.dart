@@ -527,18 +527,234 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildBuildingsTab() {
-    return _buildCollectionFutureTab(
-      future: _buildingsFuture,
-      tabIndex: 1,
-      title: "Campus Units",
-      searchController: _searchControllers[1]!,
-      searchFields: const ['name', 'location'],
-      onAdd: () => _openBuildingForm(isEdit: false),
-      itemBuilder: (e) => _buildListItem(
-        e['name'] ?? '',
-        e['location'] ?? '',
-            () => _openBuildingForm(isEdit: true, item: e),
-            () => _showDeleteDialog('buildings', (e['firestoreDocId'] ?? e['id']).toString()),
+    final future = _buildingsFuture;
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(1));
+      return _buildListSkeleton("Loading Campus Units...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading Campus Units...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch Campus Units data.",
+            onRetry: () => _refreshTab(1),
+          );
+        }
+
+        final allUnits = snapshot.data ?? <Map<String, dynamic>>[];
+        final sq = _normalizeForSearch(_searchControllers[1]!.text);
+        final filteredUnits = allUnits.where((unit) {
+          if (sq.isEmpty) return true;
+          return _normalizeForSearch(unit['name']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(unit['location']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(unit['campus']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(unit['type']?.toString() ?? '').contains(sq);
+        }).toList();
+
+        final campusCards = <Map<String, String>>[
+          {'title': 'Ataköy Campus', 'key': 'Ataköy'},
+          {'title': 'İncirli Campus', 'key': 'İncirli'},
+          {'title': 'Basın Ekspres Campus', 'key': 'Basın Ekspres'},
+          {'title': 'Şirinevler Campus', 'key': 'Şirinevler'},
+        ];
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Campus Units (${filteredUnits.length})",
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _openBuildingForm(isEdit: false),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Add"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: AppSearchBar(
+                controller: _searchControllers[1]!,
+                placeholder: "Search unit or campus...",
+                onChanged: (val) => setState(() {}),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: campusCards.length,
+                itemBuilder: (context, index) {
+                  final campus = campusCards[index];
+                  final campusKey = campus['key']!;
+                  final campusTitle = campus['title']!;
+                  final unitsForCampus = filteredUnits.where((unit) {
+                    return _unitCampusKey(unit) == campusKey;
+                  }).toList()
+                    ..sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
+
+                  return _buildCampusUnitCard(
+                    title: campusTitle,
+                    campusKey: campusKey,
+                    units: unitsForCampus,
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _unitCampusKey(Map<dynamic, dynamic> unit) {
+    final explicitCampus = unit['campus']?.toString() ?? '';
+    if (explicitCampus.trim().isNotEmpty) {
+      return _matchCampusKey(explicitCampus);
+    }
+
+    final location = unit['location']?.toString() ?? '';
+    if (location.trim().isNotEmpty) {
+      final firstPart = location.split(',').first.trim();
+      return _matchCampusKey(firstPart);
+    }
+
+    final building = unit['building']?.toString() ?? '';
+    if (building.trim().isNotEmpty) {
+      final firstPart = building.split(',').first.trim();
+      return _matchCampusKey(firstPart);
+    }
+
+    return 'Ataköy';
+  }
+
+  String _matchCampusKey(String rawCampus) {
+    final value = rawCampus.toLowerCase().trim();
+
+    if (value.contains('atak')) return 'Ataköy';
+    if (value.contains('incir') || value.contains('ıncir') || value.contains('i̇ncir')) return 'İncirli';
+    if (value.contains('bas') || value.contains('baş') || value.contains('ekspres') || value.contains('küçük') || value.contains('kucuk')) {
+      return 'Basın Ekspres';
+    }
+    if (value.contains('sirin') || value.contains('şirin') || value.contains('bahcel') || value.contains('bahçel')) {
+      return 'Şirinevler';
+    }
+
+    return 'Ataköy';
+  }
+
+  Widget _buildCampusUnitCard({
+    required String title,
+    required String campusKey,
+    required List<Map<String, dynamic>> units,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: _adminBorderColor()),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        leading: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: _adminPrimaryColor().withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.location_city_outlined,
+            color: _adminPrimaryColor(),
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: _adminTextPrimaryColor(),
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Text(
+          "${units.length} unit(s)",
+          style: TextStyle(
+            color: _adminTextMutedColor(),
+            fontSize: 13,
+          ),
+        ),
+        trailing: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 2,
+          children: [
+            IconButton(
+              tooltip: "Add unit to $title",
+              onPressed: () => _openBuildingForm(
+                isEdit: false,
+                defaultCampus: campusKey,
+              ),
+              icon: Icon(
+                Icons.add_circle_outline,
+                color: _adminPrimaryColor(),
+              ),
+            ),
+            Icon(
+              Icons.expand_more,
+              color: _adminTextMutedColor(),
+            ),
+          ],
+        ),
+        children: [
+          if (units.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: (Theme.of(context).brightness == Brightness.dark ? AppTheme.darkBorderColor : AppTheme.backgroundColor),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                "No units added for this campus yet.",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
+            )
+          else
+            ...units.map((unit) {
+              return Column(
+                children: [
+                  _buildListItem(
+                    unit['name']?.toString() ?? 'Unnamed unit',
+                    "${unit['type']?.toString() ?? 'Unit'} • ${unit['location']?.toString() ?? campusKey}",
+                        () => _openBuildingForm(isEdit: true, item: unit),
+                        () => _showDeleteDialog(
+                      'buildings',
+                      (unit['firestoreDocId'] ?? unit['id']).toString(),
+                    ),
+                  ),
+                  if (unit != units.last) const Divider(height: 18),
+                ],
+              );
+            }),
+        ],
       ),
     );
   }
@@ -783,6 +999,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     return DateTime.now().millisecondsSinceEpoch.toString();
   }
 
+  bool _isDefaultPriceCategory(String category) {
+    return _priceCategoryOptions.contains(category.trim());
+  }
+
   Widget _buildPricesTab() {
     final pricesFuture = _pricesFuture;
     final categoriesFuture = _priceCategoriesFuture;
@@ -941,6 +1161,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 defaultCategory: category,
               ),
             ),
+            if (!_isDefaultPriceCategory(category))
+              IconButton(
+                tooltip: "Delete category",
+                icon: const Icon(Icons.delete_outline),
+                color: AppTheme.destructiveColor,
+                onPressed: () => _openDeletePriceCategoryDialog(category, items),
+              ),
             const Icon(Icons.expand_more),
           ],
         ),
@@ -1875,6 +2102,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final cCount = summary['classrooms'] ?? 0;
     final iCount = summary['instructors'] ?? 0;
     final eCount = summary['events'] ?? 0;
+    final announcementCount = summary['announcements'] ?? 0;
+    final cafeteriaCount = summary['cafeteriaMenus'] ?? 0;
+    final priceCount = summary['prices'] ?? 0;
     final issueCount = summary['issues'] ?? 0;
     final studentCount = summary['students'] ?? 0;
 
@@ -1882,12 +2112,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       onRefresh: () async => _refreshTab(0),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -1895,8 +2125,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.cloud_done, color: AppTheme.primaryColor),
-                  SizedBox(width: 12),
+                  Icon(Icons.cloud_done, color: AppTheme.primaryColor, size: 20),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Google Firebase Cloud Active",
@@ -1909,39 +2139,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final crossAxisCount = width >= 720 ? 3 : 2;
-                final aspectRatio = width < 380 ? 1.08 : 1.22;
-
-                return GridView.count(
-                  crossAxisCount: crossAxisCount,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: aspectRatio,
-                  children: [
-                    _buildStatCard(Icons.business, "Units", bCount.toString(), 1),
-                    _buildStatCard(Icons.meeting_room, "Classrooms", cCount.toString(), 2),
-                    _buildStatCard(Icons.people, "Instructors", iCount.toString(), 3),
-                    _buildStatCard(Icons.event, "Events", eCount.toString(), 4),
-                    _buildStatCard(Icons.report_problem, "Issues", issueCount.toString(), 8),
-                    _buildStatCard(Icons.person, "Students", studentCount.toString(), 9),
-                    _buildSupportCard(),
-                  ],
-                );
-              },
+            const SizedBox(height: 16),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.88,
+              children: [
+                _buildStatCard(Icons.business, "Units", bCount.toString(), 1),
+                _buildStatCard(Icons.meeting_room, "Classrooms", cCount.toString(), 2),
+                _buildStatCard(Icons.people, "Instructors", iCount.toString(), 3),
+                _buildStatCard(Icons.event, "Events", eCount.toString(), 4),
+                _buildStatCard(Icons.campaign, "Announcements", announcementCount.toString(), 5),
+                _buildStatCard(Icons.restaurant_menu, "Cafeteria", cafeteriaCount.toString(), 6),
+                _buildStatCard(Icons.attach_money, "Prices", priceCount.toString(), 7),
+                _buildStatCard(Icons.report_problem, "Issues", issueCount.toString(), 8),
+                _buildStatCard(Icons.person, "Students", studentCount.toString(), 9),
+              ],
             ),
+            const SizedBox(height: 12),
+            _buildSupportShortcutTile(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSupportCard() {
+  Widget _buildSupportShortcutTile() {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -1951,49 +2177,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: _adminBorderColor()),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(
-                  Icons.support_agent,
-                  color: _adminPrimaryColor(),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: _adminTextMutedColor(),
-                  size: 20,
-                ),
-              ],
+            Icon(
+              Icons.support_agent,
+              color: _adminPrimaryColor(),
+              size: 20,
             ),
-            const Spacer(),
-            Text(
-              "Live Support",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: _adminTextPrimaryColor(),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Live Support Messages",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: _adminTextPrimaryColor(),
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              "Messages",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _adminTextMutedColor(),
-                fontSize: 13,
-              ),
+            Icon(
+              Icons.chevron_right,
+              color: _adminTextMutedColor(),
+              size: 18,
             ),
           ],
         ),
@@ -2006,7 +2218,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       onTap: () => _switchTab(tabIndex),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
@@ -2014,7 +2226,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2022,29 +2234,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 Icon(
                   icon,
                   color: _adminPrimaryColor(),
+                  size: 18,
                 ),
                 Icon(
                   Icons.chevron_right,
                   color: _adminTextMutedColor(),
-                  size: 20,
+                  size: 16,
                 ),
               ],
             ),
-            const Spacer(),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: _adminTextPrimaryColor(),
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: _adminTextMutedColor(),
-                fontSize: 14,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: _adminTextPrimaryColor(),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _adminTextMutedColor(),
+                    fontSize: 11.5,
+                    height: 1.15,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -2362,7 +2585,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         'name': nameCtrl.text,
                         'no': noCtrl.text,
                         'email': emailCtrl.text,
-                        'password': passCtrl.text, 
+                        'password': passCtrl.text,
                         'grade': selectedGrade ?? '1st Grade'
                       };
                       await FirebaseFirestore.instance.collection('students').doc(docId.toString()).set(newData);
@@ -2373,6 +2596,77 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ],
             );
           }
+      ),
+    );
+  }
+
+  void _openDeletePriceCategoryDialog(
+      String category,
+      List<Map<String, dynamic>> items,
+      ) {
+    if (_isDefaultPriceCategory(category)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Default categories cannot be deleted.")),
+      );
+      return;
+    }
+
+    if (items.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text(
+            "Category cannot be deleted",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            "'$category' contains ${items.length} product(s). Delete or move the products in this category first.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          "Delete Category",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          "Are you sure you want to delete '$category'? This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              await DataService.deletePriceCategory(category);
+
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("'$category' category deleted.")),
+              );
+              _refreshAdminData(collectionKey: 'priceCategories');
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: AppTheme.destructiveColor),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2519,46 +2813,77 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item}) {
-    final nameCtrl = TextEditingController(text: item?['name']);
-    final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
-    final List<String> locationOptions = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "Basement Floor", "Garden"];
-    String? selectedCampus;
-    String? selectedLocation;
+  void _openBuildingForm({required bool isEdit, Map<dynamic, dynamic>? item, String? defaultCampus}) {
+    final nameCtrl = TextEditingController(text: item?['name']?.toString() ?? '');
+    final locationCtrl = TextEditingController(
+      text: item?['location']?.toString() ?? (defaultCampus == null ? '' : '$defaultCampus Campus'),
+    );
 
-    String? _matchOption(List<String> options, String? rawValue) {
+    final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
+    final List<String> unitTypeOptions = [
+      "Academic Unit",
+      "Classroom",
+      "Laboratory",
+      "Library",
+      "Hall",
+      "Auditorium",
+      "Health Unit",
+      "Food & Drink",
+      "Student Services",
+      "Security",
+      "Service",
+      "Office",
+      "Workshop",
+    ];
+
+    String? _matchCampusOption(String? rawValue) {
       if (rawValue == null) return null;
-      final value = rawValue.trim();
+      final value = rawValue.toLowerCase().trim();
       if (value.isEmpty) return null;
 
-      if (options.contains(value)) return value;
-
-      final lowerValue = value.toLowerCase();
-      for (final opt in options) {
-        final lowerOpt = opt.toLowerCase();
-        if (lowerOpt.contains(lowerValue) || lowerValue.contains(lowerOpt)) {
-          return opt;
-        }
-      }
+      if (value.contains('atak')) return "Ataköy";
+      if (value.contains('incir') || value.contains('ıncir') || value.contains('i̇ncir')) return "İncirli";
+      if (value.contains('bas') || value.contains('baş') || value.contains('ekspres') || value.contains('küçük') || value.contains('kucuk')) return "Basın Ekspres";
+      if (value.contains('sirin') || value.contains('şirin') || value.contains('bahcel') || value.contains('bahçel')) return "Şirinevler";
       return null;
     }
 
-    if (item != null && item['location'] != null) {
-      String loc = item['location'].toString();
-      String rawCampus;
-      String? rawLocation;
+    String _normalizeUnitType(String? rawValue) {
+      final value = (rawValue ?? '')
+          .trim()
+          .toLowerCase()
+          .replaceAll('_', ' ')
+          .replaceAll('-', ' ');
 
-      if (loc.contains(',')) {
-        var parts = loc.split(',');
-        rawCampus = parts[0].trim();
-        rawLocation = parts.length > 1 ? parts[1].trim() : null;
-      } else {
-        rawCampus = loc.trim();
-        rawLocation = null;
+      if (value.isEmpty) return "Academic Unit";
+      if (value.contains('faculty') || value.contains('school') || value.contains('department') || value.contains('academic unit')) {
+        return "Academic Unit";
       }
+      if (value.contains('classroom') || value.contains('lecture')) return "Classroom";
+      if (value.contains('laboratory') || value.contains('lab')) return "Laboratory";
+      if (value.contains('library')) return "Library";
+      if (value.contains('auditorium')) return "Auditorium";
+      if (value.contains('hall') || value.contains('courtroom')) return "Hall";
+      if (value.contains('health') || value.contains('infirmary') || value.contains('revir')) return "Health Unit";
+      if (value.contains('cafe') || value.contains('restaurant') || value.contains('canteen') || value.contains('food')) return "Food & Drink";
+      if (value.contains('student service') || value.contains('student_services')) return "Student Services";
+      if (value.contains('security')) return "Security";
+      if (value.contains('office')) return "Office";
+      if (value.contains('workshop') || value.contains('factory')) return "Workshop";
+      if (value.contains('service') || value.contains('bank') || value.contains('stationery') || value.contains('hairdresser')) return "Service";
 
-      selectedCampus = _matchOption(campusOptions, rawCampus);
-      selectedLocation = _matchOption(locationOptions, rawLocation);
+      return "Academic Unit";
+    }
+
+    String? selectedCampus = defaultCampus != null && campusOptions.contains(defaultCampus)
+        ? defaultCampus
+        : _matchCampusOption(item?['campus']?.toString()) ?? _matchCampusOption(item?['location']?.toString());
+
+    selectedCampus ??= campusOptions.first;
+
+    String selectedType = _normalizeUnitType(item?['type']?.toString());
+    if (!unitTypeOptions.contains(selectedType)) {
+      selectedType = "Academic Unit";
     }
 
     showDialog(
@@ -2566,34 +2891,93 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: Text(isEdit ? "Edit: Unit/Area" : "Add New Unit", style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              isEdit ? "Edit: Unit/Area" : "Add New Unit",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Unit Name (e.g. Faculty of Law)")),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: "Unit Name"),
+                  ),
                   const SizedBox(height: 12),
-                  _buildDropdown("Select Campus", campusOptions, value: selectedCampus, onChanged: (val) => setDialogState(() => selectedCampus = val)),
+                  _buildDropdown(
+                    "Campus",
+                    campusOptions,
+                    value: selectedCampus,
+                    onChanged: (val) => setDialogState(() => selectedCampus = val),
+                  ),
                   const SizedBox(height: 12),
-                  _buildDropdown("Select Location/Floor", locationOptions, value: selectedLocation, onChanged: (val) => setDialogState(() => selectedLocation = val)),
+                  _buildDropdown(
+                    "Unit Category",
+                    unitTypeOptions,
+                    value: unitTypeOptions.contains(selectedType) ? selectedType : "Academic Unit",
+                    onChanged: (val) => setDialogState(() => selectedType = val ?? "Academic Unit"),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: locationCtrl,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: "Location Detail",
+                      hintText: "Example: Ataköy Campus, Main Building, 4th Floor, Room 4G09",
+                    ),
+                  ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
               ElevatedButton(
-                  onPressed: () async {
-                    String finalLocation = "${selectedCampus ?? 'Not specified'}, ${selectedLocation ?? 'Not specified'}";
-                    int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                    Map<String, dynamic> newData = {
-                      'id': docId, 'name': nameCtrl.text, 'location': finalLocation,
-                      'abbr': item?['abbr'] ?? 'NEW', 'type': item?['type'] ?? 'faculty'
-                    };
-                    await FirebaseFirestore.instance.collection('buildings').doc(docId.toString()).set(newData);
-                    if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'buildings'); }
-                  },
-                  child: const Text("Save")
-              )
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  final location = locationCtrl.text.trim();
+
+                  if (name.isEmpty || selectedCampus == null || location.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please fill in the unit name, campus, and location fields.")),
+                    );
+                    return;
+                  }
+
+                  final docId = isEdit
+                      ? (item!['firestoreDocId'] ?? item['id']).toString()
+                      : DateTime.now().millisecondsSinceEpoch.toString();
+
+                  final parsedNumericId = int.tryParse(docId);
+                  final idValue = item?['id'] ?? parsedNumericId ?? docId;
+
+                  final newData = <String, dynamic>{
+                    'id': idValue,
+                    'name': name,
+                    'campus': selectedCampus,
+                    'location': location,
+                    'abbr': item?['abbr'] ?? 'NEW',
+                    'type': selectedType,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  };
+
+                  await FirebaseFirestore.instance
+                      .collection('buildings')
+                      .doc(docId)
+                      .set(newData, SetOptions(merge: true));
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    _refreshAdminData(collectionKey: 'buildings');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Unit saved to Firebase database.")),
+                    );
+                  }
+                },
+                child: const Text("Save"),
+              ),
             ],
           );
         },

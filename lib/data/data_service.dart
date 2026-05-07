@@ -201,6 +201,343 @@ class DataService {
     clearCollectionCache('priceCategories');
   }
 
+
+  static Future<void> deletePriceCategory(String categoryName) async {
+    final normalizedName = categoryName.trim();
+    if (normalizedName.isEmpty) return;
+
+    final normalizedDocId = normalizedName
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9ğüşöçıİĞÜŞÖÇ]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+
+    final safeDocId = normalizedDocId.isEmpty
+        ? normalizedName
+        : normalizedDocId;
+
+    final categoryRef = _db.collection('priceCategories');
+    final batch = _db.batch();
+
+    // Delete the deterministic document id used by addPriceCategory().
+    batch.delete(categoryRef.doc(safeDocId));
+
+    // Also delete any legacy/duplicate category documents stored with the
+    // same visible name but a different document id.
+    final matchingDocs = await categoryRef
+        .where('name', isEqualTo: normalizedName)
+        .get();
+
+    for (final doc in matchingDocs.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+
+    clearCollectionCache('priceCategories');
+  }
+
+
+  static String _demoPriceCategoryKey(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', ' ')
+        .replaceAll('/', ' ')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+  }
+
+  static String _demoPriceDocId(String category, String name) {
+    final raw = '${category}_$name';
+    return raw
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', ' ')
+        .replaceAll('/', ' ')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+  }
+
+  /// One-time demo seed for the Prices screen.
+  ///
+  /// Use this only once before the presentation, then remove the temporary
+  /// call from main.dart. If you leave it active, every app launch will reset
+  /// admin price changes.
+  static Future<void> resetDemoPricesForPresentation() async {
+    final categoriesToRemove = <String>{
+      'food',
+      'tea_coffee',
+      'tea_and_coffee',
+      'tea_coffe',
+    };
+
+    final categoriesToReset = <String>{
+      'beverages',
+      'coffee_varieties',
+      'toast_varieties',
+      'snacks',
+      ...categoriesToRemove,
+    };
+
+    final defaultCategories = <Map<String, dynamic>>[
+      {
+        'id': 'beverages',
+        'name': 'Beverages',
+        'order': 1,
+        'isDefault': true,
+      },
+      {
+        'id': 'coffee_varieties',
+        'name': 'Coffee Varieties',
+        'order': 2,
+        'isDefault': true,
+      },
+      {
+        'id': 'toast_varieties',
+        'name': 'Toast Varieties',
+        'order': 3,
+        'isDefault': true,
+      },
+      {
+        'id': 'snacks',
+        'name': 'Snacks',
+        'order': 4,
+        'isDefault': true,
+      },
+    ];
+
+    final realisticPrices = <Map<String, dynamic>>[
+      // Beverages
+      {
+        'name': 'Water 500 ml',
+        'price': '₺15',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Sparkling Water',
+        'price': '₺20',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Ayran',
+        'price': '₺25',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Fruit Juice',
+        'price': '₺35',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Iced Tea',
+        'price': '₺40',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Cola',
+        'price': '₺45',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Fanta',
+        'price': '₺45',
+        'category': 'Beverages',
+      },
+      {
+        'name': 'Sprite',
+        'price': '₺45',
+        'category': 'Beverages',
+      },
+
+      // Coffee Varieties
+      {
+        'name': 'Turkish Tea',
+        'price': '₺15',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Turkish Coffee',
+        'price': '₺45',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Espresso',
+        'price': '₺45',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Filter Coffee',
+        'price': '₺55',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Americano',
+        'price': '₺60',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Latte',
+        'price': '₺70',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Cappuccino',
+        'price': '₺70',
+        'category': 'Coffee Varieties',
+      },
+      {
+        'name': 'Mocha',
+        'price': '₺80',
+        'category': 'Coffee Varieties',
+      },
+
+      // Toast Varieties
+      {
+        'name': 'Cheese Toast',
+        'price': '₺70',
+        'category': 'Toast Varieties',
+      },
+      {
+        'name': 'Sucuk Toast',
+        'price': '₺90',
+        'category': 'Toast Varieties',
+      },
+      {
+        'name': 'Mixed Toast',
+        'price': '₺100',
+        'category': 'Toast Varieties',
+      },
+      {
+        'name': 'Ayvalık Toast',
+        'price': '₺130',
+        'category': 'Toast Varieties',
+      },
+      {
+        'name': 'Chicken Sandwich',
+        'price': '₺120',
+        'category': 'Toast Varieties',
+      },
+      {
+        'name': 'Tuna Sandwich',
+        'price': '₺130',
+        'category': 'Toast Varieties',
+      },
+
+      // Snacks
+      {
+        'name': 'Simit',
+        'price': '₺20',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Poğaça',
+        'price': '₺30',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Açma',
+        'price': '₺30',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Croissant',
+        'price': '₺60',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Muffin',
+        'price': '₺55',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Chocolate Bar',
+        'price': '₺40',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Chips',
+        'price': '₺50',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Biscuit',
+        'price': '₺35',
+        'category': 'Snacks',
+      },
+      {
+        'name': 'Cake Slice',
+        'price': '₺70',
+        'category': 'Snacks',
+      },
+    ];
+
+    final batch = _db.batch();
+
+    final priceDocs = await _db.collection('prices').get();
+    for (final doc in priceDocs.docs) {
+      final data = doc.data();
+      final category = data['category']?.toString() ?? '';
+      final categoryKey = _demoPriceCategoryKey(category);
+
+      if (categoriesToReset.contains(categoryKey)) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    final categoryDocs = await _db.collection('priceCategories').get();
+    for (final doc in categoryDocs.docs) {
+      final data = doc.data();
+      final name = data['name']?.toString() ??
+          data['title']?.toString() ??
+          data['category']?.toString() ??
+          '';
+      final categoryKey = _demoPriceCategoryKey(name);
+
+      if (categoriesToRemove.contains(categoryKey)) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    for (final category in defaultCategories) {
+      final id = category['id'].toString();
+
+      batch.set(
+        _db.collection('priceCategories').doc(id),
+        {
+          ...category,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    for (final item in realisticPrices) {
+      final category = item['category'].toString();
+      final name = item['name'].toString();
+      final docId = _demoPriceDocId(category, name);
+
+      batch.set(
+        _db.collection('prices').doc(docId),
+        {
+          'id': docId,
+          'name': name,
+          'price': item['price'],
+          'category': category,
+          'isActive': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    await batch.commit();
+
+    clearCollectionCache('prices');
+    clearCollectionCache('priceCategories');
+  }
+
   static Future<List<Map<String, dynamic>>> _fetchList(String collectionName) {
     return fetchCollection(collectionName);
   }
@@ -244,6 +581,9 @@ class DataService {
       _countCollectionEntry('classrooms'),
       _countCollectionEntry('instructors'),
       _countCollectionEntry('events'),
+      _countCollectionEntry('announcements'),
+      _countCollectionEntry('cafeteriaMenus'),
+      _countCollectionEntry('prices'),
       _countCollectionEntry('issues'),
       _countCollectionEntry('students'),
     ]);
@@ -1259,4 +1599,1192 @@ class DataService {
           .set(location);
     }
   }
+
+
+  static Future<void> resetDemoCampusUnitsForPresentation() async {
+    final demoUnits = <Map<String, dynamic>>[
+      {
+        'id': 910001,
+        'name': 'Kültür Noktası / Student Dean’s Office',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Main Building, 4th Floor, Room 4G09',
+        'building': 'Main Building',
+        'floor': '4th Floor',
+        'roomCode': '4G09',
+        'possibleCorridor': 'G',
+        'type': 'Student Services',
+        'abbr': 'KN',
+        'navigationHint': 'Main Building, 4th floor, room 4G09. Corridor G is inferred from the room code and should be verified on site.',
+        'verificationStatus': 'room_verified_corridor_unverified',
+        'needsVerification': true,
+        'sortOrder': 1,
+      },
+      {
+        'id': 910002,
+        'name': 'Akıngüç Auditorium and Art Center',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building',
+        'building': 'Ataköy Building',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Auditorium',
+        'abbr': 'AKG',
+        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 2,
+      },
+      {
+        'id': 910003,
+        'name': 'Önder Öztunalı Conference Hall',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building',
+        'building': 'Ataköy Building',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': 'OO',
+        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 3,
+      },
+      {
+        'id': 910004,
+        'name': 'Erdal İnönü Seminar Hall',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building',
+        'building': 'Ataköy Building',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': 'EI',
+        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 4,
+      },
+      {
+        'id': 910005,
+        'name': 'Seminar Hall II',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building',
+        'building': 'Ataköy Building',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': 'SS2',
+        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 5,
+      },
+      {
+        'id': 910006,
+        'name': '1st Floor Multipurpose Hall',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, 1st Floor',
+        'building': 'Ataköy Building',
+        'floor': '1st Floor',
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': '1CAS',
+        'navigationHint': 'Ataköy Building, 1st floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 6,
+      },
+      {
+        'id': 910007,
+        'name': '2nd Floor Multipurpose / Seminar Hall',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, 2nd Floor',
+        'building': 'Ataköy Building',
+        'floor': '2nd Floor',
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': '2CAS',
+        'navigationHint': 'Ataköy Building, 2nd floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 7,
+      },
+      {
+        'id': 910008,
+        'name': '4th Floor Multipurpose / Seminar Hall',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, 4th Floor',
+        'building': 'Ataköy Building',
+        'floor': '4th Floor',
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': '4CAS',
+        'navigationHint': 'Ataköy Building, 4th floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 8,
+      },
+      {
+        'id': 910009,
+        'name': 'Design Factory',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building',
+        'building': 'Ataköy Building',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Workshop',
+        'abbr': 'TF',
+        'navigationHint': 'Located at Ataköy Campus. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 9,
+      },
+      {
+        'id': 910010,
+        'name': 'Ataköy Library',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus',
+        'building': 'Ataköy Campus',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Library',
+        'abbr': 'LIB',
+        'navigationHint': 'Ataköy Campus library. Floor and corridor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 10,
+      },
+      {
+        'id': 910011,
+        'name': 'Health Unit / Infirmary',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, MIII Building, Ground Floor',
+        'building': 'MIII Building',
+        'floor': 'Ground Floor',
+        'roomCode': null,
+        'type': 'Health Unit',
+        'abbr': 'REV',
+        'navigationHint': 'MIII Building, ground floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 11,
+      },
+      {
+        'id': 910012,
+        'name': 'Canopy Cafe',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ground Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'Ground Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'CAN',
+        'navigationHint': 'Ataköy Campus, ground floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 12,
+      },
+      {
+        'id': 910013,
+        'name': 'Terrace Cafe',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ground Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'Ground Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'TER',
+        'navigationHint': 'Ataköy Campus, ground floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 13,
+      },
+      {
+        'id': 910014,
+        'name': 'Akpaz VIP',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, 6th Floor',
+        'building': 'Ataköy Campus',
+        'floor': '6th Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'VIP',
+        'navigationHint': 'Ataköy Campus, 6th floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 14,
+      },
+      {
+        'id': 910015,
+        'name': 'B1/B2 Restaurant',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, B1 and B2 Floors',
+        'building': 'Ataköy Campus',
+        'floor': 'B1-B2',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'B12',
+        'navigationHint': 'Ataköy Campus, B1 and B2 floors.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 15,
+      },
+      {
+        'id': 910016,
+        'name': 'Starbucks',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, B1 Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'B1',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'SB',
+        'navigationHint': 'Ataköy Campus, B1 floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 16,
+      },
+      {
+        'id': 910017,
+        'name': 'Ekspresso Lab / Cafe',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, B1 Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'B1',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'EL',
+        'navigationHint': 'Ataköy Campus, B1 floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 17,
+      },
+      {
+        'id': 910018,
+        'name': 'İş Bank Branch',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, B1 Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'B1',
+        'roomCode': null,
+        'type': 'Service',
+        'abbr': 'ISB',
+        'navigationHint': 'Ataköy Campus, B1 floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 18,
+      },
+      {
+        'id': 910019,
+        'name': 'Gözde Stationery',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, B1 Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'B1',
+        'roomCode': null,
+        'type': 'Service',
+        'abbr': 'GK',
+        'navigationHint': 'Ataköy Campus, B1 floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 19,
+      },
+      {
+        'id': 910020,
+        'name': 'Hairdresser',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, B1 Floor',
+        'building': 'Ataköy Campus',
+        'floor': 'B1',
+        'roomCode': null,
+        'type': 'Service',
+        'abbr': 'KUA',
+        'navigationHint': 'Ataköy Campus, B1 floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 20,
+      },
+      {
+        'id': 910021,
+        'name': 'Security Point',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Main Entrance / Information Desk',
+        'building': 'Main Entrance',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Security',
+        'abbr': 'SEC',
+        'navigationHint': 'Please go to the main entrance or information/security point.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 21,
+      },
+      {
+        'id': 920001,
+        'name': 'Faculty of Law',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law',
+        'building': 'Faculty of Law',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'HF',
+        'navigationHint': 'Şirinevler / Bahçelievler Campus, Faculty of Law building.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 1,
+      },
+      {
+        'id': 920002,
+        'name': 'Faculty of Health Sciences',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Health Sciences',
+        'building': 'Faculty of Health Sciences',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'SBF',
+        'navigationHint': 'Şirinevler / Bahçelievler Campus, Faculty of Health Sciences.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 2,
+      },
+      {
+        'id': 920003,
+        'name': 'Vocational School of Justice',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Vocational School of Justice',
+        'building': 'Vocational School of Justice',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'AMYO',
+        'navigationHint': 'Şirinevler / Bahçelievler Campus, Vocational School of Justice.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 3,
+      },
+      {
+        'id': 920004,
+        'name': 'Foreign Languages Department',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Foreign Languages Department',
+        'building': 'Foreign Languages Department',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'YD',
+        'navigationHint': 'Şirinevler / Bahçelievler Campus, Foreign Languages Department.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 4,
+      },
+      {
+        'id': 920005,
+        'name': 'Moot Courtroom',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law, 6th Floor',
+        'building': 'Faculty of Law',
+        'floor': '6th Floor',
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': 'KDS',
+        'navigationHint': 'Faculty of Law, 6th floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 5,
+      },
+      {
+        'id': 920006,
+        'name': 'Faculty of Law Twin Hall',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law, 6th Floor',
+        'building': 'Faculty of Law',
+        'floor': '6th Floor',
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': 'IKZ',
+        'navigationHint': 'Faculty of Law, 6th floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 6,
+      },
+      {
+        'id': 920007,
+        'name': 'Faculty of Law Academic Offices',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law, 5th Floor, Rooms H-501 / H-502',
+        'building': 'Faculty of Law',
+        'floor': '5th Floor',
+        'roomCode': 'H-501 / H-502',
+        'type': 'Office',
+        'abbr': 'HOF',
+        'navigationHint': 'Faculty of Law, 5th floor, H-501 / H-502 room area.',
+        'verificationStatus': 'room_verified',
+        'needsVerification': false,
+        'sortOrder': 7,
+      },
+      {
+        'id': 920008,
+        'name': 'Vocational School of Justice Classroom 302',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, 3rd Floor, Classroom 302',
+        'building': 'Vocational School of Justice',
+        'floor': '3rd Floor',
+        'roomCode': '302',
+        'type': 'Classroom',
+        'abbr': '302',
+        'navigationHint': 'Vocational School of Justice area, 3rd floor, classroom 302.',
+        'verificationStatus': 'room_verified',
+        'needsVerification': false,
+        'sortOrder': 8,
+      },
+      {
+        'id': 920009,
+        'name': 'Faculty of Health Sciences Block C Classrooms',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Block C, 1st Floor, Classroom 1 / Classroom 2',
+        'building': 'Block C',
+        'floor': '1st Floor',
+        'roomCode': 'Classroom 1 / Classroom 2',
+        'type': 'Classroom',
+        'abbr': 'C1',
+        'navigationHint': 'Block C, 1st floor, Classroom 1 / Classroom 2.',
+        'verificationStatus': 'room_verified',
+        'needsVerification': false,
+        'sortOrder': 9,
+      },
+      {
+        'id': 920010,
+        'name': 'Block C Chemistry Laboratory',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Block C, Chemistry Laboratory',
+        'building': 'Block C',
+        'floor': null,
+        'roomCode': 'KİMYALAB',
+        'type': 'Laboratory',
+        'abbr': 'KIM',
+        'navigationHint': 'Block C Chemistry Laboratory. Floor information should be verified on site.',
+        'verificationStatus': 'room_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 10,
+      },
+      {
+        'id': 920011,
+        'name': 'Law Canteen',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Ground Floor',
+        'building': 'Faculty of Law',
+        'floor': 'Ground Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'HK',
+        'navigationHint': 'Faculty of Law area, ground floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 11,
+      },
+      {
+        'id': 920012,
+        'name': 'Preparatory School Canteen',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Mezzanine Floor',
+        'building': 'Preparatory / Foreign Languages Area',
+        'floor': 'Mezzanine Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'HZK',
+        'navigationHint': 'Preparatory area, mezzanine floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 12,
+      },
+      {
+        'id': 920013,
+        'name': 'Makarna Restaurant',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Ground Floor',
+        'building': 'Şirinevler Campus',
+        'floor': 'Ground Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'MR',
+        'navigationHint': 'Şirinevler Campus, ground floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 13,
+      },
+      {
+        'id': 920014,
+        'name': 'Block C Restaurant',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Block C, 2nd Floor',
+        'building': 'Block C',
+        'floor': '2nd Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'CBR',
+        'navigationHint': 'Block C, 2nd floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 14,
+      },
+      {
+        'id': 920015,
+        'name': 'Şirinevler VIP',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Block C, 6th Floor',
+        'building': 'Block C',
+        'floor': '6th Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'SVIP',
+        'navigationHint': 'Block C, 6th floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 15,
+      },
+      {
+        'id': 920016,
+        'name': 'Security Point',
+        'campus': 'Şirinevler',
+        'location': 'Şirinevler / Bahçelievler Campus, Main Entrance / Information Desk',
+        'building': 'Main Entrance',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Security',
+        'abbr': 'SEC',
+        'navigationHint': 'Please go to the main entrance or information/security point.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 16,
+      },
+      {
+        'id': 930001,
+        'name': 'Vocational School / MYO',
+        'campus': 'İncirli',
+        'location': 'İncirli Campus, Vocational School Building',
+        'building': 'İncirli Building',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'MYO',
+        'navigationHint': 'İncirli Campus, Vocational School building.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 1,
+      },
+      {
+        'id': 930002,
+        'name': '1A01 Amphitheater / Classroom',
+        'campus': 'İncirli',
+        'location': 'İncirli Campus, İncirli Building, Room 1A01',
+        'building': 'İncirli Building',
+        'floor': null,
+        'roomCode': '1A01',
+        'possibleCorridor': 'A',
+        'type': 'Classroom',
+        'abbr': '1A01',
+        'navigationHint': 'İncirli Building, room 1A01. Corridor A is inferred from the room code and should be verified on site.',
+        'verificationStatus': 'room_verified_corridor_unverified',
+        'needsVerification': true,
+        'sortOrder': 2,
+      },
+      {
+        'id': 930003,
+        'name': '4A01 Amphitheater',
+        'campus': 'İncirli',
+        'location': 'İncirli Campus, İncirli Building, Room 4A01',
+        'building': 'İncirli Building',
+        'floor': null,
+        'roomCode': '4A01',
+        'possibleCorridor': 'A',
+        'type': 'Classroom',
+        'abbr': '4A01',
+        'navigationHint': 'İncirli Building, room 4A01. Corridor A is inferred from the room code and should be verified on site.',
+        'verificationStatus': 'room_verified_corridor_unverified',
+        'needsVerification': true,
+        'sortOrder': 3,
+      },
+      {
+        'id': 930004,
+        'name': 'Restaurant / Cafe',
+        'campus': 'İncirli',
+        'location': 'İncirli Campus, Ground Floor',
+        'building': 'İncirli Building',
+        'floor': 'Ground Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'RC',
+        'navigationHint': 'İncirli Campus, ground floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 4,
+      },
+      {
+        'id': 930005,
+        'name': 'Health Unit',
+        'campus': 'İncirli',
+        'location': 'İncirli Campus',
+        'building': 'İncirli Campus',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Health Unit',
+        'abbr': 'REV',
+        'navigationHint': 'Health unit is available at İncirli Campus. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 5,
+      },
+      {
+        'id': 930006,
+        'name': 'Security Point',
+        'campus': 'İncirli',
+        'location': 'İncirli Campus, Main Entrance / Information Desk',
+        'building': 'Main Entrance',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Security',
+        'abbr': 'SEC',
+        'navigationHint': 'Please go to the main entrance or information/security point.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 6,
+      },
+      {
+        'id': 940001,
+        'name': 'Faculty of Education',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Education',
+        'building': 'Basın Ekspres Campus',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'EF',
+        'navigationHint': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Education.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 1,
+      },
+      {
+        'id': 940002,
+        'name': 'Faculty of Economics and Administrative Sciences',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Economics and Administrative Sciences',
+        'building': 'Basın Ekspres Campus',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Academic Unit',
+        'abbr': 'IIBF',
+        'navigationHint': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Economics and Administrative Sciences.',
+        'verificationStatus': 'building_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 2,
+      },
+      {
+        'id': 940003,
+        'name': 'Basın Ekspres Library',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Block B, 2nd Floor',
+        'building': 'Block B',
+        'floor': '2nd Floor',
+        'roomCode': null,
+        'type': 'Library',
+        'abbr': 'LIB',
+        'navigationHint': 'Block B, 2nd floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 3,
+      },
+      {
+        'id': 940004,
+        'name': 'Conference Hall',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus',
+        'building': 'Basın Ekspres Campus',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Hall',
+        'abbr': 'KS',
+        'navigationHint': 'Basın Ekspres / Küçükçekmece Campus. Floor information should be verified on site.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 4,
+      },
+      {
+        'id': 940005,
+        'name': 'Block A Classroom 203',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Block A, 2nd Floor, Classroom 203',
+        'building': 'Block A',
+        'floor': '2nd Floor',
+        'roomCode': '203',
+        'type': 'Classroom',
+        'abbr': 'A203',
+        'navigationHint': 'Block A, 2nd floor, classroom 203.',
+        'verificationStatus': 'room_verified',
+        'needsVerification': false,
+        'sortOrder': 5,
+      },
+      {
+        'id': 940006,
+        'name': 'Academic Office 907',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Block B, 9th Floor, Room 907',
+        'building': 'Block B',
+        'floor': '9th Floor',
+        'roomCode': '907',
+        'type': 'Office',
+        'abbr': 'B907',
+        'navigationHint': 'Block B, 9th floor, room 907.',
+        'verificationStatus': 'room_verified',
+        'needsVerification': false,
+        'sortOrder': 6,
+      },
+      {
+        'id': 940007,
+        'name': 'Basement Classroom L-02',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Basement Floor, L-02',
+        'building': 'Basın Ekspres Campus',
+        'floor': 'Basement Floor',
+        'roomCode': 'L-02',
+        'type': 'Classroom',
+        'abbr': 'L02',
+        'navigationHint': 'Basın Ekspres Campus, basement floor, L-02.',
+        'verificationStatus': 'room_verified',
+        'needsVerification': false,
+        'sortOrder': 7,
+      },
+      {
+        'id': 940008,
+        'name': 'Best Coffee Shop',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
+        'building': 'Basın Ekspres Campus',
+        'floor': 'Entrance Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'BCS',
+        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 8,
+      },
+      {
+        'id': 940009,
+        'name': 'Makarna Pizza',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
+        'building': 'Basın Ekspres Campus',
+        'floor': 'Entrance Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'MP',
+        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 9,
+      },
+      {
+        'id': 940010,
+        'name': 'Lobby Restaurant',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
+        'building': 'Basın Ekspres Campus',
+        'floor': 'Entrance Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'LR',
+        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 10,
+      },
+      {
+        'id': 940011,
+        'name': 'Fast Food Cafe',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
+        'building': 'Basın Ekspres Campus',
+        'floor': 'Entrance Floor',
+        'roomCode': null,
+        'type': 'Food & Drink',
+        'abbr': 'FFC',
+        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 11,
+      },
+      {
+        'id': 940012,
+        'name': 'Gözde Stationery Basın Ekspres',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, B1 Floor',
+        'building': 'Basın Ekspres Campus',
+        'floor': 'B1',
+        'roomCode': null,
+        'type': 'Service',
+        'abbr': 'GK',
+        'navigationHint': 'Basın Ekspres Campus, B1 floor.',
+        'verificationStatus': 'floor_verified',
+        'needsVerification': false,
+        'sortOrder': 12,
+      },
+      {
+        'id': 940013,
+        'name': 'Security Point',
+        'campus': 'Basın Ekspres',
+        'location': 'Basın Ekspres / Küçükçekmece Campus, Main Entrance / Information Desk',
+        'building': 'Main Entrance',
+        'floor': null,
+        'roomCode': null,
+        'type': 'Security',
+        'abbr': 'SEC',
+        'navigationHint': 'Please go to the main entrance or information/security point.',
+        'verificationStatus': 'campus_verified_floor_missing',
+        'needsVerification': true,
+        'sortOrder': 13,
+      },
+    ];
+
+    final batch = _db.batch();
+
+    for (final unit in demoUnits) {
+      final id = unit['id'].toString();
+      batch.set(
+        _db.collection('buildings').doc(id),
+        {
+          ...unit,
+          'isDemoSeed': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    await batch.commit();
+
+    clearCollectionCache('buildings');
+  }
+
+  static String _demoAnnouncementDocId(String title) {
+    return title
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', ' ')
+        .replaceAll('/', ' ')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+  }
+
+  static String _demoAnnouncementDisplayDate(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final year = value.year.toString();
+    return '$day/$month/$year';
+  }
+
+  static String _demoAnnouncementDisplayTime(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  static Future<void> resetDemoAnnouncementsForPresentation() async {
+    final demoAnnouncements = <Map<String, dynamic>>[
+      {
+        'title': 'Midterm Exam Schedule Announced',
+        'content': 'The midterm exam schedule has been published on the student information system. Students are expected to check their exam rooms before the exam week.',
+        'category': 'academic',
+        'publishAt': DateTime(2026, 5, 7, 8, 30),
+      },
+      {
+        'title': 'Software Engineering Project Demo Reminder',
+        'content': 'Project demo sessions will be held this week. Teams should prepare their working application, test results, and short presentation notes before the demo.',
+        'category': 'academic',
+        'publishAt': DateTime(2026, 5, 6, 16, 30),
+      },
+      {
+        'title': 'Scholarship Applications Started',
+        'content': 'Scholarship applications for the upcoming academic period are now open. Students can submit their documents through the student affairs office.',
+        'category': 'scholarship',
+        'publishAt': DateTime(2026, 5, 6, 9, 15),
+      },
+      {
+        'title': 'Library Working Hours',
+        'content': 'The library will remain open until 22:00 during the midterm and final exam preparation period.',
+        'category': 'admin',
+        'publishAt': DateTime(2026, 5, 5, 10, 0),
+      },
+      {
+        'title': 'Summer School Registration',
+        'content': 'Summer school pre-registration will be available between May 10 and May 24. Course availability will be announced by departments.',
+        'category': 'academic',
+        'publishAt': DateTime(2026, 5, 4, 14, 0),
+      },
+      {
+        'title': 'Internship Application Deadline Reminder',
+        'content': 'Students planning to complete their internship this summer must submit the required documents before the announced deadline.',
+        'category': 'academic',
+        'publishAt': DateTime(2026, 5, 3, 16, 0),
+      },
+      {
+        'title': 'Student Card Renewal',
+        'content': 'Students whose ID cards are damaged or expired can apply for card renewal through Student Affairs.',
+        'category': 'admin',
+        'publishAt': DateTime(2026, 5, 2, 11, 0),
+      },
+      {
+        'title': 'Final Exam Calendar Draft Published',
+        'content': 'The draft final exam calendar has been published for student review. Possible conflicts should be reported to the department secretary.',
+        'category': 'academic',
+        'publishAt': DateTime(2026, 5, 1, 13, 45),
+      },
+      {
+        'title': 'Campus Shuttle Schedule Updated',
+        'content': 'Campus shuttle departure times have been updated for the exam period. Students should check the latest schedule before travel.',
+        'category': 'admin',
+        'publishAt': DateTime(2026, 4, 30, 8, 45),
+      },
+      {
+        'title': 'Career Days Registration Open',
+        'content': 'Career Days registration is now open. Students can attend company talks, workshops, and recruitment sessions on campus.',
+        'category': 'general',
+        'publishAt': DateTime(2026, 4, 29, 12, 0),
+      },
+      {
+        'title': 'Spring Festival 2026',
+        'content': 'The Spring Festival will be held on campus on April 25–26. We look forward to seeing all our students at the events.',
+        'category': 'general',
+        'publishAt': DateTime(2026, 4, 28, 0, 0),
+      },
+      {
+        'title': 'Cafeteria Menu Update',
+        'content': 'The cafeteria menu and campus price list have been updated for the current week.',
+        'category': 'admin',
+        'publishAt': DateTime(2026, 4, 26, 10, 30),
+      },
+      {
+        'title': 'Erasmus Information Meeting',
+        'content': 'An Erasmus information meeting will be organized for students interested in exchange opportunities. Details will be shared by the international office.',
+        'category': 'academic',
+        'publishAt': DateTime(2026, 4, 24, 15, 0),
+      },
+    ];
+
+    final batch = _db.batch();
+
+    final existingAnnouncements = await _db.collection('announcements').get();
+    for (final doc in existingAnnouncements.docs) {
+      batch.delete(doc.reference);
+    }
+
+    for (final item in demoAnnouncements) {
+      final title = item['title'].toString();
+      final content = item['content'].toString();
+      final category = item['category'].toString();
+      final publishAt = item['publishAt'] as DateTime;
+      final docId = _demoAnnouncementDocId(title);
+
+      batch.set(
+        _db.collection('announcements').doc(docId),
+        {
+          'id': docId,
+          'title': title,
+          'content': content,
+          'category': category,
+          'date': _demoAnnouncementDisplayDate(publishAt),
+          'publishDate': _demoAnnouncementDisplayDate(publishAt),
+          'publishTime': _demoAnnouncementDisplayTime(publishAt),
+          'publishAt': Timestamp.fromDate(publishAt),
+          'isNew': false,
+          'createdAt': Timestamp.fromDate(publishAt),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: false),
+      );
+    }
+
+    await batch.commit();
+
+    clearCollectionCache('announcements');
+  }
+
+
+  static String _demoEventDocId(String title) {
+    return title
+        .trim()
+        .toLowerCase()
+        .replaceAll('&', ' ')
+        .replaceAll('/', ' ')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+  }
+
+  static String _demoEventDisplayDate(DateTime value) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${months[value.month - 1]} ${value.day}, ${value.year}';
+  }
+
+  static String _demoEventDisplayTime(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  static Future<void> resetDemoEventsForPresentation() async {
+    final demoEvents = <Map<String, dynamic>>[
+      {
+        'id': 2026051001,
+        'title': 'Software Engineering Final Demo Day',
+        'description': 'Student teams will present their final software engineering project demos, including working applications, test results, and improvement plans.',
+        'category': 'academic',
+        'location': 'Ataköy Campus / Conference Hall',
+        'startAt': DateTime(2026, 5, 10, 10, 0),
+      },
+      {
+        'id': 2026051101,
+        'title': 'Career Days: Technology Companies Session',
+        'description': 'Technology companies will meet students to introduce internship, part-time, and new graduate opportunities.',
+        'category': 'social',
+        'location': 'Ataköy Campus / Akıngüç Auditorium',
+        'startAt': DateTime(2026, 5, 11, 13, 30),
+      },
+      {
+        'id': 2026051201,
+        'title': 'Mobile Programming Firebase Workshop',
+        'description': 'A practical workshop about connecting Flutter applications to Firebase, reading Firestore data, and managing real-time updates.',
+        'category': 'academic',
+        'location': 'Engineering Faculty / Computer Lab',
+        'startAt': DateTime(2026, 5, 12, 15, 0),
+      },
+      {
+        'id': 2026051301,
+        'title': 'Spring Music Night',
+        'description': 'A campus music event organized by student clubs with live performances and social activities.',
+        'category': 'cultural',
+        'location': 'Ataköy Campus / Garden Area',
+        'startAt': DateTime(2026, 5, 13, 18, 0),
+      },
+      {
+        'id': 2026051401,
+        'title': 'Basketball Tournament Finals',
+        'description': 'The final matches of the student basketball tournament will be held with award ceremony after the last game.',
+        'category': 'sports',
+        'location': 'Ataköy Campus / Sports Hall',
+        'startAt': DateTime(2026, 5, 14, 16, 0),
+      },
+      {
+        'id': 2026051501,
+        'title': 'Erasmus Information Seminar',
+        'description': 'The international office will explain Erasmus application requirements, deadlines, documents, and partner universities.',
+        'category': 'academic',
+        'location': 'Ataköy Campus / Seminar Room 2',
+        'startAt': DateTime(2026, 5, 15, 11, 0),
+      },
+      {
+        'id': 2026051601,
+        'title': 'AI and Data Science Student Talks',
+        'description': 'Students and instructors will share short talks about artificial intelligence, data science, and project experiences.',
+        'category': 'academic',
+        'location': 'Engineering Faculty / Room C302',
+        'startAt': DateTime(2026, 5, 16, 14, 0),
+      },
+      {
+        'id': 2026051701,
+        'title': 'Campus Photography Walk',
+        'description': 'A cultural campus walk for students interested in photography, architecture, and visual storytelling.',
+        'category': 'cultural',
+        'location': 'Ataköy Campus / Main Entrance',
+        'startAt': DateTime(2026, 5, 17, 12, 30),
+      },
+      {
+        'id': 2026051801,
+        'title': 'Volleyball Friendly Match',
+        'description': 'A friendly volleyball match between departments will be organized for students and staff.',
+        'category': 'sports',
+        'location': 'Ataköy Campus / Sports Area',
+        'startAt': DateTime(2026, 5, 18, 17, 0),
+      },
+      {
+        'id': 2026051901,
+        'title': 'Student Club Introduction Fair',
+        'description': 'Student clubs will introduce their activities, membership opportunities, and upcoming events.',
+        'category': 'social',
+        'location': 'Ataköy Campus / Main Hall',
+        'startAt': DateTime(2026, 5, 19, 10, 30),
+      },
+      {
+        'id': 2026052001,
+        'title': 'Exam Stress and Time Management Seminar',
+        'description': 'A guidance seminar about managing exam stress, planning study sessions, and improving productivity during exam weeks.',
+        'category': 'academic',
+        'location': 'Ataköy Campus / Psychological Counseling Unit',
+        'startAt': DateTime(2026, 5, 20, 13, 0),
+      },
+      {
+        'id': 2026052101,
+        'title': 'End of Semester Social Gathering',
+        'description': 'A social gathering for students before the final exam period with club stands, music, and refreshments.',
+        'category': 'social',
+        'location': 'Ataköy Campus / Garden Area',
+        'startAt': DateTime(2026, 5, 21, 17, 30),
+      },
+    ];
+
+    final batch = _db.batch();
+
+    final existingEvents = await _db.collection('events').get();
+    for (final doc in existingEvents.docs) {
+      batch.delete(doc.reference);
+    }
+
+    for (final item in demoEvents) {
+      final id = item['id'] as int;
+      final title = item['title'].toString();
+      final description = item['description'].toString();
+      final category = item['category'].toString();
+      final location = item['location'].toString();
+      final startAt = item['startAt'] as DateTime;
+      final docId = id.toString();
+
+      batch.set(
+        _db.collection('events').doc(docId),
+        {
+          'id': id,
+          'title': title,
+          'description': description,
+          'category': category,
+          'date': _demoEventDisplayDate(startAt),
+          'time': _demoEventDisplayTime(startAt),
+          'location': location,
+          'startAt': Timestamp.fromDate(startAt),
+          'createdAt': Timestamp.fromDate(startAt),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: false),
+      );
+    }
+
+    await batch.commit();
+
+    clearCollectionCache('events');
+  }
+
 }
