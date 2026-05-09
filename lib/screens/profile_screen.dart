@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -21,47 +19,169 @@ import 'events_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'help_support_screen.dart';
 import 'support_chat_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   void _showProfilePhotoOptions(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final studentDocId = authProvider.currentUserDocId;
+
+    if (studentDocId == null || studentDocId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Student information could not be found."),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (bottomSheetContext) {
-        final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-        final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+        final textColor =
+            Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+
+        final mutedColor = Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.darkTextMuted
+            : AppTheme.textMuted;
 
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Profile Photo", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const Icon(Icons.photo_library_outlined, color: AppTheme.primaryColor),
-                  title: Text("Choose from Gallery", style: TextStyle(color: textColor)),
-                  subtitle: Text("Add a profile photo", style: TextStyle(color: mutedColor)),
-                  onTap: () async {
-                    Navigator.pop(bottomSheetContext);
-                    await context.read<ProfileProvider>().pickProfileImageFromGallery();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: AppTheme.destructiveColor),
-                  title: Text("Remove Photo", style: TextStyle(color: textColor)),
-                  onTap: () async {
-                    Navigator.pop(bottomSheetContext);
-                    await context.read<ProfileProvider>().removeProfileImage();
-                  },
-                ),
-              ],
+            child: Consumer<ProfileProvider>(
+              builder: (context, profileProvider, _) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Choose Profile Avatar",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Select one of the available profile options.",
+                      style: TextStyle(
+                        color: mutedColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: 5,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: ProfileProvider.avatarOptions.map((avatar) {
+                        final isSelected =
+                            profileProvider.selectedAvatarId == avatar.id;
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () async {
+                            Navigator.pop(bottomSheetContext);
+
+                            try {
+                              await context.read<ProfileProvider>().selectAvatar(
+                                studentDocId: studentDocId,
+                                avatarId: avatar.id,
+                              );
+
+                              context.read<AuthProvider>().updateUserData({
+                                'profileAvatarId': avatar.id,
+                              });
+
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Profile avatar updated."),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Avatar could not be saved."),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: avatar.color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? avatar.color
+                                    : Theme.of(context).dividerColor,
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Icon(
+                              avatar.icon,
+                              color: avatar.color,
+                              size: 30,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    ListTile(
+                      leading: const Icon(
+                        Icons.delete_outline,
+                        color: AppTheme.destructiveColor,
+                      ),
+                      title: Text(
+                        "Remove Avatar",
+                        style: TextStyle(color: textColor),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(bottomSheetContext);
+
+                        try {
+                          await context.read<ProfileProvider>().removeAvatar(
+                            studentDocId: studentDocId,
+                          );
+
+                          context.read<AuthProvider>().updateUserData({
+                            'profileAvatarId': '',
+                          });
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Profile avatar removed."),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Avatar could not be removed."),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -72,7 +192,19 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildProfileAvatar(BuildContext context) {
     return Consumer<ProfileProvider>(
       builder: (context, profileProvider, _) {
-        final imagePath = profileProvider.profileImagePath;
+        final authAvatarId =
+        context.watch<AuthProvider>().userData?['profileAvatarId']?.toString();
+
+        if ((profileProvider.selectedAvatarId == null ||
+            profileProvider.selectedAvatarId!.isEmpty) &&
+            authAvatarId != null &&
+            authAvatarId.isNotEmpty) {
+          profileProvider.initializeFromUserData({
+            'profileAvatarId': authAvatarId,
+          });
+        }
+
+        final avatar = profileProvider.selectedAvatar;
 
         return GestureDetector(
           onTap: () => _showProfilePhotoOptions(context),
@@ -81,10 +213,32 @@ class ProfileScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 48,
-                backgroundColor: Theme.of(context).cardColor,
-                backgroundImage: imagePath != null ? FileImage(File(imagePath)) : null,
-                child: imagePath == null ? const Icon(Icons.person, size: 48, color: AppTheme.primaryColor) : null,
+                backgroundColor: avatar.color.withOpacity(0.14),
+                child: Icon(
+                  avatar.icon,
+                  size: 46,
+                  color: avatar.color,
+                ),
               ),
+              if (profileProvider.isSaving)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 right: -2,
                 bottom: -2,
@@ -94,9 +248,16 @@ class ProfileScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2),
+                    border: Border.all(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      width: 2,
+                    ),
                   ),
-                  child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                  child: const Icon(
+                    Icons.edit,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -300,6 +461,7 @@ class ProfileScreen extends StatelessWidget {
                           side: const BorderSide(color: AppTheme.destructiveColor),
                         ),
                         onPressed: () {
+                          context.read<ProfileProvider>().reset();
                           context.read<AuthProvider>().logout();
                           context.go('/login');
                         },

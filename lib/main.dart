@@ -55,7 +55,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(
-          create: (_) => ProfileProvider()..loadProfileImage(),
+          create: (_) => ProfileProvider(),
         ),
       ],
       child: const BenimKulturumApp(),

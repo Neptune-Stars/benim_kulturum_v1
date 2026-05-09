@@ -2579,16 +2579,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
                 ElevatedButton(
                     onPressed: () async {
-                      int docId = isEdit ? item!['id'] : DateTime.now().millisecondsSinceEpoch;
-                      Map<String, dynamic> newData = {
-                        'id': docId,
-                        'name': nameCtrl.text,
-                        'no': noCtrl.text,
-                        'email': emailCtrl.text,
-                        'password': passCtrl.text,
-                        'grade': selectedGrade ?? '1st Grade'
+                      final String docId = isEdit
+                          ? (item!['firestoreDocId'] ?? item['id']).toString()
+                          : DateTime.now().millisecondsSinceEpoch.toString();
+
+                      final Map<String, dynamic> newData = {
+                        'id': int.tryParse(docId) ?? docId,
+                        'name': nameCtrl.text.trim(),
+                        'no': noCtrl.text.trim(),
+                        'email': emailCtrl.text.trim(),
+                        'password': passCtrl.text.trim(),
+                        'grade': selectedGrade ?? '1st Grade',
+                        'updatedAt': FieldValue.serverTimestamp(),
                       };
-                      await FirebaseFirestore.instance.collection('students').doc(docId.toString()).set(newData);
+
+                      if (!isEdit) {
+                        newData['createdAt'] = FieldValue.serverTimestamp();
+                      }
+
+                      await FirebaseFirestore.instance
+                          .collection('students')
+                          .doc(docId)
+                          .set(newData, SetOptions(merge: true));
                       if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'students'); }
                     },
                     child: const Text("Save")
