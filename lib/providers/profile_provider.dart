@@ -1,78 +1,155 @@
-import 'dart:io';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+class StudentAvatarOption {
+  final String id;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const StudentAvatarOption({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+}
 
 class ProfileProvider extends ChangeNotifier {
-  static const String _profileImageKey = 'profile_image_path';
+  static const List<StudentAvatarOption> avatarOptions = [
+    StudentAvatarOption(
+      id: 'avatar_1',
+      label: 'Student',
+      icon: Icons.school_rounded,
+      color: Color(0xFF2563EB),
+    ),
+    StudentAvatarOption(
+      id: 'avatar_2',
+      label: 'Books',
+      icon: Icons.menu_book_rounded,
+      color: Color(0xFF7C3AED),
+    ),
+    StudentAvatarOption(
+      id: 'avatar_3',
+      label: 'Code',
+      icon: Icons.code_rounded,
+      color: Color(0xFF059669),
+    ),
+    StudentAvatarOption(
+      id: 'avatar_4',
+      label: 'Science',
+      icon: Icons.science_rounded,
+      color: Color(0xFFDC2626),
+    ),
+    StudentAvatarOption(
+      id: 'avatar_5',
+      label: 'Campus',
+      icon: Icons.location_city_rounded,
+      color: Color(0xFFF59E0B),
+    ),
+  ];
 
-  String? _profileImagePath;
+  String? _selectedAvatarId;
+  bool _isSaving = false;
+  String? _errorMessage;
 
-  String? get profileImagePath => _profileImagePath;
+  String? get selectedAvatarId => _selectedAvatarId;
+  bool get isSaving => _isSaving;
+  String? get errorMessage => _errorMessage;
 
-  bool get hasProfileImage =>
-      _profileImagePath != null && _profileImagePath!.isNotEmpty;
+  StudentAvatarOption get selectedAvatar {
+    return avatarOptions.firstWhere(
+          (avatar) => avatar.id == _selectedAvatarId,
+      orElse: () => avatarOptions.first,
+    );
+  }
 
-  Future<void> loadProfileImage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPath = prefs.getString(_profileImageKey);
+  bool get hasSelectedAvatar {
+    return _selectedAvatarId != null && _selectedAvatarId!.isNotEmpty;
+  }
 
-    if (savedPath != null && savedPath.isNotEmpty) {
-      final file = File(savedPath);
-      if (await file.exists()) {
-        _profileImagePath = savedPath;
-      } else {
-        _profileImagePath = null;
-        await prefs.remove(_profileImageKey);
-      }
+  void initializeFromUserData(Map<String, dynamic>? userData) {
+    final avatarId = userData?['profileAvatarId']?.toString();
+
+    if (avatarId != null &&
+        avatarId.isNotEmpty &&
+        avatarOptions.any((avatar) => avatar.id == avatarId)) {
+      _selectedAvatarId = avatarId;
     } else {
-      _profileImagePath = null;
+      _selectedAvatarId = null;
     }
 
+    _errorMessage = null;
     notifyListeners();
   }
 
-  Future<void> pickProfileImageFromGallery() async {
-    final picker = ImagePicker();
-
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1200,
-    );
-
-    if (pickedFile == null) return;
-
-    final appDir = await getApplicationDocumentsDirectory();
-    final fileName =
-        'profile_photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final savedImage = await File(pickedFile.path).copy(
-      '${appDir.path}/$fileName',
-    );
-
-    _profileImagePath = savedImage.path;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_profileImageKey, _profileImagePath!);
-
-    notifyListeners();
-  }
-
-  Future<void> removeProfileImage() async {
-    if (_profileImagePath != null) {
-      final file = File(_profileImagePath!);
-      if (await file.exists()) {
-        await file.delete();
-      }
+  Future<void> selectAvatar({
+    required String studentDocId,
+    required String avatarId,
+  }) async {
+    if (!avatarOptions.any((avatar) => avatar.id == avatarId)) {
+      throw Exception('Invalid avatar option.');
     }
 
-    _profileImagePath = null;
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_profileImageKey);
+    try {
+      await FirebaseFirestore.instance
+          .collection('students')
+          .doc(studentDocId)
+          .set(
+        {
+          'profileAvatarId': avatarId,
+          'profileAvatarUpdatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
 
+      _selectedAvatarId = avatarId;
+    } catch (e) {
+      _errorMessage = 'Avatar could not be saved.';
+      rethrow;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeAvatar({
+    required String studentDocId,
+  }) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('students')
+          .doc(studentDocId)
+          .set(
+        {
+          'profileAvatarId': FieldValue.delete(),
+          'profileAvatarUpdatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      _selectedAvatarId = null;
+    } catch (e) {
+      _errorMessage = 'Avatar could not be removed.';
+      rethrow;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  void reset() {
+    _selectedAvatarId = null;
+    _isSaving = false;
+    _errorMessage = null;
     notifyListeners();
   }
 }

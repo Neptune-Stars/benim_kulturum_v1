@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // YENİ: Firebase Firestore importu eklendi
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/profile_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -69,11 +70,19 @@ class _LoginScreenState extends State<LoginScreen> {
             .get();
 
         if (querySnapshot.docs.isNotEmpty) {
-          final studentData = querySnapshot.docs.first.data();
+          final studentDoc = querySnapshot.docs.first;
+
+          final studentData = {
+            ...studentDoc.data(),
+            'firestoreDocId': studentDoc.id,
+          };
 
           context.read<AuthProvider>().login("student", data: studentData);
+          context.read<ProfileProvider>().initializeFromUserData(studentData);
+
           context.go('/main');
-        } else {
+        }
+        else {
           setState(() => _errorMessage = "Registered student not found or invalid password.");
         }
       }
