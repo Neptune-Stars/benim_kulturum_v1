@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../data/data_service.dart';
@@ -16,22 +15,19 @@ class CafeteriaMenuScreen extends StatefulWidget {
 class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
   late DateTime _selectedDate;
   late String _selectedTab;
-  late Future<void> _ensureDailyFuture;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
     _selectedTab = DataService.defaultMealTypeForDate(_selectedDate);
-    _ensureDailyFuture = DataService.ensureDailyCafeteriaMenus(_selectedDate);
   }
 
   void _changeDate(DateTime date) {
     setState(() {
       _selectedDate = date;
       _selectedTab = DataService.defaultMealTypeForDate(date);
-      _ensureDailyFuture = DataService.ensureDailyCafeteriaMenus(_selectedDate);
-    });
+      });
   }
 
   @override
@@ -46,129 +42,100 @@ class _CafeteriaMenuScreenState extends State<CafeteriaMenuScreen> {
         title: "Cafeteria Menu",
         showBack: widget.showBackButton,
       ),
-      body: FutureBuilder<void>(
-        future: _ensureDailyFuture,
-        builder: (context, ensureSnapshot) {
-          if (ensureSnapshot.connectionState == ConnectionState.waiting) {
+      body: StreamBuilder<Map<String, dynamic>>(
+        stream: DataService.cafeteriaMenusForDateStream(_selectedDate),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (ensureSnapshot.hasError) {
+          if (snapshot.hasError) {
             return Center(
               child: Text(
-                "Error preparing menu data.",
+                "Error fetching menu data.",
                 style: TextStyle(color: textColor),
               ),
             );
           }
 
-          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('cafeteriaMenus')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          final dayData = snapshot.data ?? {};
+          final rawMenus =
+              Map<String, dynamic>.from((dayData['menus'] as Map?) ?? {});
 
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    "Error fetching menu data.",
-                    style: TextStyle(color: textColor),
-                  ),
-                );
-              }
+          final menusByType = rawMenus.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              Map<String, dynamic>.from(value as Map),
+            ),
+          );
 
-              final dateKey = DataService.formatDateKey(_selectedDate);
-              final menusByType = <String, Map<String, dynamic>>{};
-              bool hasDayData = false;
-              bool isDayActive = true;
+          final isDayActive = dayData['isDayActive'] != false;
 
-              for (final doc in snapshot.data?.docs ?? []) {
-                final data = doc.data();
-                if (data['date'] == dateKey &&
-                    data['campus'] == DataService.defaultCampus) {
-                  hasDayData = true;
+          final activeMealTypes = DataService.cafeteriaMealTypes.where((type) {
+            final menu = menusByType[type];
+            return menu != null &&
+                menu['isDayActive'] != false &&
+                menu['isActive'] != false;
+          }).toList();
 
-                  if (data['isDayActive'] == false) {
-                    isDayActive = false;
-                  }
+          final defaultTab = DataService.defaultMealTypeForDate(_selectedDate);
 
-                  final mealType = data['mealType']?.toString() ?? '';
-                  final visible = data['isDayActive'] != false && data['isActive'] != false;
-
-                  if (mealType.isNotEmpty && visible) {
-                    menusByType[mealType] = data;
-                  }
-                }
-              }
-
-              if (!hasDayData) {
-                isDayActive = true;
-              }
-
-              final activeMealTypes = DataService.cafeteriaMealTypes
-                  .where((type) => menusByType.containsKey(type))
-                  .toList();
-
-              final defaultTab = DataService.defaultMealTypeForDate(_selectedDate);
-              final selectedTab = activeMealTypes.contains(_selectedTab)
-                  ? _selectedTab
-                  : (activeMealTypes.contains(defaultTab)
+          final selectedTab = activeMealTypes.contains(_selectedTab)
+              ? _selectedTab
+              : (activeMealTypes.contains(defaultTab)
                   ? defaultTab
-                  : (activeMealTypes.isNotEmpty ? activeMealTypes.first : defaultTab));
+                  : (activeMealTypes.isNotEmpty
+                      ? activeMealTypes.first
+                      : defaultTab));
 
-              final currentMenu = menusByType[selectedTab];
+          final currentMenu = menusByType[selectedTab];
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isDayActive) ...[
-                      _buildTopInfoCard(_selectedDate, isDayActive),
-                      const SizedBox(height: 16),
-                    ],
-                    _buildWeekDateSelector(textColor, dividerColor, cardColor),
-                    const SizedBox(height: 16),
-                    if (isDayActive && activeMealTypes.isNotEmpty) ...[
-                      _buildTabSelector(
-                        activeMealTypes,
-                        selectedTab,
-                        textColor,
-                        dividerColor,
-                        cardColor,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (!isDayActive)
-                      _buildEmptyState(
-                        "No cafeteria service today.",
-                        "",
-                        textColor,
-                        cardColor,
-                        dividerColor,
-                      )
-                    else if (currentMenu == null)
-                      _buildEmptyState(
-                        "No active menu for today.",
-                        "Menus activated in the admin panel will appear here.",
-                        textColor,
-                        cardColor,
-                        dividerColor,
-                      )
-                    else
-                      _buildMenuCard(
-                        currentMenu,
-                        textColor,
-                        dividerColor,
-                        cardColor,
-                      ),
-                  ],
-                ),
-              );
-            },
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isDayActive) ...[
+                  _buildTopInfoCard(_selectedDate, isDayActive),
+                  const SizedBox(height: 16),
+                ],
+                _buildWeekDateSelector(textColor, dividerColor, cardColor),
+                const SizedBox(height: 16),
+                if (isDayActive && activeMealTypes.isNotEmpty) ...[
+                  _buildTabSelector(
+                    activeMealTypes,
+                    selectedTab,
+                    textColor,
+                    dividerColor,
+                    cardColor,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (!isDayActive)
+                  _buildEmptyState(
+                    "No cafeteria service today.",
+                    "",
+                    textColor,
+                    cardColor,
+                    dividerColor,
+                  )
+                else if (currentMenu == null)
+                  _buildEmptyState(
+                    "No active menu for today.",
+                    "Menus activated in the admin panel will appear here.",
+                    textColor,
+                    cardColor,
+                    dividerColor,
+                  )
+                else
+                  _buildMenuCard(
+                    currentMenu,
+                    textColor,
+                    dividerColor,
+                    cardColor,
+                  ),
+              ],
+            ),
           );
         },
       ),

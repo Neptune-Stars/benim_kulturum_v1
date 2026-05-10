@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DataService {
@@ -13,10 +15,22 @@ class DataService {
   static bool _defaultDataChecked = false;
 
   static const String defaultCampus = "Ataköy Campus";
+
+  // Student-facing order. Breakfast and Fast Food are global/fixed menus;
+  // only Meal is created as a daily Firestore document under cafeteriaMenus.
   static const List<String> cafeteriaMealTypes = [
     "Breakfast",
     "Meal",
     "Fast Food",
+  ];
+
+  static const List<String> fixedCafeteriaMealTypes = [
+    "Breakfast",
+    "Fast Food",
+  ];
+
+  static const List<String> dailyCafeteriaMealTypes = [
+    "Meal",
   ];
 
   static const List<String> defaultPriceCategories = [
@@ -847,6 +861,14 @@ class DataService {
     return trimmed;
   }
 
+  static bool isFixedCafeteriaMealType(String mealType) {
+    return fixedCafeteriaMealTypes.contains(normalizeMealType(mealType));
+  }
+
+  static bool isDailyCafeteriaMealType(String mealType) {
+    return dailyCafeteriaMealTypes.contains(normalizeMealType(mealType));
+  }
+
   static DateTime startOfWeek(DateTime date) {
     final cleanDate = DateTime(date.year, date.month, date.day);
     return cleanDate.subtract(Duration(days: cleanDate.weekday - 1));
@@ -1055,7 +1077,7 @@ class DataService {
       SetOptions(merge: true),
     );
 
-    for (final mealType in cafeteriaMealTypes) {
+    for (final mealType in dailyCafeteriaMealTypes) {
       final menuDocId = cafeteriaMenuDocId(
         date: date,
         campus: campus,
@@ -1078,6 +1100,15 @@ class DataService {
     required bool isActive,
   }) async {
     final normalizedMealType = normalizeMealType(mealType);
+
+    if (isFixedCafeteriaMealType(normalizedMealType)) {
+      await setFixedCafeteriaMenuActiveStatus(
+        mealType: normalizedMealType,
+        isActive: isActive,
+      );
+      return;
+    }
+
     final docId = cafeteriaMenuDocId(
       date: date,
       campus: campus,
@@ -1090,6 +1121,126 @@ class DataService {
       "manualUpdatedAt": FieldValue.serverTimestamp(),
       "updatedAt": FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  static Future<void> setFixedCafeteriaMenuActiveStatus({
+    required String mealType,
+    required bool isActive,
+  }) async {
+    final normalizedMealType = normalizeMealType(mealType);
+    final cafeteriaRef = _db.collection('settings').doc('cafeteria');
+    final cafeteriaDoc = await cafeteriaRef.get();
+    final currentData = cafeteriaDoc.data() == null
+        ? _defaultCafeteriaData()
+        : Map<String, dynamic>.from(cafeteriaDoc.data()!);
+
+    final menus = Map<String, dynamic>.from((currentData['menus'] as Map?) ?? {});
+    final currentMenu = Map<String, dynamic>.from(
+      (menus[normalizedMealType] as Map?) ?? defaultMenuForMealType(normalizedMealType),
+    );
+
+    currentMenu['isActive'] = isActive;
+    currentMenu['isActiveManuallyEdited'] = true;
+    currentMenu['manualUpdatedAt'] = FieldValue.serverTimestamp();
+    menus[normalizedMealType] = currentMenu;
+
+    final mealTypes = (currentData['mealTypes'] as List<dynamic>?)
+            ?.map((e) => normalizeMealType(e.toString()))
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList() ??
+        <String>[];
+
+    for (final type in cafeteriaMealTypes) {
+      if (!mealTypes.contains(type)) {
+        mealTypes.add(type);
+      }
+    }
+
+    await cafeteriaRef.set({
+      "mealTypes": mealTypes,
+      "menus": menus,
+      "updatedAt": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    clearCafeteriaCache();
+  }
+
+  static Future<void> saveCafeteriaMenu({
+    required DateTime date,
+    String campus = defaultCampus,
+    required String mealType,
+    required Map<String, dynamic> menu,
+  }) async {
+    final normalizedMealType = normalizeMealType(mealType);
+
+    if (isFixedCafeteriaMealType(normalizedMealType)) {
+      final cafeteriaRef = _db.collection('settings').doc('cafeteria');
+      final cafeteriaDoc = await cafeteriaRef.get();
+      final currentData = cafeteriaDoc.data() == null
+          ? _defaultCafeteriaData()
+          : Map<String, dynamic>.from(cafeteriaDoc.data()!);
+
+      final menus = Map<String, dynamic>.from((currentData['menus'] as Map?) ?? {});
+      final defaultMenu = defaultMenuForMealType(normalizedMealType);
+      final completedMenu = _mergeMenu(
+        defaultMenu,
+        {
+          ...Map<String, dynamic>.from((menus[normalizedMealType] as Map?) ?? {}),
+          ...menu,
+        },
+        fallbackMenuName: defaultMenu['menuName']?.toString() ?? normalizedMealType,
+        itemsHavePrices: normalizedMealType == "Fast Food",
+      );
+
+      completedMenu['isActive'] = menu['isActive'] ?? completedMenu['isActive'] ?? true;
+      completedMenu['isActiveManuallyEdited'] = menu['isActiveManuallyEdited'] == true ||
+          completedMenu['isActiveManuallyEdited'] == true;
+      completedMenu['updatedAt'] = FieldValue.serverTimestamp();
+
+      menus[normalizedMealType] = completedMenu;
+
+      final mealTypes = (currentData['mealTypes'] as List<dynamic>?)
+              ?.map((e) => normalizeMealType(e.toString()))
+              .where((e) => e.isNotEmpty)
+              .toSet()
+              .toList() ??
+          <String>[];
+
+      for (final type in cafeteriaMealTypes) {
+        if (!mealTypes.contains(type)) {
+          mealTypes.add(type);
+        }
+      }
+
+      await cafeteriaRef.set({
+        "mealTypes": mealTypes,
+        "menus": menus,
+        "updatedAt": FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      clearCafeteriaCache();
+      return;
+    }
+
+    final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
+    final docId = cafeteriaMenuDocId(
+      date: date,
+      campus: campus,
+      mealType: normalizedMealType,
+    );
+
+    await _db.collection('cafeteriaMenus').doc(docId).set(
+      buildCafeteriaMenuDocument(
+        date: date,
+        campus: campus,
+        mealType: normalizedMealType,
+        menu: menu,
+        includeCreatedAt: true,
+        isDayActive: dayStatus['isDayActive'] != false,
+      ),
+      SetOptions(merge: true),
+    );
   }
 
   static Map<String, dynamic> buildCafeteriaMenuDocument({
@@ -1158,7 +1309,7 @@ class DataService {
     final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
     final isDayActive = dayStatus['isDayActive'] != false;
 
-    for (final mealType in cafeteriaMealTypes) {
+    for (final mealType in dailyCafeteriaMealTypes) {
       final docId = cafeteriaMenuDocId(date: date, campus: campus, mealType: mealType);
       final docRef = _db.collection('cafeteriaMenus').doc(docId);
       final doc = await docRef.get();
@@ -1202,28 +1353,226 @@ class DataService {
     }
   }
 
-  static Future<Map<String, Map<String, dynamic>>> fetchDailyCafeteriaMenus(
-      DateTime date, {
-        String campus = defaultCampus,
-      }) async {
-    await ensureDailyCafeteriaMenus(date, campus: campus);
+  static Map<String, dynamic> _fixedCafeteriaMenuDocument({
+    required DateTime date,
+    required String campus,
+    required String mealType,
+    required Map<String, dynamic> settingsData,
+    required bool isDayActive,
+  }) {
+    final normalizedMealType = normalizeMealType(mealType);
+    final settingsMenus = Map<String, dynamic>.from((settingsData['menus'] as Map?) ?? {});
+    final defaultMenu = defaultMenuForMealType(normalizedMealType);
+    final settingsMenu = Map<String, dynamic>.from(
+      (settingsMenus[normalizedMealType] as Map?) ?? defaultMenu,
+    );
 
-    final result = <String, Map<String, dynamic>>{};
+    final doc = buildCafeteriaMenuDocument(
+      date: date,
+      campus: campus,
+      mealType: normalizedMealType,
+      menu: settingsMenu,
+      isDayActive: isDayActive,
+    );
 
-    for (final mealType in cafeteriaMealTypes) {
-      final docId = cafeteriaMenuDocId(date: date, campus: campus, mealType: mealType);
-      final doc = await _db.collection('cafeteriaMenus').doc(docId).get();
-      result[mealType] = doc.data() == null
-          ? buildCafeteriaMenuDocument(
-        date: date,
+    final fixedMenuIsActive = settingsMenu['isActive'] != false;
+    doc['isActive'] = isDayActive &&
+        defaultIsMenuActiveForDate(date, normalizedMealType) &&
+        fixedMenuIsActive;
+    doc['isActiveManuallyEdited'] = settingsMenu['isActiveManuallyEdited'] == true;
+    doc['isFixedMenu'] = true;
+    doc['storageScope'] = 'global_settings';
+
+    return doc;
+  }
+
+  static Map<String, Map<String, dynamic>> _composeCafeteriaMenusForDate({
+    required DateTime date,
+    required String campus,
+    required Map<String, dynamic> settingsData,
+    required Map<String, dynamic> dayStatus,
+    Map<String, dynamic>? dailyMealData,
+  }) {
+    final isDayActive = dayStatus['isDayActive'] != false;
+    final menus = <String, Map<String, dynamic>>{};
+
+    menus['Breakfast'] = _fixedCafeteriaMenuDocument(
+      date: date,
+      campus: campus,
+      mealType: 'Breakfast',
+      settingsData: settingsData,
+      isDayActive: isDayActive,
+    );
+
+    final mealSource = dailyMealData == null || dailyMealData.isEmpty
+        ? defaultMenuForMealType('Meal')
+        : Map<String, dynamic>.from(dailyMealData);
+
+    menus['Meal'] = buildCafeteriaMenuDocument(
+      date: date,
+      campus: campus,
+      mealType: 'Meal',
+      menu: mealSource,
+      isDayActive: isDayActive,
+    )..addAll({
+        'isFixedMenu': false,
+        'storageScope': 'daily_document',
+      });
+
+    menus['Fast Food'] = _fixedCafeteriaMenuDocument(
+      date: date,
+      campus: campus,
+      mealType: 'Fast Food',
+      settingsData: settingsData,
+      isDayActive: isDayActive,
+    );
+
+    return menus;
+  }
+
+  static Stream<Map<String, dynamic>> cafeteriaMenusForDateStream(
+    DateTime date, {
+    String campus = defaultCampus,
+  }) {
+    final cleanDate = DateTime(date.year, date.month, date.day);
+    final controller = StreamController<Map<String, dynamic>>();
+
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? daySubscription;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? settingsSubscription;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? mealSubscription;
+
+    Map<String, dynamic>? dayStatus;
+    Map<String, dynamic>? settingsData;
+    Map<String, dynamic>? dailyMealData;
+
+    var dayReady = false;
+    var settingsReady = false;
+    var mealReady = false;
+
+    void emitIfReady() {
+      if (controller.isClosed || !dayReady || !settingsReady || !mealReady) {
+        return;
+      }
+
+      final resolvedDayStatus = dayStatus ??
+          buildCafeteriaDayStatusDocument(
+            date: cleanDate,
+            campus: campus,
+          );
+
+      final resolvedSettings = settingsData ?? _defaultCafeteriaData();
+
+      final menus = _composeCafeteriaMenusForDate(
+        date: cleanDate,
         campus: campus,
-        mealType: mealType,
-        menu: defaultMenuForMealType(mealType),
-      )
-          : Map<String, dynamic>.from(doc.data()!);
+        settingsData: resolvedSettings,
+        dayStatus: resolvedDayStatus,
+        dailyMealData: dailyMealData,
+      );
+
+      controller.add({
+        'date': cleanDate,
+        'dateKey': formatDateKey(cleanDate),
+        'displayDate': formatDisplayDate(cleanDate),
+        'weekday': weekdayName(cleanDate.weekday),
+        'weekdayIndex': cleanDate.weekday,
+        'campus': campus,
+        'isWeekend': isWeekend(cleanDate),
+        'isDayActive': resolvedDayStatus['isDayActive'] != false,
+        'dayStatus': resolvedDayStatus,
+        'menus': menus,
+      });
     }
 
-    return result;
+    Future<void> start() async {
+      try {
+        final dayStatusId = cafeteriaDayStatusDocId(
+          date: cleanDate,
+          campus: campus,
+        );
+
+        final mealDocId = cafeteriaMenuDocId(
+          date: cleanDate,
+          campus: campus,
+          mealType: 'Meal',
+        );
+
+        daySubscription = _db
+            .collection('cafeteriaDayStatuses')
+            .doc(dayStatusId)
+            .snapshots()
+            .listen((snapshot) {
+          dayReady = true;
+          dayStatus = snapshot.data() == null
+              ? buildCafeteriaDayStatusDocument(
+                  date: cleanDate,
+                  campus: campus,
+                )
+              : Map<String, dynamic>.from(snapshot.data()!);
+          emitIfReady();
+        }, onError: controller.addError);
+
+        settingsSubscription = _db
+            .collection('settings')
+            .doc('cafeteria')
+            .snapshots()
+            .listen((snapshot) {
+          settingsReady = true;
+          settingsData = snapshot.data() == null
+              ? _defaultCafeteriaData()
+              : Map<String, dynamic>.from(snapshot.data()!);
+          emitIfReady();
+        }, onError: controller.addError);
+
+        mealSubscription = _db
+            .collection('cafeteriaMenus')
+            .doc(mealDocId)
+            .snapshots()
+            .listen((snapshot) {
+          mealReady = true;
+          dailyMealData = snapshot.data() == null
+              ? <String, dynamic>{}
+              : Map<String, dynamic>.from(snapshot.data()!);
+          emitIfReady();
+        }, onError: controller.addError);
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    start();
+
+    controller.onCancel = () async {
+      await daySubscription?.cancel();
+      await settingsSubscription?.cancel();
+      await mealSubscription?.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  static Future<Map<String, Map<String, dynamic>>> fetchDailyCafeteriaMenus(
+    DateTime date, {
+    String campus = defaultCampus,
+  }) async {
+    await ensureDailyCafeteriaMenus(date, campus: campus);
+
+    final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
+    final settingsData = await fetchCafeteriaSettings(forceRefresh: true);
+    final mealDocId = cafeteriaMenuDocId(date: date, campus: campus, mealType: 'Meal');
+    final mealDoc = await _db.collection('cafeteriaMenus').doc(mealDocId).get();
+
+    return _composeCafeteriaMenusForDate(
+      date: date,
+      campus: campus,
+      settingsData: settingsData,
+      dayStatus: dayStatus,
+      dailyMealData: mealDoc.data() == null
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(mealDoc.data()!),
+    );
   }
 
   static Future<List<Map<String, dynamic>>> fetchWeeklyCafeteriaMenus({
@@ -1232,41 +1581,28 @@ class DataService {
   }) async {
     final start = startOfWeek(weekStart ?? DateTime.now());
 
-    // Ensure is intentionally kept here, not in loadDatabase(). Weekly menu
-    // defaults are only prepared when the cafeteria week screen actually needs them.
+    // Only daily Meal documents are ensured here. Breakfast and Fast Food are
+    // read from settings/cafeteria so global updates appear on every day.
     await ensureWeeklyCafeteriaMenus(weekStart: start, campus: campus);
 
+    final settingsData = await fetchCafeteriaSettings(forceRefresh: true);
     final days = <Map<String, dynamic>>[];
 
     for (int i = 0; i < 7; i++) {
       final date = start.add(Duration(days: i));
-      final menus = <String, Map<String, dynamic>>{};
+      final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
+      final mealDocId = cafeteriaMenuDocId(date: date, campus: campus, mealType: 'Meal');
+      final mealDoc = await _db.collection('cafeteriaMenus').doc(mealDocId).get();
 
-      for (final mealType in cafeteriaMealTypes) {
-        final docId = cafeteriaMenuDocId(
-          date: date,
-          campus: campus,
-          mealType: mealType,
-        );
-        final doc = await _db.collection('cafeteriaMenus').doc(docId).get();
-        menus[mealType] = doc.data() == null
-            ? buildCafeteriaMenuDocument(
-          date: date,
-          campus: campus,
-          mealType: mealType,
-          menu: defaultMenuForMealType(mealType),
-        )
-            : Map<String, dynamic>.from(doc.data()!);
-      }
-
-      final dayStatusDocId = cafeteriaDayStatusDocId(date: date, campus: campus);
-      final dayStatusDoc = await _db
-          .collection('cafeteriaDayStatuses')
-          .doc(dayStatusDocId)
-          .get();
-      final dayStatus = dayStatusDoc.data() == null
-          ? buildCafeteriaDayStatusDocument(date: date, campus: campus)
-          : Map<String, dynamic>.from(dayStatusDoc.data()!);
+      final menus = _composeCafeteriaMenusForDate(
+        date: date,
+        campus: campus,
+        settingsData: settingsData,
+        dayStatus: dayStatus,
+        dailyMealData: mealDoc.data() == null
+            ? <String, dynamic>{}
+            : Map<String, dynamic>.from(mealDoc.data()!),
+      );
 
       days.add({
         "date": date,
@@ -1286,26 +1622,14 @@ class DataService {
 
   static Stream<Map<String, dynamic>> todayDashboardMenuStream({
     String campus = defaultCampus,
-  }) async* {
+  }) {
     final today = DateTime.now();
-    final dateKey = formatDateKey(today);
-    final dayStatusId = cafeteriaDayStatusDocId(date: today, campus: campus);
 
-    await ensureDailyCafeteriaMenus(today, campus: campus);
-
-    yield* _db
-        .collection('cafeteriaDayStatuses')
-        .doc(dayStatusId)
-        .snapshots()
-        .asyncExpand((daySnapshot) {
-      final dayData = daySnapshot.data() == null
-          ? buildCafeteriaDayStatusDocument(date: today, campus: campus)
-          : Map<String, dynamic>.from(daySnapshot.data()!);
-
+    return cafeteriaMenusForDateStream(today, campus: campus).map((dayData) {
       final isDayActive = dayData['isDayActive'] != false;
 
       if (!isDayActive) {
-        return Stream<Map<String, dynamic>>.value({
+        return {
           "menuName": "No Cafeteria Service Today",
           "mealType": "Closed",
           "time": "-",
@@ -1315,54 +1639,47 @@ class DataService {
           "isActive": false,
           "dashboardMode": "day_closed",
           "dashboardMessage": "Cafeteria or Fast Food service is not active today.",
-        });
+        };
       }
 
-      return _db
-          .collection('cafeteriaMenus')
-          .where('date', isEqualTo: dateKey)
-          .where('campus', isEqualTo: campus)
-          .snapshots()
-          .map((query) {
-        final menusByType = <String, Map<String, dynamic>>{};
+      final menusByType = Map<String, Map<String, dynamic>>.from(
+        (dayData['menus'] as Map?)?.map(
+              (key, value) => MapEntry(key.toString(), Map<String, dynamic>.from(value as Map)),
+            ) ??
+            {},
+      );
 
-        for (final doc in query.docs) {
-          final data = Map<String, dynamic>.from(doc.data());
-          final mealType = data['mealType']?.toString() ?? '';
-          final visible = data['isDayActive'] != false && data['isActive'] != false;
+      final priority = isWeekend(today)
+          ? <String>["Fast Food"]
+          : <String>["Meal", "Fast Food", "Breakfast"];
 
-          if (mealType.isNotEmpty && visible) {
-            menusByType[mealType] = data;
-          }
+      for (final mealType in priority) {
+        final data = menusByType[mealType];
+        final visible = data != null &&
+            data['isDayActive'] != false &&
+            data['isActive'] != false;
+
+        if (visible) {
+          final result = Map<String, dynamic>.from(data);
+          result['dashboardMode'] = isWeekend(today) ? 'weekend_fastfood' : 'weekday_meal';
+          result['dashboardMessage'] = isWeekend(today)
+              ? 'Today is the weekend. Active Fast Food options are displayed.'
+              : 'Today is a weekday. Active campus menu is displayed.';
+          return result;
         }
+      }
 
-        final priority = isWeekend(today)
-            ? <String>["Fast Food"]
-            : <String>["Meal", "Fast Food", "Breakfast"];
-
-        for (final mealType in priority) {
-          if (menusByType.containsKey(mealType)) {
-            final data = menusByType[mealType]!;
-            data['dashboardMode'] = isWeekend(today) ? 'weekend_fastfood' : 'weekday_meal';
-            data['dashboardMessage'] = isWeekend(today)
-                ? 'Today is the weekend. Active Fast Food options are displayed.'
-                : 'Today is a weekday. Active campus menu is displayed.';
-            return data;
-          }
-        }
-
-        return {
-          "menuName": "No Menu Available Today",
-          "mealType": "Closed",
-          "time": "-",
-          "price": "-",
-          "items": <dynamic>[],
-          "isDayActive": true,
-          "isActive": false,
-          "dashboardMode": "no_active_menu",
-          "dashboardMessage": "There is no active menu for today.",
-        };
-      });
+      return {
+        "menuName": "No Menu Available Today",
+        "mealType": "Closed",
+        "time": "-",
+        "price": "-",
+        "items": <dynamic>[],
+        "isDayActive": true,
+        "isActive": false,
+        "dashboardMode": "no_active_menu",
+        "dashboardMessage": "There is no active menu for today.",
+      };
     });
   }
 
