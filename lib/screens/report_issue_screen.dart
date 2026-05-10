@@ -261,28 +261,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 20),
 
-            SizedBox(
-              height: 52,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: textColor,
-                  side: BorderSide(color: borderColor),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(26),
-                  ),
-                ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Demo: Photo upload feature is currently not active.")));
-                },
-                icon: Icon(Icons.camera_alt, color: mutedColor),
-                label: Text(
-                  "Add Photo (Optional)",
-                  style: TextStyle(color: mutedColor),
-                ),
-              ),
-            ),
             const SizedBox(height: 32),
 
             SizedBox(
