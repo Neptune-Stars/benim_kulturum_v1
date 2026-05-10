@@ -413,8 +413,7 @@ class ProfileScreen extends StatelessWidget {
                               );
                             },
                           ),
-                          const Divider(height: 1),
-                          const SettingsRow(icon: Icons.language, label: "Language", value: "English"),
+
                         ],
                       ),
                     ),

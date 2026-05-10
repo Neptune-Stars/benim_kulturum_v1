@@ -210,7 +210,18 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: const SectionHeader(title: "Recent Announcements"),
+                        child: SectionHeader(
+                          title: "Recent Announcements",
+                          actionLabel: announcements.isEmpty ? null : "See All",
+                          onAction: announcements.isEmpty
+                              ? null
+                              : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AnnouncementsScreen(),
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Padding(
@@ -223,12 +234,7 @@ class HomeScreen extends StatelessWidget {
                               subtitle: _announcementDateText(item),
                               metadata: item['content']?.toString() ?? '',
                               badge: null,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const AnnouncementsScreen(),
-                                ),
-                              ),
+                              showChevron: false,
                             );
                           }).toList(),
                         ),
