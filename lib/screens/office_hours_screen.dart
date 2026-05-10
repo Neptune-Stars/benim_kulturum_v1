@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore desteği eklendi
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
-import '../data/data_service.dart';
-
 
 class OfficeHoursScreen extends StatefulWidget {
-
   const OfficeHoursScreen({super.key});
 
   @override
@@ -19,88 +16,34 @@ class OfficeHoursScreen extends StatefulWidget {
 class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   String _searchQuery = "";
   String _selectedFilter = "All";
-
-  late Future<Map<String, dynamic>> _databaseFuture;
-
   final List<String> _filters = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  @override
-  void initState() {
-    super.initState();
-    _databaseFuture = DataService.loadDatabase();
+  // AKILLI AKADEMİK DAĞILIM ÜRETİCİSİ
+  // InstructorDetailScreen ile aynı mantığı kullanır, böylece veriler tutarlı olur.
+  List<Map<String, dynamic>> _generateRealisticFallback(String id, String office) {
+    final int seed = id.hashCode;
+    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    final List<String> blocks = [
+      "09:00 - 11:00", "10:00 - 12:00", "11:00 - 13:00",
+      "13:00 - 15:00", "14:00 - 16:00", "15:00 - 17:00"
+    ];
+
+    String day1 = days[seed % days.length];
+    String time1 = blocks[seed % blocks.length];
+    String day2 = days[(seed + 2) % days.length];
+    String time2 = blocks[(seed + 3) % blocks.length];
+
+    return [
+      {"day": day1, "startTime": time1.split(" - ")[0], "endTime": time1.split(" - ")[1], "office": office},
+      {"day": day2, "startTime": time2.split(" - ")[0], "endTime": time2.split(" - ")[1], "office": office},
+    ];
   }
 
-
-  List<Map<String, String>> _generateDynamicOfficeHours(List<dynamic> instructors) {
-    List<Map<String, String>> generatedList = [];
-    final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-    for (int i = 0; i < instructors.length; i++) {
-      var instructor = instructors[i];
-      String day1 = days[i % 5];
-      String day2 = days[(i + 2) % 5];
-
-      generatedList.add({
-        "name": instructor['name']?.toString() ?? "",
-        "office": instructor['office']?.toString() ?? "Unknown",
-        "day": day1,
-        "time": "10:00-12:00",
-        "dept": instructor['department']?.toString() ?? ""
-      });
-
-      generatedList.add({
-        "name": instructor['name']?.toString() ?? "",
-        "office": instructor['office']?.toString() ?? "Unknown",
-        "day": day2,
-        "time": "14:00-16:00",
-        "dept": instructor['department']?.toString() ?? ""
-      });
-    }
-    return generatedList;
-  }
-
-  List<Map<String, String>> _processRealOfficeHours(List<QueryDocumentSnapshot> docs) {
-    List<Map<String, String>> finalHoursList = [];
-
-    for (var doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      final String name = data['name'] ?? "";
-      final String dept = data['department'] ?? "";
-      final String office = data['office'] ?? "Unknown";
-
-      final List<dynamic> hours = (data['officeHours'] is List && (data['officeHours'] as List).isNotEmpty)
-          ? data['officeHours']
-          : ["Monday: 10:00-12:00", "Wednesday: 14:00-16:00"];
-
-      for (var hourEntry in hours) {
-        String hourStr = hourEntry.toString();
-        String day = "Meeting";
-        String time = hourStr;
-
-        if (hourStr.contains(':')) {
-          var parts = hourStr.split(':');
-          day = parts[0].trim();
-
-          // Translating basic Turkish days from DB if present
-          if (day == "Pazartesi") day = "Monday";
-          if (day == "Salı") day = "Tuesday";
-          if (day == "Çarşamba") day = "Wednesday";
-          if (day == "Perşembe") day = "Thursday";
-          if (day == "Cuma") day = "Friday";
-
-          time = parts.sublist(1).join(':').trim();
-        }
-
-        finalHoursList.add({
-          "name": name,
-          "office": office,
-          "day": day,
-          "time": time,
-          "dept": dept
-        });
-      }
-    }
-    return finalHoursList;
+  String _normalize(String text) {
+    return text.toLowerCase()
+        .replaceAll('ş', 's').replaceAll('ı', 'i')
+        .replaceAll('ç', 'c').replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u').replaceAll('ö', 'o');
   }
 
   @override
@@ -108,84 +51,134 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
     return Scaffold(
       appBar: const CustomAppBar(title: "Office Hours", showBack: true),
       body: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('instructors').snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text("Data not found."));
-            }
+        stream: FirebaseFirestore.instance.collection('instructors').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No instructors found."));
+          }
 
-            final allOfficeHours = _processRealOfficeHours(snapshot.data!.docs);
+          // VERİLERİ HOCA BAZINDA GRUPLA
+          final List<Map<String, dynamic>> groupedList = [];
 
-            final filteredHours = allOfficeHours.where((oh) {
-              final String name = oh['name'] ?? "";
-              final String dept = oh['dept'] ?? "";
-              final String day = oh['day'] ?? "";
+          for (var doc in snapshot.data!.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final String id = doc.id;
+            final String name = data['name'] ?? "Unknown";
+            final String dept = data['department'] ?? "";
+            final String mainOffice = data['office'] ?? "Unknown";
 
-              final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  dept.toLowerCase().contains(_searchQuery.toLowerCase());
+            // 1. Saatleri belirle: Eğer veritabanında saat yoksa veya saatler boşsa taslak üret
+            List<dynamic> rawHours = (data['officeHours'] is List && (data['officeHours'] as List).isNotEmpty)
+                ? data['officeHours']
+                : _generateRealisticFallback(id, mainOffice);
 
-              String normalize(String text) {
-                return text.toLowerCase()
-                    .replaceAll('ş', 's').replaceAll('ı', 'i')
-                    .replaceAll('ç', 'c').replaceAll('ğ', 'g')
-                    .replaceAll('ü', 'u').replaceAll('ö', 'o');
+            // 2. Filtrele ve Formatla
+            List<String> formattedSlots = [];
+            bool hasMatchingDay = false;
+
+            for (var hour in rawHours) {
+              String day = "";
+              String time = "";
+              String office = mainOffice;
+
+              if (hour is Map) {
+                day = hour['day'] ?? "";
+                String start = hour['startTime'] ?? "";
+                String end = hour['endTime'] ?? "";
+                office = hour['office'] ?? mainOffice;
+
+                // Eğer saatler boşsa (Ekran görüntündeki "-" sorunu için)
+                if (start.isEmpty && end.isEmpty) {
+                  // Bu durumda bu kaydı atla veya taslak değer ata
+                  continue;
+                }
+                time = "$start - $end";
+              } else {
+                // Eski String formatı desteği
+                String str = hour.toString();
+                if (str.contains(':')) {
+                  day = str.split(':')[0].trim();
+                  time = str.split(':').sublist(1).join(':').trim();
+                }
               }
 
-              final matchesFilter = _selectedFilter == "All" ||
-                  normalize(day) == normalize(_selectedFilter);
+              // Gün filtresi kontrolü
+              if (_selectedFilter == "All" || _normalize(day) == _normalize(_selectedFilter)) {
+                hasMatchingDay = true;
+                formattedSlots.add("$day • $time | Office: $office");
+              }
+            }
 
-              return matchesSearch && matchesFilter;
-            }).toList();
+            // 3. Arama Sorgusu Kontrolü
+            final bool matchesSearch = _normalize(name).contains(_normalize(_searchQuery)) ||
+                _normalize(dept).contains(_normalize(_searchQuery));
 
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: AppSearchBar(
-                    placeholder: "Search instructor or department...",
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                  ),
-                ),
-                SizedBox(
-                  height: 40,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    itemCount: _filters.length,
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      return AppFilterChip(
-                        label: filter,
-                        active: _selectedFilter == filter,
-                        onTap: () => setState(() => _selectedFilter = filter),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: filteredHours.isEmpty
-                      ? const Center(child: Text("No results found", style: TextStyle(color: AppTheme.textMuted)))
-                      : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    itemCount: filteredHours.length,
-                    itemBuilder: (context, index) {
-                      final oh = filteredHours[index];
-                      return InfoCard(
-                        title: oh['name'] ?? "",
-                        subtitle: oh['dept'] ?? "",
-                        metadata: "${oh['day'] ?? ""} • ${oh['time'] ?? ""} | Office: ${oh['office'] ?? ""}",
-                        showChevron: false,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
+            if (matchesSearch && hasMatchingDay) {
+              // Eğer veritabanı kaydı bozuksa ve hiçbir slot oluşmadıysa taslağı zorla
+              if (formattedSlots.isEmpty && _selectedFilter == "All") {
+                final fallback = _generateRealisticFallback(id, mainOffice);
+                for (var f in fallback) {
+                  formattedSlots.add("${f['day']} • ${f['startTime']} - ${f['endTime']} | Office: ${f['office']}");
+                }
+              }
+
+              groupedList.add({
+                "name": name,
+                "dept": dept,
+                "displayInfo": formattedSlots.join("\n"), // Saatleri alt alta birleştir
+              });
+            }
           }
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: AppSearchBar(
+                  placeholder: "Search instructor or department...",
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                ),
+              ),
+              SizedBox(
+                height: 40,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: _filters.length,
+                  itemBuilder: (context, index) {
+                    final filter = _filters[index];
+                    return AppFilterChip(
+                      label: filter,
+                      active: _selectedFilter == filter,
+                      onTap: () => setState(() => _selectedFilter = filter),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: groupedList.isEmpty
+                    ? const Center(child: Text("No results found"))
+                    : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: groupedList.length,
+                  itemBuilder: (context, index) {
+                    final item = groupedList[index];
+                    return InfoCard(
+                      title: item['name'],
+                      subtitle: item['dept'],
+                      metadata: item['displayInfo'],
+                      showChevron: false,
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

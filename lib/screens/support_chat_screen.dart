@@ -21,6 +21,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final text = _controller.text.trim();
     _controller.clear();
 
+
     await FirebaseFirestore.instance
         .collection('support_chats')
         .doc(widget.userId)
@@ -31,11 +32,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       'timestamp': FieldValue.serverTimestamp(),
     });
 
+
     await FirebaseFirestore.instance.collection('support_chats').doc(widget.userId).set({
       'lastMessage': text,
       'lastMessageTime': FieldValue.serverTimestamp(),
       'userName': widget.userName,
       'userId': widget.userId,
+      'status': 'active',
     }, SetOptions(merge: true));
   }
 
@@ -56,6 +59,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!.docs;
+
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Text("How can we help you today?"),
+                  );
+                }
+
                 return ListView.builder(
                   reverse: true,
                   itemCount: messages.length,
@@ -86,7 +96,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         ),
         child: Text(
             text,
-            style: TextStyle(color: isMe ? Colors.white : Colors.black)
+            style: TextStyle(
+                color: isMe ? Colors.white : Colors.black,
+                fontSize: 15
+            )
         ),
       ),
     );
@@ -97,24 +110,28 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: "Type your message...",
-                border: InputBorder.none,
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: "Type your message...",
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.send, color: AppTheme.primaryColor),
-            onPressed: _sendMessage,
-          ),
-        ],
+            IconButton(
+              icon: const Icon(Icons.send, color: AppTheme.primaryColor),
+              onPressed: _sendMessage,
+            ),
+          ],
+        ),
       ),
     );
   }
