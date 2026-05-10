@@ -15,32 +15,101 @@ class AdminChatDetailScreen extends StatefulWidget {
 class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
   final TextEditingController _controller = TextEditingController();
 
+
+  void _showResolveDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Resolve Chat?"),
+        content: const Text("Are you sure this issue is handled? It will be moved to the Resolved tab."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              await FirebaseFirestore.instance
+                  .collection('support_chats')
+                  .doc(widget.userId)
+                  .update({
+                'status': 'resolved',
+                'resolvedAt': FieldValue.serverTimestamp(),
+                'resolvedBy': 'Admin',
+              });
+
+              if (mounted) {
+                Navigator.pop(dialogContext);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Chat marked as resolved.")),
+                );
+              }
+            },
+            child: const Text(
+              "Yes, Resolve",
+              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _sendAdminMessage() async {
     if (_controller.text.trim().isEmpty) return;
     final text = _controller.text.trim();
     _controller.clear();
 
-    //  Mesajı admin olarak ekle
     await FirebaseFirestore.instance
         .collection('support_chats')
         .doc(widget.userId)
         .collection('messages')
         .add({
       'text': text,
-      'sender': 'admin', // Önemli: Admin olduğu belirtiliyor
+      'sender': 'admin',
       'timestamp': FieldValue.serverTimestamp(),
     });
 
     await FirebaseFirestore.instance.collection('support_chats').doc(widget.userId).update({
       'lastMessage': "Support: $text",
       'lastMessageTime': FieldValue.serverTimestamp(),
+      'status': 'active',
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Chat with ${widget.userName}")),
+      appBar: AppBar(
+        title: Text("Chat with ${widget.userName}"),
+        actions: [
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('support_chats')
+                .doc(widget.userId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+              var data = snapshot.data!.data() as Map<String, dynamic>?;
+              bool isResolved = data?['status'] == "resolved";
+
+              if (isResolved) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Icon(Icons.check_circle, color: Colors.green),
+                );
+              }
+
+              return IconButton(
+                icon: const Icon(Icons.check_circle_outline),
+                tooltip: "Mark as Resolved",
+                onPressed: () => _showResolveDialog(context),
+              );
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -69,7 +138,10 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
                           color: isMe ? AppTheme.primaryColor : Colors.grey[300],
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(data['text'] ?? "", style: TextStyle(color: isMe ? Colors.white : Colors.black)),
+                        child: Text(
+                          data['text'] ?? "",
+                          style: TextStyle(color: isMe ? Colors.white : Colors.black),
+                        ),
                       ),
                     );
                   },
@@ -81,8 +153,16 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                Expanded(child: TextField(controller: _controller, decoration: const InputDecoration(hintText: "Type a reply..."))),
-                IconButton(icon: const Icon(Icons.send), onPressed: _sendAdminMessage),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(hintText: "Type a reply..."),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: AppTheme.primaryColor),
+                  onPressed: _sendAdminMessage,
+                ),
               ],
             ),
           ),
