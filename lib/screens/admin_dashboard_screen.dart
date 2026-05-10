@@ -1511,7 +1511,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "If you disable the day tick, students will see no food for that day. When the day is active, you can edit Breakfast, Meal, and Fast Food contents for that day.",
+                    "If you disable the day tick, students will see no food for that day. Meal is saved daily. Breakfast and Fast Food are fixed global menus, so one update is shown on every day.",
                     style: TextStyle(
                       color: _adminTextMutedColor(),
                       height: 1.35,
@@ -1654,9 +1654,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            nextValue
-                ? "$mealType made visible to students."
-                : "$mealType hidden from students.",
+            DataService.isFixedCafeteriaMealType(mealType)
+                ? (nextValue
+                    ? "$mealType global menu made visible to students."
+                    : "$mealType global menu hidden from students.")
+                : (nextValue
+                    ? "$mealType made visible to students."
+                    : "$mealType hidden from students."),
           ),
         ),
       );
@@ -1743,6 +1747,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                   DataService.defaultMenuForMealType(mealType);
                               final items = menu['items'] as List<dynamic>? ?? [];
                               final isMenuActive = menu['isActive'] != false;
+                              final isFixedMenu = menu['isFixedMenu'] == true;
+                              final scopeLabel = isFixedMenu ? "Global fixed" : "Daily";
 
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 10),
@@ -1760,7 +1766,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     ),
                                   ),
                                   subtitle: Text(
-                                    "$mealType • ${menu['time'] ?? '-'} • ${menu['price'] ?? '-'} • ${items.length} items",
+                                    "$scopeLabel • $mealType • ${menu['time'] ?? '-'} • ${menu['price'] ?? '-'} • ${items.length} items",
                                     style: TextStyle(
                                       color: isMenuActive
                                           ? AppTheme.textMuted
@@ -1884,9 +1890,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          final isFixedMenu = DataService.isFixedCafeteriaMealType(normalizedMealType);
+
           return AlertDialog(
             title: Text(
-              "${DataService.weekdayName(date.weekday)} - $normalizedMealType",
+              isFixedMenu
+                  ? "$normalizedMealType - Global Fixed Menu"
+                  : "${DataService.weekdayName(date.weekday)} - $normalizedMealType",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -2058,28 +2068,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     "isChips": item['isChips'] ?? false,
                   };
 
-                  final docId = DataService.cafeteriaMenuDocId(
+                  await DataService.saveCafeteriaMenu(
                     date: date,
                     mealType: normalizedMealType,
-                  );
-
-                  await FirebaseFirestore.instance
-                      .collection('cafeteriaMenus')
-                      .doc(docId)
-                      .set(
-                    DataService.buildCafeteriaMenuDocument(
-                      date: date,
-                      mealType: normalizedMealType,
-                      menu: menuData,
-                    ),
-                    SetOptions(merge: true),
+                    menu: menuData,
                   );
 
                   if (context.mounted) {
                     Navigator.pop(dialogContext);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Daily menu updated in Firebase database."),
+                      SnackBar(
+                        content: Text(
+                          DataService.isFixedCafeteriaMealType(normalizedMealType)
+                              ? "$normalizedMealType global menu updated in Firebase database."
+                              : "Daily menu updated in Firebase database.",
+                        ),
                       ),
                     );
                     onSaved?.call();
