@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../theme/app_theme.dart';
 import '../data/data_service.dart';
@@ -18,6 +19,8 @@ import 'events_screen.dart';
 import 'report_issue_screen.dart';
 import 'announcements_screen.dart';
 import 'event_detail_screen.dart';
+import 'search_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -296,10 +299,10 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       child: Column(
-        children: const [
+        children: [
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Text(
                   "Hello, Student 👋",
                   style: TextStyle(
@@ -309,19 +312,81 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                Icons.notifications_none,
-                color: Colors.white,
-              ),
+              _buildNotificationButton(context),
             ],
           ),
-          SizedBox(height: 16),
-          AppSearchBar(
-            placeholder: "Search on campus...",
-            readOnly: true,
+          const SizedBox(height: 16),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+            child: const AbsorbPointer(
+              child: AppSearchBar(
+                placeholder: "Search on campus...",
+                readOnly: true,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNotificationButton(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .where('isRead', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data?.docs.length ?? 0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_none,
+                color: Colors.white,
+                size: 28,
+              ),
+              tooltip: "Notifications",
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.destructiveColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? "9+" : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 

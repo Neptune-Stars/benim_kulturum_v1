@@ -4,13 +4,16 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/data_service.dart'; // JSON Servisi
+import '../data/data_service.dart';
 
 // Import detail screens for navigation
 import 'building_detail_screen.dart';
 import 'classroom_detail_screen.dart';
 import 'instructor_detail_screen.dart';
 import 'event_detail_screen.dart';
+import 'announcements_screen.dart';
+import 'cafeteria_menu_screen.dart';
+import 'office_hours_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -25,13 +28,32 @@ class _SearchScreenState extends State<SearchScreen> {
   String _selectedFilter = "All";
   late Future<Map<String, dynamic>> _databaseFuture;
 
-  final List<String> _filters = ["All", "Buildings", "Classrooms", "Instructors", "Events"];
+  final List<String> _filters = [
+    "All",
+    "Buildings",
+    "Classrooms",
+    "Instructors",
+    "Events",
+    "Announcements",
+    "Cafeteria",
+    "Office Hours",
+  ];
   final List<String> _recentSearches = ["FE-101", "Library", "John Doe", "Spring Festival"];
 
   @override
   void initState() {
     super.initState();
     _databaseFuture = DataService.loadDatabase();
+  }
+
+  // Helper: Safely lowercase any value (handles null)
+  String _lower(dynamic value) {
+    return value?.toString().toLowerCase() ?? "";
+  }
+
+  // Helper: Check if any field contains the query
+  bool _matches(String query, List<dynamic> fields) {
+    return fields.any((field) => _lower(field).contains(query));
   }
 
   @override
@@ -148,49 +170,131 @@ class _SearchScreenState extends State<SearchScreen> {
     List<Widget> results = [];
     final query = _searchQuery.toLowerCase();
 
+    // BUILDINGS (campus units / faculties / campus guide items)
     if (_selectedFilter == "All" || _selectedFilter == "Buildings") {
       final buildings = data['buildings'] as List? ?? [];
       for (var b in buildings) {
-        if (b['name'].toLowerCase().contains(query) || b['abbr'].toLowerCase().contains(query)) {
+        if (_matches(query, [b['name'], b['abbr'], b['location']])) {
           results.add(InfoCard(
-            title: b['name'], subtitle: b['location'], badge: const AppBadge(label: "Building"),
+            title: b['name']?.toString() ?? '',
+            subtitle: b['location']?.toString() ?? '',
+            badge: const AppBadge(label: "Building"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: b))),
           ));
         }
       }
     }
 
+    // CLASSROOMS
     if (_selectedFilter == "All" || _selectedFilter == "Classrooms") {
       final classrooms = data['classrooms'] as List? ?? [];
       for (var c in classrooms) {
-        if (c['name'].toLowerCase().contains(query) || c['building'].toLowerCase().contains(query)) {
+        if (_matches(query, [c['name'], c['building'], c['campus'], c['location']])) {
           results.add(InfoCard(
-            title: c['name'], subtitle: c['building'], badge: const AppBadge(label: "Classroom"),
+            title: c['name']?.toString() ?? '',
+            subtitle: c['building']?.toString() ?? '',
+            badge: const AppBadge(label: "Classroom"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: c))),
           ));
         }
       }
     }
 
+    // INSTRUCTORS
     if (_selectedFilter == "All" || _selectedFilter == "Instructors") {
       final instructors = data['instructors'] as List? ?? [];
       for (var i in instructors) {
-        if (i['name'].toLowerCase().contains(query) || i['department'].toLowerCase().contains(query)) {
+        if (_matches(query, [i['name'], i['department'], i['title']])) {
           results.add(InfoCard(
-            title: i['name'], subtitle: i['department'], badge: const AppBadge(label: "Instructor"),
+            title: i['name']?.toString() ?? '',
+            subtitle: i['department']?.toString() ?? '',
+            badge: const AppBadge(label: "Instructor"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstructorDetailScreen(instructorData: i))),
           ));
         }
       }
     }
 
+    // EVENTS
     if (_selectedFilter == "All" || _selectedFilter == "Events") {
       final events = data['events'] as List? ?? [];
       for (var e in events) {
-        if (e['title'].toLowerCase().contains(query) || e['description'].toLowerCase().contains(query)) {
+        if (_matches(query, [e['title'], e['description'], e['location'], e['category']])) {
           results.add(InfoCard(
-            title: e['title'], subtitle: e['date'], badge: const AppBadge(label: "Event"),
+            title: e['title']?.toString() ?? '',
+            subtitle: e['date']?.toString() ?? '',
+            badge: const AppBadge(label: "Event"),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(eventData: e))),
+          ));
+        }
+      }
+    }
+
+    // ANNOUNCEMENTS
+    if (_selectedFilter == "All" || _selectedFilter == "Announcements") {
+      final announcements = data['announcements'] as List? ?? [];
+      for (var a in announcements) {
+        if (_matches(query, [a['title'], a['content'], a['category']])) {
+          results.add(InfoCard(
+            title: a['title']?.toString() ?? '',
+            subtitle: a['date']?.toString() ?? a['publishDate']?.toString() ?? '',
+            metadata: a['content']?.toString() ?? '',
+            badge: const AppBadge(label: "Announcement"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnnouncementsScreen())),
+          ));
+        }
+      }
+    }
+
+    // CAFETERIA / FOOD
+    if (_selectedFilter == "All" || _selectedFilter == "Cafeteria") {
+      final cafeteriaData = data['cafeteria'] as Map<dynamic, dynamic>? ?? {};
+      final menus = cafeteriaData['menus'] as Map<dynamic, dynamic>? ?? {};
+
+      menus.forEach((mealType, menu) {
+        if (menu is! Map) return;
+
+        final menuName = menu['menuName']?.toString() ?? '';
+        final items = menu['items'] as List<dynamic>? ?? [];
+
+        // Check if mealType, menuName, or any item name matches
+        final itemNames = items.map((item) {
+          if (item is Map) return item['name']?.toString() ?? '';
+          return item.toString();
+        }).toList();
+
+        final allFields = [mealType.toString(), menuName, ...itemNames];
+
+        if (_matches(query, allFields)) {
+          final itemList = itemNames.where((n) => n.isNotEmpty).take(3).join(", ");
+
+          results.add(InfoCard(
+            title: menuName.isNotEmpty ? menuName : mealType.toString(),
+            subtitle: "${menu['time'] ?? ''} • ${menu['price'] ?? ''}",
+            metadata: itemList.isNotEmpty ? itemList : null,
+            badge: const AppBadge(label: "Cafeteria"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen())),
+          ));
+        }
+      });
+    }
+
+    // OFFICE HOURS
+    if (_selectedFilter == "All" || _selectedFilter == "Office Hours") {
+      final instructors = data['instructors'] as List? ?? [];
+      for (var i in instructors) {
+        final officeHours = i['officeHours'];
+        final hoursList = officeHours is List ? officeHours.join(", ") : "";
+
+        if (hoursList.isEmpty) continue;
+
+        if (_matches(query, [i['name'], i['department'], hoursList, i['office']])) {
+          results.add(InfoCard(
+            title: i['name']?.toString() ?? '',
+            subtitle: hoursList,
+            metadata: i['department']?.toString() ?? '',
+            badge: const AppBadge(label: "Office Hours"),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OfficeHoursScreen())),
           ));
         }
       }
