@@ -18,8 +18,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   String _selectedFilter = "All";
   final List<String> _filters = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  // AKILLI AKADEMİK DAĞILIM ÜRETİCİSİ
-  // InstructorDetailScreen ile aynı mantığı kullanır, böylece veriler tutarlı olur.
   List<Map<String, dynamic>> _generateRealisticFallback(String id, String office) {
     final int seed = id.hashCode;
     final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -60,7 +58,7 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
             return const Center(child: Text("No instructors found."));
           }
 
-          // VERİLERİ HOCA BAZINDA GRUPLA
+
           final List<Map<String, dynamic>> groupedList = [];
 
           for (var doc in snapshot.data!.docs) {
@@ -70,12 +68,12 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
             final String dept = data['department'] ?? "";
             final String mainOffice = data['office'] ?? "Unknown";
 
-            // 1. Saatleri belirle: Eğer veritabanında saat yoksa veya saatler boşsa taslak üret
+
             List<dynamic> rawHours = (data['officeHours'] is List && (data['officeHours'] as List).isNotEmpty)
                 ? data['officeHours']
                 : _generateRealisticFallback(id, mainOffice);
 
-            // 2. Filtrele ve Formatla
+
             List<String> formattedSlots = [];
             bool hasMatchingDay = false;
 
@@ -90,14 +88,12 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                 String end = hour['endTime'] ?? "";
                 office = hour['office'] ?? mainOffice;
 
-                // Eğer saatler boşsa (Ekran görüntündeki "-" sorunu için)
                 if (start.isEmpty && end.isEmpty) {
-                  // Bu durumda bu kaydı atla veya taslak değer ata
                   continue;
                 }
                 time = "$start - $end";
               } else {
-                // Eski String formatı desteği
+
                 String str = hour.toString();
                 if (str.contains(':')) {
                   day = str.split(':')[0].trim();
@@ -105,14 +101,14 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                 }
               }
 
-              // Gün filtresi kontrolü
+
               if (_selectedFilter == "All" || _normalize(day) == _normalize(_selectedFilter)) {
                 hasMatchingDay = true;
                 formattedSlots.add("$day • $time | Office: $office");
               }
             }
 
-            // 3. Arama Sorgusu Kontrolü
+
             final bool matchesSearch = _normalize(name).contains(_normalize(_searchQuery)) ||
                 _normalize(dept).contains(_normalize(_searchQuery));
 

@@ -20,8 +20,7 @@ class InstructorDetailScreen extends StatelessWidget {
     return names.isNotEmpty ? names[0][0].toUpperCase() : "?";
   }
 
-  // AKILLI AKADEMİK DAĞILIM ÜRETİCİSİ (FALLBACK)
-  // Liste ekranlarıyla aynı matematiksel mantığı kullanır, böylece veriler tutarlı olur.
+
   List<Map<String, dynamic>> _generateRealisticMockHours(String id, String generalOffice) {
     final int seed = id.hashCode;
     final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -52,13 +51,12 @@ class InstructorDetailScreen extends StatelessWidget {
     final String office = instructorData['office'] ?? 'Unknown';
     final String instructorId = instructorData['id']?.toString() ?? '0';
 
-    // EMAIL KONTROLÜ
+
     final String email = (instructorData['email'] != null && instructorData['email'].toString().trim().isNotEmpty)
         ? instructorData['email']
         : 'contact@uni.edu.tr';
 
-    // OFİS SAATLERİ MANTIĞI:
-    // Sabit liste yerine, hoca ID'sine göre üretilen dinamik fonksiyonu kullanıyoruz.
+
     final List<dynamic> displayHours = (instructorData['officeHours'] is List && (instructorData['officeHours'] as List).isNotEmpty)
         ? instructorData['officeHours']
         : _generateRealisticMockHours(instructorId, office);

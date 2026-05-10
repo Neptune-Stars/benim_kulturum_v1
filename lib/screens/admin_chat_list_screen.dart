@@ -76,8 +76,8 @@ class AdminChatListScreen extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            _buildChatList(context, "active"),   // Aktif sohbetler listesi
-            _buildChatList(context, "resolved"), // Çözülen sohbetler listesi
+            _buildChatList(context, "active"),
+            _buildChatList(context, "resolved"),
           ],
         ),
       ),
