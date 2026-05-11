@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -18,12 +17,16 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text(title),
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       leading: showBack
           ? IconButton(
-        icon: const Icon(Icons.chevron_left),
-        onPressed: onBack ?? () => Navigator.of(context).pop(),
-      )
+              icon: const Icon(Icons.chevron_left),
+              onPressed: onBack ?? () => Navigator.of(context).pop(),
+            )
           : null,
       actions: actions,
     );

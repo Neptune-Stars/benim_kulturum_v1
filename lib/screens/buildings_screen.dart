@@ -18,39 +18,11 @@ class BuildingsScreen extends StatefulWidget {
   State<BuildingsScreen> createState() => _BuildingsScreenState();
 }
 
-
 class _BuildingsScreenState extends State<BuildingsScreen> {
   String _searchQuery = "";
-  String _selectedFilter = "All";
+  String _selectedCampusKey = "Ataköy";
+  String _selectedCategory = "All";
   late Future<Map<String, dynamic>> _databaseFuture;
-
-  final List<String> _filters = [
-    "All",
-    "Faculties",
-    "Administrative Units",
-    "Social Areas",
-    "Food & Beverage",
-    "Study Areas",
-  ];
-
-  final List<Map<String, String>> _campuses = [
-    {
-      "title": "Ataköy",
-      "address": "Istanbul Kultur University Ataköy Campus, E5 Highway Bakırköy 34158 Istanbul",
-    },
-    {
-      "title": "Şirinevler",
-      "address": "Istanbul Kultur University Şirinevler Campus, E5 Highway No:22 Bahçelievler 34191 Istanbul",
-    },
-    {
-      "title": "İncirli",
-      "address": "Istanbul Kultur University İncirli Campus, Yolbaşı Street, 34147 Bakırköy Istanbul",
-    },
-    {
-      "title": "Basın Ekspres",
-      "address": "Istanbul Kultur University Basın Ekspres Campus, Halkalı Merkez District Basın Ekspres Avenue No:11 34303 Küçükçekmece Istanbul",
-    },
-  ];
 
   @override
   void initState() {
@@ -58,56 +30,60 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     _databaseFuture = DataService.loadDatabase();
   }
 
-  String _normalizeType(String rawType) {
-    switch (rawType.toLowerCase()) {
-      case "academic":
-      case "faculty":
-        return "faculty";
-      case "admin":
-      case "administrative":
-      case "admin_unit":
-        return "admin";
-      case "social":
-        return "social";
-      case "food":
-      case "cafeteria":
-      case "canteen":
-        return "food";
-      case "study":
-      case "library":
-      case "workspace":
-        return "study";
+  String _normalize(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ş', 's')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .trim();
+  }
+
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case "Academic Units":
+        return Icons.school_outlined;
+      case "Classrooms & Labs":
+        return Icons.meeting_room_outlined;
+      case "Halls & Event Spaces":
+        return Icons.event_seat_outlined;
+      case "Food & Beverage":
+        return Icons.restaurant_outlined;
+      case "Study & Library":
+        return Icons.local_library_outlined;
+      case "Student Services":
+        return Icons.support_agent_outlined;
+      case "Health & Security":
+        return Icons.health_and_safety_outlined;
       default:
-        return "unknown";
+        return Icons.location_city_outlined;
     }
   }
 
-  String _getTypeLabel(String rawType) {
-    final type = _normalizeType(rawType);
-    switch (type) {
-      case "faculty": return "Faculty";
-      case "admin": return "Administrative";
-      case "social": return "Social";
-      case "food": return "Food & Bev.";
-      case "study": return "Study";
-      default: return "General";
+  Color _categoryColor(String category) {
+    switch (category) {
+      case "Food & Beverage":
+        return Colors.orange;
+      case "Study & Library":
+        return Colors.indigo;
+      case "Health & Security":
+        return Colors.redAccent;
+      case "Halls & Event Spaces":
+        return Colors.purple;
+      case "Classrooms & Labs":
+        return Colors.teal;
+      default:
+        return AppTheme.primaryColor;
     }
-  }
-
-  bool _matchesFilter(String selectedFilter, String rawType) {
-    final type = _normalizeType(rawType);
-    if (selectedFilter == "All") return true;
-    if (selectedFilter == "Faculties" && type == "faculty") return true;
-    if (selectedFilter == "Administrative Units" && type == "admin") return true;
-    if (selectedFilter == "Social Areas" && type == "social") return true;
-    if (selectedFilter == "Food & Beverage" && type == "food") return true;
-    if (selectedFilter == "Study Areas" && type == "study") return true;
-    return false;
   }
 
   Future<void> _openCampusMap(String address) async {
     final encodedAddress = Uri.encodeComponent(address);
-    final Uri uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$encodedAddress?q=$encodedAddress");
+    final Uri uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$encodedAddress");
 
     try {
       final bool opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -120,6 +96,162 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     }
   }
 
+  Map<String, String> get _selectedCampus {
+    return DataService.campusDirectoryCampuses.firstWhere(
+      (campus) => campus['key'] == _selectedCampusKey,
+      orElse: () => DataService.campusDirectoryCampuses.first,
+    );
+  }
+
+  Widget _buildCampusSelector() {
+    return SizedBox(
+      height: 42,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        itemCount: DataService.campusDirectoryCampuses.length,
+        itemBuilder: (context, index) {
+          final campus = DataService.campusDirectoryCampuses[index];
+          final key = campus['key']!;
+          return AppFilterChip(
+            label: key,
+            active: _selectedCampusKey == key,
+            onTap: () => setState(() => _selectedCampusKey = key),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    return SizedBox(
+      height: 42,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        itemCount: DataService.campusUnitCategories.length,
+        itemBuilder: (context, index) {
+          final category = DataService.campusUnitCategories[index];
+          return AppFilterChip(
+            label: category,
+            active: _selectedCategory == category,
+            onTap: () => setState(() => _selectedCategory = category),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedCampusCard(Color textColor, Color mutedColor) {
+    final campus = _selectedCampus;
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryLight.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.primaryLight.withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: const Icon(Icons.map_outlined, color: AppTheme.primaryColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    campus['label']!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Tap the map icon to open this campus in Google Maps.",
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: mutedColor),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: "Open in map",
+              onPressed: () => _openCampusMap(campus['address']!),
+              icon: const Icon(Icons.location_on_outlined, color: AppTheme.primaryColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, int count) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Text(
+            "$count",
+            style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnitCard(Map<String, dynamic> unit) {
+    final category = DataService.campusUnitCategory(unit);
+    final type = unit['typeNormalized']?.toString() ?? DataService.normalizeCampusUnitType(unit['type']?.toString());
+    final floor = unit['floor']?.toString();
+    final roomCode = unit['roomCode']?.toString();
+    final building = unit['building']?.toString();
+    final metadataParts = <String>[
+      type,
+      if (building != null && building.trim().isNotEmpty) building,
+      if (floor != null && floor.trim().isNotEmpty) floor,
+      if (roomCode != null && roomCode.trim().isNotEmpty) roomCode,
+    ];
+
+    return InfoCard(
+      title: unit['name']?.toString() ?? "Unnamed unit",
+      subtitle: unit['location']?.toString() ?? unit['campusDisplayName']?.toString() ?? "",
+      metadata: metadataParts.join(" • "),
+      leading: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: _categoryColor(category).withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(_categoryIcon(category), color: _categoryColor(category), size: 22),
+      ),
+      badge: AppBadge(label: category),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: unit)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
@@ -128,177 +260,111 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     return Scaffold(
       appBar: CustomAppBar(title: "Campus Guide", showBack: widget.showBackButton),
       body: FutureBuilder<Map<String, dynamic>>(
-          future: _databaseFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data!['buildings'] == null) {
-              return const Center(child: Text("Building data not found."));
-            }
-
-            final allBuildings = snapshot.data!['buildings'] as List<dynamic>? ?? [];
-
-            final filteredBuildings = allBuildings.where((b) {
-              final name = b['name']?.toString() ?? "";
-              final abbr = b['abbr']?.toString() ?? "";
-              final loc = b['location']?.toString() ?? "";
-              final type = b['type']?.toString() ?? "";
-
-              final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  abbr.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  loc.toLowerCase().contains(_searchQuery.toLowerCase());
-
-              final matchesFilter = _matchesFilter(_selectedFilter, type);
-
-              return matchesSearch && matchesFilter;
-            }).toList();
-
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: AppSearchBar(
-                      placeholder: "Search unit, faculty, or area...",
-                      onChanged: (val) => setState(() => _searchQuery = val),
-                    ),
-                  ),
-                ),
-
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 40,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      itemCount: _filters.length,
-                      itemBuilder: (context, index) {
-                        final filter = _filters[index];
-                        return AppFilterChip(
-                          label: filter,
-                          active: _selectedFilter == filter,
-                          onTap: () => setState(() => _selectedFilter = filter),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryLight.withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.primaryLight.withOpacity(0.25)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.map_outlined, color: AppTheme.primaryColor),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  "Campuses in Istanbul",
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text("Tap on a campus to open in map.", style: TextStyle(fontSize: 13, color: mutedColor)),
-                          const SizedBox(height: 14),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _campuses.length,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.4,
-                            ),
-                            itemBuilder: (context, index) {
-                              final campus = _campuses[index];
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () => _openCampusMap(campus["address"]!),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).cardColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Theme.of(context).dividerColor),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.location_on_outlined, size: 18, color: AppTheme.primaryColor),
-                                      const SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(campus["title"]!, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                if (filteredBuildings.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Center(
-                        child: Text(
-                          "No records found matching your filters.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                if (filteredBuildings.isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                          final b = filteredBuildings[index];
-                          String metadata = "";
-                          if (b['type'] == "faculty" || b['type'] == "admin") {
-                            metadata = "${b['floors'] ?? 1} floors • ${b['rooms'] ?? 10} areas";
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
-                            child: InfoCard(
-                              title: b['name']?.toString() ?? "",
-                              subtitle: b['location']?.toString() ?? "",
-                              metadata: metadata,
-                              badge: AppBadge(label: _getTypeLabel(b['type']?.toString() ?? "")),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => BuildingDetailScreen(buildingData: b)),
-                              ),
-                            ),
-                          );
-                        },
-                        childCount: filteredBuildings.length,
-                      ),
-                    ),
-                  ),
-              ],
-            );
+        future: _databaseFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
+          if (!snapshot.hasData || snapshot.data!['buildings'] == null) {
+            return const Center(child: Text("Campus unit data not found."));
+          }
+
+          final allUnits = (snapshot.data!['buildings'] as List<dynamic>? ?? [])
+              .map((unit) => DataService.normalizeCampusUnitRecord(Map<String, dynamic>.from(unit as Map)))
+              .where((unit) => DataService.isCampusUnitVisible(unit))
+              .toList();
+
+          final sq = _normalize(_searchQuery);
+          final filteredUnits = allUnits.where((unit) {
+            final campusMatches = unit['campusKey'] == _selectedCampusKey;
+            final category = DataService.campusUnitCategory(unit);
+            final categoryMatches = _selectedCategory == "All" || category == _selectedCategory;
+
+            final searchable = [
+              unit['name'],
+              unit['abbr'],
+              unit['location'],
+              unit['building'],
+              unit['roomCode'],
+              unit['type'],
+              unit['typeNormalized'],
+              unit['category'],
+            ].whereType<Object>().map((value) => value.toString()).join(' ');
+            final searchMatches = sq.isEmpty || _normalize(searchable).contains(sq);
+
+            return campusMatches && categoryMatches && searchMatches;
+          }).toList()
+            ..sort((a, b) {
+              final featuredCompare = (b['isFeatured'] == true ? 1 : 0).compareTo(a['isFeatured'] == true ? 1 : 0);
+              if (featuredCompare != 0) return featuredCompare;
+              final orderCompare = (a['sortOrder'] as int).compareTo(b['sortOrder'] as int);
+              if (orderCompare != 0) return orderCompare;
+              return (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString());
+            });
+
+          final featuredUnits = filteredUnits.where((unit) => unit['isFeatured'] == true).take(5).toList();
+          final regularUnits = filteredUnits.where((unit) => unit['isFeatured'] != true).toList();
+
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: AppSearchBar(
+                    placeholder: "Search unit, faculty, classroom, or service...",
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(child: _buildCampusSelector()),
+              const SliverToBoxAdapter(child: SizedBox(height: 10)),
+              SliverToBoxAdapter(child: _buildCategorySelector()),
+              SliverToBoxAdapter(child: _buildSelectedCampusCard(textColor, mutedColor)),
+
+              if (filteredUnits.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Center(
+                      child: Text(
+                        "No campus unit found matching your filters.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ),
+
+              if (featuredUnits.isNotEmpty) ...[
+                SliverToBoxAdapter(child: _buildSectionTitle("Featured / Useful", featuredUnits.length)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _buildUnitCard(featuredUnits[index]),
+                      childCount: featuredUnits.length,
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              ],
+
+              if (regularUnits.isNotEmpty) ...[
+                SliverToBoxAdapter(child: _buildSectionTitle("All Campus Units", regularUnits.length)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _buildUnitCard(regularUnits[index]),
+                      childCount: regularUnits.length,
+                    ),
+                  ),
+                ),
+              ],
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          );
+        },
       ),
     );
   }

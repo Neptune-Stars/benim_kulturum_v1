@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // YENİ: Firebase Firest
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
+import '../providers/favorites_provider.dart';
+import '../providers/joined_events_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -80,6 +82,16 @@ class _LoginScreenState extends State<LoginScreen> {
           context.read<AuthProvider>().login("student", data: studentData);
           context.read<ProfileProvider>().initializeFromUserData(studentData);
 
+          await context.read<FavoritesProvider>().loadForStudent(
+            studentDocId: studentDoc.id,
+            userData: studentData,
+          );
+          await context.read<JoinedEventsProvider>().loadForStudent(
+            studentDocId: studentDoc.id,
+            userData: studentData,
+          );
+
+          if (!mounted) return;
           context.go('/main');
         }
         else {
@@ -131,7 +143,28 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-              const Icon(Icons.school, size: 64, color: AppTheme.primaryColor),
+              Center(
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      if (!isDark)
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withOpacity(0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset(
+                    'assets/icon/app_icon.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               Text("Log In", textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 32),

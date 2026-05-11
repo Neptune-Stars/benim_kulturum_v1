@@ -13,12 +13,22 @@ class EventDetailScreen extends StatelessWidget {
 
   String _getCategoryLabel(String cat) {
     switch (cat) {
-      case "academic": return "Academic";
-      case "cultural": return "Cultural";
-      case "sports": return "Sports";
-      case "social": return "Social";
-      default: return "General";
+      case "academic":
+        return "Academic";
+      case "cultural":
+        return "Cultural";
+      case "sports":
+        return "Sports";
+      case "social":
+        return "Social";
+      default:
+        return "General";
     }
+  }
+
+  String _resolveEventId(Map<String, dynamic> data) {
+    final rawId = data['id'] ?? data['eventId'] ?? data['docId'] ?? data['title'];
+    return rawId?.toString() ?? '';
   }
 
   @override
@@ -28,15 +38,15 @@ class EventDetailScreen extends StatelessWidget {
     final favProvider = context.watch<FavoritesProvider>();
     final joinedProvider = context.watch<JoinedEventsProvider>();
 
-    final eventId = data['id'] is int ? data['id'] : int.tryParse(data['id'].toString()) ?? 0;
+    final String eventId = _resolveEventId(data);
     final isFav = favProvider.isFavorite("evt_$eventId");
 
-    final String title = data['title'] ?? 'Event';
-    final String category = data['category'] ?? '';
-    final String date = data['date'] ?? '';
-    final String time = data['time'] ?? '';
-    final String location = data['location'] ?? '';
-    final String description = data['description'] ?? '';
+    final String title = data['title']?.toString() ?? 'Event';
+    final String category = data['category']?.toString() ?? '';
+    final String date = data['date']?.toString() ?? '';
+    final String time = data['time']?.toString() ?? '';
+    final String location = data['location']?.toString() ?? '';
+    final String description = data['description']?.toString() ?? '';
 
     final isJoined = joinedProvider.isJoined(eventId);
 
@@ -47,98 +57,127 @@ class EventDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: CustomAppBar(title: title, showBack: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: softBoxColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: softBorderColor),
-              ),
-              child: Column(
-                children: [
-                  AppBadge(
-                    label: _getCategoryLabel(category),
-                    backgroundColor: AppTheme.primaryColor,
-                    textColor: Colors.white,
-                  ),
-                  const SizedBox(height: 12),
-                  if (isJoined)
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: softBoxColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: softBorderColor),
+                ),
+                child: Column(
+                  children: [
                     AppBadge(
-                      label: "Joined",
-                      backgroundColor: AppTheme.successColor.withOpacity(0.15),
-                      textColor: AppTheme.successColor,
+                      label: _getCategoryLabel(category),
+                      backgroundColor: AppTheme.primaryColor,
+                      textColor: Colors.white,
                     ),
-                  if (isJoined) const SizedBox(height: 16),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+                    const SizedBox(height: 12),
+                    if (isJoined)
+                      AppBadge(
+                        label: "Joined",
+                        backgroundColor: AppTheme.successColor.withOpacity(0.15),
+                        textColor: AppTheme.successColor,
+                      ),
+                    if (isJoined) const SizedBox(height: 16),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildDetailRow(context, Icons.calendar_today, "Date", date),
+              const Divider(height: 24),
+              _buildDetailRow(context, Icons.access_time, "Time", time),
+              const Divider(height: 24),
+              _buildDetailRow(context, Icons.location_on, "Location", location),
+              const SizedBox(height: 32),
+              Text(
+                "Description",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                softWrap: true,
+                style: const TextStyle(fontSize: 16, color: AppTheme.textMuted, height: 1.5),
+              ),
+              const SizedBox(height: 48),
+
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isJoined ? AppTheme.destructiveColor : AppTheme.primaryColor,
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildDetailRow(context, Icons.calendar_today, "Date", date),
-            const Divider(height: 24),
-            _buildDetailRow(context, Icons.access_time, "Time", time),
-            const Divider(height: 24),
-            _buildDetailRow(context, Icons.location_on, "Location", location),
-            const SizedBox(height: 32),
-            Text("Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-            const SizedBox(height: 8),
-            Text(description, style: const TextStyle(fontSize: 16, color: AppTheme.textMuted, height: 1.5)),
-            const SizedBox(height: 48),
+                  onPressed: eventId.isEmpty
+                      ? null
+                      : () {
+                          final alreadyJoined = context.read<JoinedEventsProvider>().isJoined(eventId);
+                          context.read<JoinedEventsProvider>().toggleJoin(eventId);
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isJoined ? AppTheme.destructiveColor : AppTheme.primaryColor,
-                ),
-                onPressed: () {
-                  final alreadyJoined = context.read<JoinedEventsProvider>().isJoined(eventId);
-                  context.read<JoinedEventsProvider>().toggleJoin(eventId);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(alreadyJoined ? "Event registration cancelled." : "You have joined the event. It now appears in My Events."),
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                alreadyJoined
+                                    ? "Event registration cancelled."
+                                    : "You have joined the event. It now appears in My Events.",
+                              ),
+                            ),
+                          );
+                        },
+                  icon: Icon(isJoined ? Icons.event_busy : Icons.event_available),
+                  label: Flexible(
+                    child: Text(
+                      isJoined ? "Cancel Registration" : "Join Event",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                  );
-                },
-                icon: Icon(isJoined ? Icons.event_busy : Icons.event_available),
-                label: Text(
-                  isJoined ? "Cancel Registration" : "Join Event",
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton.icon(
-                onPressed: () => context.read<FavoritesProvider>().toggleFavorite("evt_$eventId"),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: textColor,
-                  side: BorderSide(color: Theme.of(context).dividerColor),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: eventId.isEmpty
+                      ? null
+                      : () => context.read<FavoritesProvider>().toggleFavorite("evt_$eventId"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: textColor,
+                    side: BorderSide(color: Theme.of(context).dividerColor),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: Icon(
+                    isFav ? Icons.star : Icons.star_border,
+                    color: isFav ? AppTheme.warningColor : textColor,
+                  ),
+                  label: Flexible(
+                    child: Text(
+                      isFav ? "Remove from Favorites" : "Add to Favorites",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
                 ),
-                icon: Icon(
-                  isFav ? Icons.star : Icons.star_border,
-                  color: isFav ? AppTheme.warningColor : textColor,
-                ),
-                label: Text(isFav ? "Remove from Favorites" : "Add to Favorites", style: const TextStyle(fontSize: 16)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -151,6 +190,7 @@ class EventDetailScreen extends StatelessWidget {
     final boxColor = isDark ? Colors.white.withOpacity(0.06) : AppTheme.backgroundColor;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(8),
@@ -158,14 +198,20 @@ class EventDetailScreen extends StatelessWidget {
           child: Icon(icon, color: AppTheme.primaryColor),
         ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: mutedColor, fontSize: 12)),
-            const SizedBox(height: 2),
-            Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: textColor)),
-          ],
-        )
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(color: mutedColor, fontSize: 12)),
+              const SizedBox(height: 2),
+              Text(
+                value.isEmpty ? '-' : value,
+                softWrap: true,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: textColor, height: 1.25),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

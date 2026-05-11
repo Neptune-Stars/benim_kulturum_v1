@@ -461,6 +461,8 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         onPressed: () {
                           context.read<ProfileProvider>().reset();
+                          context.read<FavoritesProvider>().reset();
+                          context.read<JoinedEventsProvider>().reset();
                           context.read<AuthProvider>().logout();
                           context.go('/login');
                         },

@@ -36,27 +36,82 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
 
   String _floorLabel(dynamic floor) {
     final text = floor?.toString().trim() ?? "";
-
     if (text.isEmpty) return "No Floor Info";
+
+    final normalized = text
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final compact = normalized.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    if (compact == 'b1b2' ||
+        compact == 'b2b1' ||
+        normalized.contains('b1 and b2') ||
+        normalized.contains('b1 / b2') ||
+        normalized.contains('b1-b2')) {
+      return "B1-B2 Floors";
+    }
+
+    if (compact == 'b2' || compact == 'b2floor') return "B2 Floor";
+    if (compact == 'b1' || compact == 'b1floor') return "B1 Floor";
+
+    if (normalized == 'basement' || normalized == 'basement floor') {
+      return "Basement Floor";
+    }
+    if (normalized == 'ground' || normalized == 'ground floor') {
+      return "Ground Floor";
+    }
+    if (normalized == 'entrance' || normalized == 'entrance floor') {
+      return "Entrance Floor";
+    }
+    if (normalized == 'mezzanine' || normalized == 'mezzanine floor') {
+      return "Mezzanine Floor";
+    }
+
     if (text.contains("Floor")) return text;
 
     final number = int.tryParse(text);
-
+    if (number == -2) return "B2 Floor";
     if (number == -1) return "Basement Floor";
     if (number == 0) return "Ground Floor";
-    if (number != null) return "${number}th Floor";
+    if (number != null && number > 0) return "${number}th Floor";
 
     return text;
   }
 
+  List<String> _floorFilterLabels(dynamic floor) {
+    final label = _floorLabel(floor);
+    if (label == "B1-B2 Floors") {
+      return ["B1 Floor", "B2 Floor"];
+    }
+    return [label];
+  }
+
   int _floorOrder(String label) {
-    if (label == "Basement Floor") return -1;
-    if (label == "Ground Floor") return 0;
+    switch (label) {
+      case "B2 Floor":
+        return -20;
+      case "B1 Floor":
+        return -10;
+      case "B1-B2 Floors":
+        return -9;
+      case "Basement Floor":
+        return -5;
+      case "Ground Floor":
+        return 0;
+      case "Entrance Floor":
+        return 1;
+      case "Mezzanine Floor":
+        return 2;
+      case "No Floor Info":
+        return 999;
+    }
 
     final match = RegExp(r'(\d+)').firstMatch(label);
-    if (match == null) return 999;
+    if (match == null) return 998;
 
-    return int.tryParse(match.group(1) ?? "999") ?? 999;
+    return (int.tryParse(match.group(1) ?? "99") ?? 99) * 10;
   }
 
   @override
@@ -75,10 +130,10 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
 
             final allClassrooms = snapshot.data!['classrooms'] as List<dynamic>? ?? [];
 
-            final floorSet = <String>{};
+            final floorSet = <String>{"B2 Floor", "B1 Floor"};
 
             for (final c in allClassrooms) {
-              floorSet.add(_floorLabel(c['floorLabel'] ?? c['floor']));
+              floorSet.addAll(_floorFilterLabels(c['floorLabel'] ?? c['floor']));
             }
 
             final sortedFloors = floorSet.toList()
@@ -93,14 +148,15 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
               final name = classroom['name']?.toString() ?? "";
               final building = classroom['building']?.toString() ?? "";
               final type = classroom['type']?.toString() ?? "";
-              final floor = classroom['floorLabel'] ?? classroom['floor'] ?? 0;
+              final floor = classroom['floorLabel'] ?? classroom['floor'];
+              final floorLabels = _floorFilterLabels(floor);
 
               final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   building.toLowerCase().contains(_searchQuery.toLowerCase());
 
               final matchesType = _selectedTypeFilter == "All" || type == _selectedTypeFilter;
 
-              final matchesFloor = _selectedFloorFilter == "All Floors" || _floorLabel(floor) == _selectedFloorFilter;
+              final matchesFloor = _selectedFloorFilter == "All Floors" || floorLabels.contains(_selectedFloorFilter);
 
               return matchesSearch && matchesType && matchesFloor;
             }).toList();
