@@ -5,7 +5,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/filter_chip_widget.dart';
 import '../widgets/info_card.dart';
 import '../widgets/badge_widget.dart';
-import '../data/data_service.dart'; // JSON Servisi
+import '../data/data_service.dart';
 import '../providers/favorites_provider.dart';
 
 import 'classroom_detail_screen.dart';

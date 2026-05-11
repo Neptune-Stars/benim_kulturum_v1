@@ -401,26 +401,70 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   String _floorLabelFromValue(dynamic value) {
     final text = value?.toString().trim() ?? "";
+    if (text.isEmpty) return "No Floor Info";
+
+    final normalized = text
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    final compact = normalized.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    if (compact == 'b1b2' ||
+        compact == 'b2b1' ||
+        normalized.contains('b1 and b2') ||
+        normalized.contains('b1 / b2') ||
+        normalized.contains('b1-b2')) {
+      return "B1-B2 Floors";
+    }
+
+    if (compact == 'b2' || compact == 'b2floor') return "B2 Floor";
+    if (compact == 'b1' || compact == 'b1floor') return "B1 Floor";
+
+    if (normalized == 'basement' || normalized == 'basement floor') {
+      return "Basement Floor";
+    }
+    if (normalized == 'ground' || normalized == 'ground floor') {
+      return "Ground Floor";
+    }
+    if (normalized == 'entrance' || normalized == 'entrance floor') {
+      return "Entrance Floor";
+    }
+    if (normalized == 'mezzanine' || normalized == 'mezzanine floor') {
+      return "Mezzanine Floor";
+    }
 
     if (text.contains("Floor")) return text;
 
     final number = int.tryParse(text);
-
+    if (number == -2) return "B2 Floor";
     if (number == -1) return "Basement Floor";
     if (number == 0) return "Ground Floor";
-    if (number != null) return "${number}th Floor";
+    if (number != null && number > 0) return "${number}th Floor";
 
-    return "Ground Floor";
+    return text;
   }
 
-  int _floorValueFromLabel(String label) {
-    if (label == "Basement Floor") return -1;
-    if (label == "Ground Floor") return 0;
+  dynamic _floorValueFromLabel(String label) {
+    final normalized = label
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (normalized == "b2 floor" || normalized == "b2") return "B2";
+    if (normalized == "b1 floor" || normalized == "b1") return "B1";
+    if (normalized == "b1-b2 floors" || normalized == "b1-b2") return "B1-B2";
+    if (normalized == "basement floor" || normalized == "basement") return "Basement";
+    if (normalized == "ground floor" || normalized == "ground") return 0;
+    if (normalized == "entrance floor" || normalized == "entrance") return "Entrance";
+    if (normalized == "mezzanine floor" || normalized == "mezzanine") return "Mezzanine";
 
     final match = RegExp(r'(\d+)').firstMatch(label);
-    if (match == null) return 0;
+    if (match == null) return label;
 
-    return int.tryParse(match.group(1) ?? "0") ?? 0;
+    return int.tryParse(match.group(1) ?? "0") ?? label;
   }
 
   @override
@@ -3010,8 +3054,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final capacityCtrl = TextEditingController(text: (item?['capacity'] ?? 40).toString());
 
     final List<String> floorOptions = [
+      "B2 Floor",
+      "B1 Floor",
+      "B1-B2 Floors",
       "Basement Floor",
       "Ground Floor",
+      "Entrance Floor",
+      "Mezzanine Floor",
       "1st Floor",
       "2nd Floor",
       "3rd Floor",
@@ -3020,6 +3069,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       "6th Floor",
       "7th Floor",
       "8th Floor",
+      "9th Floor",
     ];
 
     final List<String> typeOptions = [
@@ -3225,218 +3275,80 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final nameCtrl = TextEditingController(text: item?['name']);
     final deptCtrl = TextEditingController(text: item?['department']);
     final photoCtrl = TextEditingController(text: item?['imageUrl'] ?? '');
-    final titleCtrl = TextEditingController(text: item?['title'] ?? 'Faculty Member');
-    final officeLocCtrl = TextEditingController(text: item?['office'] ?? '');
 
-    String initialEmail = item?['email']?.toString() ?? 'contact@uni.edu.tr';
-    if (initialEmail.trim().isEmpty) initialEmail = 'contact@uni.edu.tr';
-    final emailCtrl = TextEditingController(text: initialEmail);
-
-    // --- OTOMATİK SAAT ÜRETME YARDIMCISI (Admin Formu İçin) ---
-    List<Map<String, dynamic>> _generateAdminFallback(String id, String office) {
-      final int seed = id.hashCode;
-      final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-      final List<String> blocks = ["09:00-11:00", "10:00-12:00", "11:00-13:00", "13:00-15:00", "14:00-16:00", "15:00-17:00"];
-
-      String d1 = days[seed % 5];
-      String b1 = blocks[seed % 6];
-      String d2 = days[(seed + 2) % 5];
-      String b2 = blocks[(seed + 3) % 6];
-
-      return [
-        {"day": d1, "startTime": b1.split('-')[0], "endTime": b1.split('-')[1], "office": office},
-        {"day": d2, "startTime": b2.split('-')[0], "endTime": b2.split('-')[1], "office": office},
-      ];
-    }
-
-    // LİSTEYİ BAŞLATMA
-    List<Map<String, dynamic>> officeHoursList = [];
-
-    if (item != null) {
-      if (item['officeHours'] != null && item['officeHours'] is List && (item['officeHours'] as List).isNotEmpty) {
-        // 1. Durum: Veritabanında gerçek veri var, onları yükle
-        officeHoursList = List<Map<String, dynamic>>.from(
-          (item['officeHours'] as List).map((e) => Map<String, dynamic>.from(e as Map)),
-        );
-      } else {
-        // 2. Durum: Veritabanı boş! Otomatik taslakları üret ve forma doldur
-        String instId = (item['firestoreDocId'] ?? item['id']).toString();
-        officeHoursList = _generateAdminFallback(instId, officeLocCtrl.text.isNotEmpty ? officeLocCtrl.text : "Office");
-      }
-    }
-
-    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-    Future<String?> _selectTime(BuildContext context, String? currentTime) async {
-      TimeOfDay initial = TimeOfDay.now();
-      if (currentTime != null && currentTime.contains(':')) {
-        final parts = currentTime.split(':');
-        initial = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-      }
-      final TimeOfDay? picked = await showTimePicker(
-        context: context,
-        initialTime: initial,
-        builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(colorScheme: ColorScheme.fromSeed(seedColor: AppTheme.primaryColor)),
-          child: child!,
-        ),
-      );
-      if (picked != null) {
-        return "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
-      }
-      return null;
-    }
+    final officeHoursCtrl = TextEditingController(
+        text: (item?['officeHours'] is List)
+            ? (item?['officeHours'] as List).join(", ")
+            : ""
+    );
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text(isEdit ? "Edit: Instructor" : "New Instructor", style: const TextStyle(fontWeight: FontWeight.bold)),
-            content: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.9,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTextField("Full Name", controller: nameCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Department", controller: deptCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("General Office", controller: officeLocCtrl),
-                    const SizedBox(height: 24),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Office Hours", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        TextButton.icon(
-                          onPressed: () {
-                            setDialogState(() {
-                              officeHoursList.add({
-                                "day": "Monday",
-                                "startTime": "10:00",
-                                "endTime": "12:00",
-                                "office": officeLocCtrl.text.isNotEmpty ? officeLocCtrl.text : "Office"
-                              });
-                            });
-                          },
-                          icon: const Icon(Icons.add_circle_outline),
-                          label: const Text("Add Slot"),
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-
-                    ...officeHoursList.asMap().entries.map((entry) {
-                      int index = entry.key;
-                      Map<String, dynamic> oh = entry.value;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(color: Theme.of(context).dividerColor),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildDropdown("Day", days, value: oh['day'], onChanged: (val) {
-                                      setDialogState(() => oh['day'] = val);
-                                    }),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                    onPressed: () => setDialogState(() => officeHoursList.removeAt(index)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () async {
-                                        final t = await _selectTime(context, oh['startTime']);
-                                        if (t != null) setDialogState(() => oh['startTime'] = t);
-                                      },
-                                      child: InputDecorator(
-                                        decoration: const InputDecoration(labelText: "Start"),
-                                        child: Text(oh['startTime'] ?? "09:00"),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () async {
-                                        final t = await _selectTime(context, oh['endTime']);
-                                        if (t != null) setDialogState(() => oh['endTime'] = t);
-                                      },
-                                      child: InputDecorator(
-                                        decoration: const InputDecoration(labelText: "End"),
-                                        child: Text(oh['endTime'] ?? "11:00"),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                decoration: const InputDecoration(labelText: "Specific Location"),
-                                onChanged: (val) => oh['office'] = val,
-                                controller: TextEditingController(text: oh['office'])..selection = TextSelection.collapsed(offset: (oh['office'] ?? "").length),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-
-                    const SizedBox(height: 12),
-                    _buildTextField("Email", controller: emailCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Photo Path", controller: photoCtrl),
-                  ],
-                ),
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? "Edit: Instructor" : "New Instructor", style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Instructor Full Name")),
+              const SizedBox(height: 12),
+              TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: "Department")),
+              const SizedBox(height: 12),
+              TextField(
+                  controller: officeHoursCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                      labelText: "Office Hours",
+                      hintText: "e.g. Mon 10:00-12:00, Tue 14:00-16:00",
+                      helperText: "Separate days with commas.",
+                      helperStyle: TextStyle(fontSize: 10)
+                  )
               ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-              ElevatedButton(
-                onPressed: () async {
-                  String docId = isEdit
-                      ? (item!['firestoreDocId'] ?? item['id']).toString()
-                      : DateTime.now().millisecondsSinceEpoch.toString();
-
-                  Map<String, dynamic> newData = {
-                    'id': docId,
-                    'name': nameCtrl.text.trim(),
-                    'department': deptCtrl.text.trim(),
-                    'imageUrl': photoCtrl.text.trim(),
-                    'officeHours': officeHoursList,
-                    'title': titleCtrl.text.trim(),
-                    'office': officeLocCtrl.text.trim(),
-                    'email': emailCtrl.text.trim().isEmpty ? 'contact@uni.edu.tr' : emailCtrl.text.trim(),
-                    'updatedAt': FieldValue.serverTimestamp(),
-                  };
-
-                  await FirebaseFirestore.instance.collection('instructors').doc(docId).set(newData, SetOptions(merge: true));
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    _refreshAdminData(collectionKey: 'instructors');
-                  }
-                },
-                child: const Text("Save"),
-              )
+              const SizedBox(height: 12),
+              TextField(
+                  controller: photoCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "Photo Path",
+                      hintText: "assets/instructors/default.jpg"
+                  )
+              ),
             ],
-          );
-        },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+              onPressed: () async {
+                List<String> hoursList = officeHoursCtrl.text
+                    .split(",")
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+
+                String docId = isEdit ? item!['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
+
+                Map<String, dynamic> newData = {
+                  'id': docId,
+                  'name': nameCtrl.text,
+                  'department': deptCtrl.text,
+                  'imageUrl': photoCtrl.text,
+                  'officeHours': hoursList,
+                  'title': item?['title'] ?? 'Faculty Member',
+                  'office': item?['office'] ?? 'Unknown',
+                  'filter': item?['filter'] ?? 'engineering',
+                  'email': item?['email'] ?? 'iletisim@uni.edu.tr'
+                };
+
+                await FirebaseFirestore.instance.collection('instructors').doc(docId).set(newData);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  _refreshAdminData(collectionKey: 'instructors');
+                }
+              },
+              child: const Text("Save")
+          )
+        ],
       ),
     );
   }

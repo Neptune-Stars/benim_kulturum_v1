@@ -129,6 +129,8 @@ class BuildingDetailScreen extends StatelessWidget {
         Text(
           label,
           textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary, height: 1.3),
         ),
       ],

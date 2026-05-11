@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // Panoya (Clipboard) kopyalamak için eklendi
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
@@ -20,48 +20,23 @@ class InstructorDetailScreen extends StatelessWidget {
     return names.isNotEmpty ? names[0][0].toUpperCase() : "?";
   }
 
-
-  List<Map<String, dynamic>> _generateRealisticMockHours(String id, String generalOffice) {
-    final int seed = id.hashCode;
-    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    final List<String> timeBlocks = [
-      "09:00 - 11:00", "10:00 - 12:00", "11:00 - 13:00",
-      "13:00 - 15:00", "14:00 - 16:00", "15:00 - 17:00"
-    ];
-
-    String day1 = days[seed % days.length];
-    String block1 = timeBlocks[seed % timeBlocks.length];
-    String day2 = days[(seed + 2) % days.length];
-    String block2 = timeBlocks[(seed + 3) % timeBlocks.length];
-
-    return [
-      {"day": day1, "startTime": block1.split(" - ")[0], "endTime": block1.split(" - ")[1], "office": generalOffice},
-      {"day": day2, "startTime": block2.split(" - ")[0], "endTime": block2.split(" - ")[1], "office": generalOffice}
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
     final isFav = favProvider.isFavorite("inst_${instructorData['id']}");
 
+    final List<dynamic> displayHours = (instructorData['officeHours'] is List && (instructorData['officeHours'] as List).isNotEmpty)
+        ? instructorData['officeHours']
+        : ["Monday: 10:00 - 12:00", "Wednesday: 14:00 - 16:00"];
+
     final String name = instructorData['name'] ?? 'Unknown';
     final String title = instructorData['title'] ?? '';
     final String department = instructorData['department'] ?? '';
     final String office = instructorData['office'] ?? 'Unknown';
-    final String instructorId = instructorData['id']?.toString() ?? '0';
-
-
-    final String email = (instructorData['email'] != null && instructorData['email'].toString().trim().isNotEmpty)
-        ? instructorData['email']
-        : 'contact@uni.edu.tr';
-
-
-    final List<dynamic> displayHours = (instructorData['officeHours'] is List && (instructorData['officeHours'] as List).isNotEmpty)
-        ? instructorData['officeHours']
-        : _generateRealisticMockHours(instructorId, office);
+    final String email = instructorData['email'] ?? 'contact@uni.edu.tr';
 
     final String? imageUrl = instructorData['imageUrl'];
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
@@ -102,15 +77,30 @@ class InstructorDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   AppBadge(label: title, backgroundColor: AppTheme.primaryColor, textColor: Colors.white),
                   const SizedBox(height: 8),
-                  Text(department, style: TextStyle(fontSize: 16, color: mutedColor)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      department,
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      style: TextStyle(fontSize: 16, color: mutedColor, height: 1.25),
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text("Office: $office", style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      "Office: $office",
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      style: TextStyle(fontWeight: FontWeight.w600, color: textColor, height: 1.25),
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 32),
 
-            // Email Copy Area
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -140,7 +130,12 @@ class InstructorDetailScreen extends StatelessWidget {
                       const Icon(Icons.email_outlined, color: AppTheme.primaryColor),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(email, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor)),
+                        child: Text(
+                          email,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
+                        ),
                       ),
                       Icon(Icons.copy, size: 18, color: mutedColor),
                     ],
@@ -151,41 +146,25 @@ class InstructorDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
             const SectionHeader(title: "Office Hours"),
-
             Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: dividerColor),
-              ),
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: displayHours.length,
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) {
-                  final item = displayHours[index];
+                  final String hourInfo = displayHours[index].toString();
 
                   String day = "Meeting";
-                  String time = "-";
-                  String? specificOffice;
+                  String time = hourInfo;
 
-                  if (item is Map) {
-                    day = item['day']?.toString() ?? "Unknown";
-                    time = "${item['startTime'] ?? ''} - ${item['endTime'] ?? ''}";
-                    specificOffice = item['office']?.toString();
-                  } else {
-                    final String hourInfo = item.toString();
-                    if (hourInfo.contains(':')) {
-                      var parts = hourInfo.split(':');
-                      day = parts[0].trim();
-                      time = parts.sublist(1).join(':').trim();
-                    } else {
-                      time = hourInfo;
-                    }
+                  if (hourInfo.contains(':')) {
+                    var parts = hourInfo.split(':');
+                    day = parts[0].trim();
+                    time = parts.sublist(1).join(':').trim();
                   }
 
-                  return _buildOfficeHourRow(context, day, time, specificOffice);
+                  return _buildOfficeHourRow(context, day, time);
                 },
               ),
             ),
@@ -195,41 +174,32 @@ class InstructorDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOfficeHourRow(BuildContext context, String day, String time, String? office) {
+  Widget _buildOfficeHourRow(BuildContext context, String day, String time) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 2,
+            flex: 4,
             child: Text(
-                day,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textColor)
+              day,
+              softWrap: true,
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16, color: textColor, height: 1.25),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                    time,
-                    style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500)
-                ),
-                if (office != null && office.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      office,
-                      style: TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-              ],
+            flex: 5,
+            child: Text(
+              time,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              style: TextStyle(color: mutedColor, fontSize: 14, height: 1.25),
             ),
           ),
         ],
