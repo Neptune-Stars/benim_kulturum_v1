@@ -401,70 +401,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   String _floorLabelFromValue(dynamic value) {
     final text = value?.toString().trim() ?? "";
-    if (text.isEmpty) return "No Floor Info";
-
-    final normalized = text
-        .toLowerCase()
-        .replaceAll('ı', 'i')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-
-    final compact = normalized.replaceAll(RegExp(r'[^a-z0-9]'), '');
-
-    if (compact == 'b1b2' ||
-        compact == 'b2b1' ||
-        normalized.contains('b1 and b2') ||
-        normalized.contains('b1 / b2') ||
-        normalized.contains('b1-b2')) {
-      return "B1-B2 Floors";
-    }
-
-    if (compact == 'b2' || compact == 'b2floor') return "B2 Floor";
-    if (compact == 'b1' || compact == 'b1floor') return "B1 Floor";
-
-    if (normalized == 'basement' || normalized == 'basement floor') {
-      return "Basement Floor";
-    }
-    if (normalized == 'ground' || normalized == 'ground floor') {
-      return "Ground Floor";
-    }
-    if (normalized == 'entrance' || normalized == 'entrance floor') {
-      return "Entrance Floor";
-    }
-    if (normalized == 'mezzanine' || normalized == 'mezzanine floor') {
-      return "Mezzanine Floor";
-    }
 
     if (text.contains("Floor")) return text;
 
     final number = int.tryParse(text);
-    if (number == -2) return "B2 Floor";
+
     if (number == -1) return "Basement Floor";
     if (number == 0) return "Ground Floor";
-    if (number != null && number > 0) return "${number}th Floor";
+    if (number != null) return "${number}th Floor";
 
-    return text;
+    return "Ground Floor";
   }
 
-  dynamic _floorValueFromLabel(String label) {
-    final normalized = label
-        .toLowerCase()
-        .replaceAll('ı', 'i')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-
-    if (normalized == "b2 floor" || normalized == "b2") return "B2";
-    if (normalized == "b1 floor" || normalized == "b1") return "B1";
-    if (normalized == "b1-b2 floors" || normalized == "b1-b2") return "B1-B2";
-    if (normalized == "basement floor" || normalized == "basement") return "Basement";
-    if (normalized == "ground floor" || normalized == "ground") return 0;
-    if (normalized == "entrance floor" || normalized == "entrance") return "Entrance";
-    if (normalized == "mezzanine floor" || normalized == "mezzanine") return "Mezzanine";
+  int _floorValueFromLabel(String label) {
+    if (label == "Basement Floor") return -1;
+    if (label == "Ground Floor") return 0;
 
     final match = RegExp(r'(\d+)').firstMatch(label);
-    if (match == null) return label;
+    if (match == null) return 0;
 
-    return int.tryParse(match.group(1) ?? "0") ?? label;
+    return int.tryParse(match.group(1) ?? "0") ?? 0;
   }
 
   @override
@@ -3054,13 +3010,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final capacityCtrl = TextEditingController(text: (item?['capacity'] ?? 40).toString());
 
     final List<String> floorOptions = [
-      "B2 Floor",
-      "B1 Floor",
-      "B1-B2 Floors",
       "Basement Floor",
       "Ground Floor",
-      "Entrance Floor",
-      "Mezzanine Floor",
       "1st Floor",
       "2nd Floor",
       "3rd Floor",
@@ -3069,7 +3020,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       "6th Floor",
       "7th Floor",
       "8th Floor",
-      "9th Floor",
     ];
 
     final List<String> typeOptions = [

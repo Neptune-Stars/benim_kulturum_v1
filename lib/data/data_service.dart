@@ -40,6 +40,235 @@ class DataService {
     "Snacks",
   ];
 
+
+
+  static const List<Map<String, String>> campusDirectoryCampuses = [
+    {
+      'key': 'Ataköy',
+      'label': 'Ataköy Campus',
+      'address': 'Istanbul Kultur University Ataköy Campus, E5 Highway Bakırköy 34158 Istanbul',
+    },
+    {
+      'key': 'İncirli',
+      'label': 'İncirli Campus',
+      'address': 'Istanbul Kultur University İncirli Campus, Yolbaşı Street, 34147 Bakırköy Istanbul',
+    },
+    {
+      'key': 'Şirinevler',
+      'label': 'Şirinevler Campus',
+      'address': 'Istanbul Kultur University Şirinevler Campus, E5 Highway No:22 Bahçelievler 34191 Istanbul',
+    },
+    {
+      'key': 'Basın Ekspres',
+      'label': 'Basın Ekspres Campus',
+      'address': 'Istanbul Kultur University Basın Ekspres Campus, Halkalı Merkez District Basın Ekspres Avenue No:11 34303 Küçükçekmece Istanbul',
+    },
+  ];
+
+  static const List<String> campusUnitCategories = [
+    'All',
+    'Academic Units',
+    'Classrooms & Labs',
+    'Halls & Event Spaces',
+    'Food & Beverage',
+    'Study & Library',
+    'Student Services',
+    'Health & Security',
+    'Other',
+  ];
+
+  static const List<String> campusUnitTypeOptions = [
+    'Academic Unit',
+    'Faculty',
+    'Department',
+    'Office',
+    'Classroom',
+    'Laboratory',
+    'Computer Lab',
+    'Workshop',
+    'Hall',
+    'Auditorium',
+    'Seminar Hall',
+    'Conference Hall',
+    'Food & Drink',
+    'Cafeteria',
+    'Cafe',
+    'Restaurant',
+    'Canteen',
+    'Library',
+    'Study Area',
+    'Student Services',
+    'Student Affairs',
+    'Service',
+    'Stationery',
+    'Health Unit',
+    'Infirmary',
+    'Security',
+    'Other',
+  ];
+
+  static String _searchNormalize(String? value) {
+    return (value ?? '')
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('İ', 'i')
+        .replaceAll('ş', 's')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String normalizeCampusKey(String? rawCampus) {
+    final value = _searchNormalize(rawCampus);
+    if (value.isEmpty) return 'Ataköy';
+
+    if (value.contains('atak')) return 'Ataköy';
+    if (value.contains('incir')) return 'İncirli';
+    if (value.contains('bas') || value.contains('ekspres') || value.contains('kucuk')) {
+      return 'Basın Ekspres';
+    }
+    if (value.contains('sirin') || value.contains('bahcel')) return 'Şirinevler';
+
+    return 'Ataköy';
+  }
+
+  static String campusDisplayName(String? rawCampus) {
+    final key = normalizeCampusKey(rawCampus);
+    final match = campusDirectoryCampuses.where((campus) => campus['key'] == key);
+    return match.isEmpty ? '$key Campus' : match.first['label']!;
+  }
+
+  static String campusAddress(String? rawCampus) {
+    final key = normalizeCampusKey(rawCampus);
+    final match = campusDirectoryCampuses.where((campus) => campus['key'] == key);
+    return match.isEmpty ? campusDisplayName(rawCampus) : match.first['address']!;
+  }
+
+  static String normalizeCampusUnitType(String? rawType) {
+    final value = _searchNormalize(rawType).replaceAll('_', ' ').replaceAll('-', ' ');
+    if (value.isEmpty) return 'Academic Unit';
+
+    if (value.contains('faculty')) return 'Faculty';
+    if (value.contains('department') || value.contains('school') || value.contains('academic')) {
+      return 'Academic Unit';
+    }
+    if (value.contains('computer') && value.contains('lab')) return 'Computer Lab';
+    if (value.contains('laboratory') || value == 'lab' || value.contains(' lab')) return 'Laboratory';
+    if (value.contains('classroom') || value.contains('lecture')) return 'Classroom';
+    if (value.contains('workshop') || value.contains('factory')) return 'Workshop';
+    if (value.contains('seminar')) return 'Seminar Hall';
+    if (value.contains('conference')) return 'Conference Hall';
+    if (value.contains('auditorium')) return 'Auditorium';
+    if (value.contains('hall') || value.contains('courtroom')) return 'Hall';
+    if (value.contains('cafeteria')) return 'Cafeteria';
+    if (value.contains('cafe') || value.contains('coffee')) return 'Cafe';
+    if (value.contains('restaurant')) return 'Restaurant';
+    if (value.contains('canteen')) return 'Canteen';
+    if (value.contains('food')) return 'Food & Drink';
+    if (value.contains('library')) return 'Library';
+    if (value.contains('study') || value.contains('workspace')) return 'Study Area';
+    if (value.contains('student affairs') || value.contains('registrar')) return 'Student Affairs';
+    if (value.contains('student service')) return 'Student Services';
+    if (value.contains('stationery') || value.contains('copy')) return 'Stationery';
+    if (value.contains('health') || value.contains('infirmary') || value.contains('revir')) return 'Health Unit';
+    if (value.contains('security')) return 'Security';
+    if (value.contains('office')) return 'Office';
+    if (value.contains('service') || value.contains('bank') || value.contains('hairdresser')) return 'Service';
+
+    return 'Other';
+  }
+
+  static String campusUnitCategoryFromType(String? rawType) {
+    final type = normalizeCampusUnitType(rawType);
+    switch (type) {
+      case 'Faculty':
+      case 'Department':
+      case 'Academic Unit':
+      case 'Office':
+        return 'Academic Units';
+      case 'Classroom':
+      case 'Laboratory':
+      case 'Computer Lab':
+      case 'Workshop':
+        return 'Classrooms & Labs';
+      case 'Hall':
+      case 'Auditorium':
+      case 'Seminar Hall':
+      case 'Conference Hall':
+        return 'Halls & Event Spaces';
+      case 'Food & Drink':
+      case 'Cafeteria':
+      case 'Cafe':
+      case 'Restaurant':
+      case 'Canteen':
+        return 'Food & Beverage';
+      case 'Library':
+      case 'Study Area':
+        return 'Study & Library';
+      case 'Student Services':
+      case 'Student Affairs':
+      case 'Service':
+      case 'Stationery':
+        return 'Student Services';
+      case 'Health Unit':
+      case 'Infirmary':
+      case 'Security':
+        return 'Health & Security';
+      default:
+        return 'Other';
+    }
+  }
+
+  static String campusUnitCategory(Map<dynamic, dynamic> unit) {
+    final rawCategory = unit['category']?.toString().trim();
+    if (rawCategory != null && rawCategory.isNotEmpty && campusUnitCategories.contains(rawCategory)) {
+      return rawCategory;
+    }
+    return campusUnitCategoryFromType(unit['type']?.toString());
+  }
+
+  static bool isCampusUnitVisible(Map<dynamic, dynamic> unit) {
+    if (unit['isVisible'] == false || unit['visible'] == false) return false;
+    final status = _searchNormalize(unit['status']?.toString());
+    if (status == 'hidden' || status == 'draft' || status == 'inactive') return false;
+    return true;
+  }
+
+  static Map<String, dynamic> normalizeCampusUnitRecord(Map<dynamic, dynamic> rawUnit) {
+    final unit = Map<String, dynamic>.from(rawUnit);
+    final campusSource = unit['campus']?.toString().trim().isNotEmpty == true
+        ? unit['campus']?.toString()
+        : (unit['location']?.toString().split(',').first ?? unit['building']?.toString());
+    final type = normalizeCampusUnitType(unit['type']?.toString());
+    final category = campusUnitCategory(unit);
+
+    unit['campusKey'] = normalizeCampusKey(campusSource);
+    unit['campusDisplayName'] = campusDisplayName(campusSource);
+    unit['typeNormalized'] = type;
+    unit['category'] = category;
+    unit['isVisible'] = isCampusUnitVisible(unit);
+    unit['isFeatured'] = unit['isFeatured'] == true;
+    unit['sortOrder'] = unit['sortOrder'] is int
+        ? unit['sortOrder']
+        : int.tryParse(unit['sortOrder']?.toString() ?? '') ?? 999;
+    return unit;
+  }
+
+  static List<Map<String, dynamic>> normalizeCampusUnitList(List<Map<String, dynamic>> units) {
+    final normalized = units.map(normalizeCampusUnitRecord).toList();
+    normalized.sort((a, b) {
+      final campusCompare = (a['campusKey'] ?? '').toString().compareTo((b['campusKey'] ?? '').toString());
+      if (campusCompare != 0) return campusCompare;
+      final orderCompare = (a['sortOrder'] as int).compareTo(b['sortOrder'] as int);
+      if (orderCompare != 0) return orderCompare;
+      return (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString());
+    });
+    return normalized;
+  }
+
   static void clearCache() {
     _databaseCache = null;
     _collectionCache.clear();
@@ -149,11 +378,15 @@ class DataService {
 
     final querySnapshot = await query.get();
 
-    final rows = querySnapshot.docs.map((doc) {
+    var rows = querySnapshot.docs.map((doc) {
       final data = doc.data();
       data['firestoreDocId'] = doc.id;
       return data;
     }).toList();
+
+    if (collectionName == 'buildings') {
+      rows = normalizeCampusUnitList(rows);
+    }
 
     if (canUseCache) {
       _collectionCache[collectionName] = rows;

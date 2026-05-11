@@ -52,7 +52,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -60,9 +60,9 @@ class HomeScreen extends StatelessWidget {
                   crossAxisCount: 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 0.82,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 1.18,
                   children: [
                     QuickActionCard(
                       icon: Icons.meeting_room_outlined,
@@ -128,7 +128,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
