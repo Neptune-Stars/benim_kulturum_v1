@@ -26,97 +26,6 @@ class HelpSupportScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primaryColor, AppTheme.primaryLight],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.support_agent, color: Colors.white, size: 28),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          "How can we help?",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "You can get support for app usage, campus information, and technical issues.",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            Text(
-              "Quick Help",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            _ActionCard(
-              icon: Icons.report_problem_outlined,
-              title: "Report an Issue",
-              subtitle: "Report a technical or campus-related problem",
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ReportIssueScreen(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            _ActionCard(
-              icon: Icons.mail_outline,
-              title: "Support Email",
-              subtitle: "support@campusguide.com",
-            ),
-            const SizedBox(height: 12),
-
-            _ActionCard(
-              icon: Icons.access_time,
-              title: "Support Hours",
-              subtitle: "Weekdays 09:00 - 17:00",
-            ),
-            const SizedBox(height: 24),
-
-            Text(
-              "Frequently Asked Questions",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            Container(
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(16),
@@ -125,27 +34,51 @@ class HelpSupportScreen extends StatelessWidget {
               child: Column(
                 children: const [
                   _FaqTile(
-                    question: "How can I change my profile photo?",
+                    question: "How do I find a classroom or campus location?",
                     answer:
-                    "You can tap the photo area on the profile screen and select a new image from your gallery.",
+                    "Open the classroom or campus section and search by classroom name, building, campus, or floor. The app shows the available location details so you can find where you need to go more easily.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "How do I join events?",
+                    question: "Where can I see the cafeteria menu?",
                     answer:
-                    "You can select an event from the events screen and use the join button on the details page.",
+                    "You can check the cafeteria section to view the current daily or weekly menu. If a day is closed by the administration, it will be shown as unavailable in the app.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "Is the campus information up to date?",
+                    question: "How can I report a campus or technical issue?",
                     answer:
-                    "Content on these screens is prepared with sample data. In a real system, this information should be retrieved from an up-to-date data source.",
+                    "Go to Help & Support and select Report an Issue. Choose the issue category, describe the problem clearly, and submit it. The administration can review the report from the admin panel.",
                   ),
                   Divider(height: 1),
                   _FaqTile(
-                    question: "How do I turn notifications on/off?",
+                    question: "How do I change my profile avatar?",
                     answer:
-                    "You can control this using the Notifications toggle in the Settings section of your profile screen.",
+                    "Open your profile page, tap the avatar area, and choose one of the available profile avatar options. Your selected avatar is saved to your student account and will appear again after login.",
+                  ),
+                  Divider(height: 1),
+                  _FaqTile(
+                    question: "Why can’t I upload my own profile photo?",
+                    answer:
+                    "The app currently uses predefined avatar options instead of gallery uploads so that the selected profile image can be saved safely with the student account and used across devices.",
+                  ),
+                  Divider(height: 1),
+                  _FaqTile(
+                    question: "Where can I see announcements and events?",
+                    answer:
+                    "Announcements and events are listed in their own sections. New updates added by the administration are shown in the app so students can follow campus news and activities.",
+                  ),
+                  Divider(height: 1),
+                  _FaqTile(
+                    question: "Can I see campus prices in the app?",
+                    answer:
+                    "Yes. The prices section shows available campus-related price information such as food, drinks, and other listed items. These records are managed by the admin panel.",
+                  ),
+                  Divider(height: 1),
+                  _FaqTile(
+                    question: "Who should I contact if the information looks wrong?",
+                    answer:
+                    "If you notice incorrect classroom, cafeteria, event, price, or announcement information, you can report it through the issue reporting screen or contact support during support hours.",
                   ),
                 ],
               ),
