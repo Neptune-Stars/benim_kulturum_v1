@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
 import '../../data/data_service.dart';
 import '../../widgets/search_bar_widget.dart';
 import 'package:flutter/services.dart';
@@ -2553,64 +2554,179 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final emailCtrl = TextEditingController(text: item?['email']);
     final passCtrl = TextEditingController(text: item?['password']);
 
-    final List<String> gradeOptions = ["Prep", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "Graduated"];
+    final List<String> gradeOptions = [
+      "Prep",
+      "1st Grade",
+      "2nd Grade",
+      "3rd Grade",
+      "4th Grade",
+      "Graduated",
+    ];
+
     String? selectedGrade = item?['grade'];
+    String? selectedAvatarId = item?['profileAvatarId']?.toString();
+
+    if (selectedAvatarId != null &&
+        !ProfileProvider.avatarOptions.any(
+              (avatar) => avatar.id == selectedAvatarId,
+        )) {
+      selectedAvatarId = null;
+    }
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(isEdit ? "Edit — Student" : "Add New Student", style: const TextStyle(fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTextField("Full Name", controller: nameCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Student ID", isNumber: true, controller: noCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Email", controller: emailCtrl),
-                    const SizedBox(height: 12),
-                    _buildTextField("Password", controller: passCtrl),
-                    const SizedBox(height: 12),
-                    _buildDropdown("Grade", gradeOptions, value: gradeOptions.contains(selectedGrade) ? selectedGrade : null, onChanged: (val) => setDialogState(() => selectedGrade = val)),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-                ElevatedButton(
-                    onPressed: () async {
-                      final String docId = isEdit
-                          ? (item!['firestoreDocId'] ?? item['id']).toString()
-                          : DateTime.now().millisecondsSinceEpoch.toString();
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              isEdit ? "Edit — Student" : "Add New Student",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTextField("Full Name", controller: nameCtrl),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    "Student ID",
+                    isNumber: true,
+                    controller: noCtrl,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField("Email", controller: emailCtrl),
+                  const SizedBox(height: 12),
+                  _buildTextField("Password", controller: passCtrl),
+                  const SizedBox(height: 12),
 
-                      final Map<String, dynamic> newData = {
-                        'id': int.tryParse(docId) ?? docId,
-                        'name': nameCtrl.text.trim(),
-                        'no': noCtrl.text.trim(),
-                        'email': emailCtrl.text.trim(),
-                        'password': passCtrl.text.trim(),
-                        'grade': selectedGrade ?? '1st Grade',
-                        'updatedAt': FieldValue.serverTimestamp(),
-                      };
-
-                      if (!isEdit) {
-                        newData['createdAt'] = FieldValue.serverTimestamp();
-                      }
-
-                      await FirebaseFirestore.instance
-                          .collection('students')
-                          .doc(docId)
-                          .set(newData, SetOptions(merge: true));
-                      if (context.mounted) { Navigator.pop(context); _refreshAdminData(collectionKey: 'students'); }
+                  _buildDropdown(
+                    "Grade",
+                    gradeOptions,
+                    value: gradeOptions.contains(selectedGrade)
+                        ? selectedGrade
+                        : null,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedGrade = val;
+                      });
                     },
-                    child: const Text("Save")
-                )
-              ],
-            );
-          }
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<String>(
+                    value: selectedAvatarId ?? 'none',
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: "Profile Avatar",
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                    ),
+                    items: [
+                      DropdownMenuItem<String>(
+                        value: 'none',
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 15,
+                              backgroundColor:
+                              Theme.of(context).dividerColor.withOpacity(0.4),
+                              child: Icon(
+                                Icons.person_outline,
+                                size: 18,
+                                color: _adminTextMutedColor(),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text("No Avatar / Default"),
+                          ],
+                        ),
+                      ),
+                      ...ProfileProvider.avatarOptions.map((avatar) {
+                        return DropdownMenuItem<String>(
+                          value: avatar.id,
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundColor: avatar.color.withOpacity(0.14),
+                                child: Icon(
+                                  avatar.icon,
+                                  size: 18,
+                                  color: avatar.color,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(avatar.label),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedAvatarId = value == 'none' ? null : value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final String docId = isEdit
+                      ? (item!['firestoreDocId'] ?? item['id']).toString()
+                      : DateTime.now().millisecondsSinceEpoch.toString();
+
+                  final Map<String, dynamic> newData = {
+                    'id': int.tryParse(docId) ?? docId,
+                    'name': nameCtrl.text.trim(),
+                    'no': noCtrl.text.trim(),
+                    'email': emailCtrl.text.trim(),
+                    'password': passCtrl.text.trim(),
+                    'grade': selectedGrade ?? '1st Grade',
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  };
+
+                  if (selectedAvatarId != null && selectedAvatarId!.isNotEmpty) {
+                    newData['profileAvatarId'] = selectedAvatarId;
+                    newData['profileAvatarUpdatedAt'] =
+                        FieldValue.serverTimestamp();
+                  } else if (isEdit) {
+                    newData['profileAvatarId'] = FieldValue.delete();
+                    newData['profileAvatarUpdatedAt'] =
+                        FieldValue.serverTimestamp();
+                  }
+
+                  if (!isEdit) {
+                    newData['createdAt'] = FieldValue.serverTimestamp();
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('students')
+                      .doc(docId)
+                      .set(newData, SetOptions(merge: true));
+
+                  DataService.clearCollectionCache('students');
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    _refreshAdminData(collectionKey: 'students');
+                  }
+                },
+                child: const Text("Save"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
