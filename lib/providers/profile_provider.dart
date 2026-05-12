@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../data/data_service.dart';
+
 class StudentAvatarOption {
   final String id;
   final String label;
@@ -107,6 +109,7 @@ class ProfileProvider extends ChangeNotifier {
         SetOptions(merge: true),
       );
 
+      DataService.clearCollectionCache('students');
       _selectedAvatarId = avatarId;
     } catch (e) {
       _errorMessage = 'Avatar could not be saved.';
@@ -136,6 +139,7 @@ class ProfileProvider extends ChangeNotifier {
         SetOptions(merge: true),
       );
 
+      DataService.clearCollectionCache('students');
       _selectedAvatarId = null;
     } catch (e) {
       _errorMessage = 'Avatar could not be removed.';
