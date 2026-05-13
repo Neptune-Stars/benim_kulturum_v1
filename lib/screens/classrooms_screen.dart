@@ -145,16 +145,35 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
             ];
 
             final filteredClassrooms = allClassrooms.where((classroom) {
-              final name = classroom['name']?.toString() ?? "";
-              final building = classroom['building']?.toString() ?? "";
-              final type = classroom['type']?.toString() ?? "";
+              final String name = (classroom['name'] ?? "").toString();
+              final String campus = (classroom['campus'] ?? "").toString();
+              final String location = (classroom['location'] ?? "").toString();
+              final String building = (classroom['building'] ?? "").toString();
+              final String rawType = (classroom['type'] ?? "").toString();
+              final List<String> unitsKeywords = [
+                'Library', 'Kütüphane', 'Canteen', 'Kantin', 'Health Unit',
+                'Revir', 'Student Affairs', 'Öğrenci İşleri', 'Dining', 'Cafeteria'
+              ];
+
+              bool isUnitEntity = unitsKeywords.any((k) => name.contains(k));
+              if (isUnitEntity) return false;
+
+              final displayType = rawType == "Amphitheater" ? "Lecture Hall" : rawType;
+
+              final validEducationTypes = ["Classroom", "Lecture Hall", "Laboratory", "Amphitheater"];
+              if (!validEducationTypes.contains(displayType) && _selectedTypeFilter == "All") {
+                return false;
+              }
+
               final floor = classroom['floorLabel'] ?? classroom['floor'];
               final floorLabels = _floorFilterLabels(floor);
 
               final matchesSearch = name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                  campus.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                  location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                   building.toLowerCase().contains(_searchQuery.toLowerCase());
 
-              final matchesType = _selectedTypeFilter == "All" || type == _selectedTypeFilter;
+              final matchesType = _selectedTypeFilter == "All" || displayType == _selectedTypeFilter;
 
               final matchesFloor = _selectedFloorFilter == "All Floors" || floorLabels.contains(_selectedFloorFilter);
 
@@ -226,16 +245,19 @@ class _ClassroomsScreenState extends State<ClassroomsScreen> {
                     itemCount: filteredClassrooms.length,
                     itemBuilder: (context, index) {
                       final classroom = filteredClassrooms[index];
-
                       final Map<String, dynamic> safeClassroomData = Map<String, dynamic>.from(classroom as Map);
+
+                      final String campusInfo = safeClassroomData['campus']?.toString() ?? "";
+                      final String locationInfo = safeClassroomData['location'] ?? safeClassroomData['building'] ?? "";
 
                       return InfoCard(
                         title: safeClassroomData['name']?.toString() ?? "",
-                        subtitle: safeClassroomData['building']?.toString() ?? "",
-                        metadata: "Capacity: ${safeClassroomData['capacity'] ?? 0} People • Floor: ${_floorLabel(safeClassroomData['floorLabel'] ?? safeClassroomData['floor'])}",                        onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: safeClassroomData)),
-                      ),
+                        subtitle: campusInfo.isNotEmpty ? "$campusInfo • $locationInfo" : locationInfo,
+                        metadata: "Capacity: ${safeClassroomData['capacity'] ?? 0} People • Floor: ${_floorLabel(safeClassroomData['floorLabel'] ?? safeClassroomData['floor'])}",
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ClassroomDetailScreen(classroomData: safeClassroomData)),
+                        ),
                       );
                     },
                   ),
