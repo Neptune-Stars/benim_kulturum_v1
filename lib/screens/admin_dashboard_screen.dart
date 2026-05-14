@@ -542,20 +542,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         }
 
         if (snapshot.hasError) {
-          return _buildErrorState(
-            "Failed to fetch Campus Units data.",
-            onRetry: () => _refreshTab(1),
-          );
+          return _buildErrorState("Failed to fetch Campus Units data.", onRetry: () => _refreshTab(1));
         }
 
         final allUnits = snapshot.data ?? <Map<String, dynamic>>[];
         final sq = _normalizeForSearch(_searchControllers[1]!.text);
+
         final filteredUnits = allUnits.where((unit) {
+          final type = (unit['type'] ?? '').toString();
+          final name = (unit['name'] ?? '').toString();
+
+          bool isPhysicalSpace = ['Classroom', 'Amphitheater', 'Laboratory'].contains(type) ||
+              name.contains('Classroom') || name.contains('302');
+
+          if (isPhysicalSpace) return false;
+
           if (sq.isEmpty) return true;
-          return _normalizeForSearch(unit['name']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(unit['location']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(unit['campus']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(unit['type']?.toString() ?? '').contains(sq);
+          return _normalizeForSearch(name).contains(sq) ||
+              _normalizeForSearch(unit['location']?.toString() ?? '').contains(sq);
         }).toList();
 
         final campusCards = <Map<String, String>>[
@@ -572,17 +576,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Campus Units (${filteredUnits.length})",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  Text("Campus Units (${filteredUnits.length})", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ElevatedButton.icon(
                     onPressed: () => _openBuildingForm(isEdit: false),
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text("Add"),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
                   ),
                 ],
               ),
@@ -602,18 +600,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 itemCount: campusCards.length,
                 itemBuilder: (context, index) {
                   final campus = campusCards[index];
-                  final campusKey = campus['key']!;
-                  final campusTitle = campus['title']!;
-                  final unitsForCampus = filteredUnits.where((unit) {
-                    return _unitCampusKey(unit) == campusKey;
-                  }).toList()
+                  final unitsForCampus = filteredUnits.where((unit) => _unitCampusKey(unit) == campus['key']).toList()
                     ..sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
 
-                  return _buildCampusUnitCard(
-                    title: campusTitle,
-                    campusKey: campusKey,
-                    units: unitsForCampus,
-                  );
+                  return _buildCampusUnitCard(title: campus['title']!, campusKey: campus['key']!, units: unitsForCampus);
                 },
               ),
             ),
@@ -787,11 +777,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
 
         final sq = _normalizeForSearch(_searchControllers[2]!.text);
-        final filteredClassrooms = allClassrooms.where((c) {
-          return _normalizeForSearch(c['name']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(c['building']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(c['campus']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(c['location']?.toString() ?? '').contains(sq);
+        final filteredClassrooms = allClassrooms.where((classroom) {
+          final name = (classroom['name'] ?? "").toString();
+          final type = (classroom['type'] ?? "").toString();
+          final sq = _normalizeForSearch(_searchControllers[2]!.text);
+
+          final List<String> educationTypes = ["Classroom", "Amphitheater", "Laboratory"];
+
+          final List<String> facilityKeywords = ['Library', 'Kütüphane', 'Canteen', 'Kantin', 'Health Unit', 'Revir', 'Student Affairs'];
+
+          bool isEducationSpace = educationTypes.contains(type) &&
+              !facilityKeywords.any((k) => name.contains(k));
+
+          if (!isEducationSpace) return false;
+
+          if (sq.isEmpty) return true;
+          return _normalizeForSearch(name).contains(sq) ||
+              _normalizeForSearch(classroom['building']?.toString() ?? '').contains(sq);
         }).toList();
 
         return _buildManagementTab(
