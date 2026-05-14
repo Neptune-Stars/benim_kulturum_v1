@@ -3072,13 +3072,13 @@ class DataService {
         'title': 'Summer School Registration',
         'content': 'Summer school pre-registration will be available between May 10 and May 24. Course availability will be announced by departments.',
         'category': 'academic',
-        'publishAt': DateTime(2026, 5, 4, 14, 0),
+        'publishAt': DateTime(2026, 5, 20, 14, 0),
       },
       {
         'title': 'Internship Application Deadline Reminder',
         'content': 'Students planning to complete their internship this summer must submit the required documents before the announced deadline.',
         'category': 'academic',
-        'publishAt': DateTime(2026, 5, 3, 16, 0),
+        'publishAt': DateTime(2026, 5, 18, 16, 0),
       },
       {
         'title': 'Student Card Renewal',
@@ -3096,7 +3096,7 @@ class DataService {
         'title': 'Campus Shuttle Schedule Updated',
         'content': 'Campus shuttle departure times have been updated for the exam period. Students should check the latest schedule before travel.',
         'category': 'admin',
-        'publishAt': DateTime(2026, 4, 30, 8, 45),
+        'publishAt': DateTime(2026, 5, 28, 8, 45),
       },
       {
         'title': 'Career Days Registration Open',

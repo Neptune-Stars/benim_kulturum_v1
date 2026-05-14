@@ -200,14 +200,25 @@ class HomeScreen extends StatelessWidget {
                 future: DataService.loadDatabase(),
                 builder: (context, snapshot) {
                   final data = snapshot.data ?? {};
+
                   final announcements = _sortAnnouncements(
-                    data['announcements'] as List<dynamic>? ?? [],
+                    _filterUpcoming(
+                      data['announcements'] as List<dynamic>? ?? [],
+                      _announcementDateTime,
+                    ),
                   );
-                  final events = data['events'] as List<dynamic>? ?? [];
+
+                  final events = _sortEventsAscending(
+                    _filterUpcoming(
+                      data['events'] as List<dynamic>? ?? [],
+                      _eventDateTime,
+                    ),
+                  );
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ── Recent Announcements ──────────────────────────────
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SectionHeader(
@@ -228,7 +239,8 @@ class HomeScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           children: announcements.take(2).map((announcement) {
-                            final item = Map<dynamic, dynamic>.from(announcement as Map);
+                            final item = Map<dynamic, dynamic>.from(
+                                announcement as Map);
                             return InfoCard(
                               title: item['title']?.toString() ?? '',
                               subtitle: _announcementDateText(item),
@@ -242,12 +254,15 @@ class HomeScreen extends StatelessWidget {
 
                       const SizedBox(height: 24),
 
+                      // ── Upcoming Events ───────────────────────────────────
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SectionHeader(
                           title: "Upcoming Events",
-                          actionLabel: "See All",
-                          onAction: () => Navigator.push(
+                          actionLabel: events.isEmpty ? null : "See All",
+                          onAction: events.isEmpty
+                              ? null
+                              : () => Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const EventsScreen(),
@@ -260,15 +275,18 @@ class HomeScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           children: events.take(2).map((event) {
-                            final item = Map<dynamic, dynamic>.from(event as Map);
+                            final item =
+                            Map<dynamic, dynamic>.from(event as Map);
                             return InfoCard(
                               title: item['title']?.toString() ?? '',
-                              subtitle: "${item['date'] ?? ''} • ${item['time'] ?? ''}",
+                              subtitle:
+                              "${item['date'] ?? ''} • ${item['time'] ?? ''}",
                               metadata: item['location']?.toString() ?? '',
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => EventDetailScreen(eventData: item),
+                                  builder: (_) =>
+                                      EventDetailScreen(eventData: item),
                                 ),
                               ),
                             );
@@ -292,6 +310,10 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Header & Notification button
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -369,7 +391,8 @@ class HomeScreen extends StatelessWidget {
                 right: 4,
                 top: 4,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppTheme.destructiveColor,
                     borderRadius: BorderRadius.circular(10),
@@ -396,6 +419,157 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Date parsing — handles every format seen in Firestore
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static const Map<String, int> _monthMap = {
+    'january': 1,   'february': 2,  'march': 3,     'april': 4,
+    'may': 5,       'june': 6,      'july': 7,       'august': 8,
+    'september': 9, 'october': 10,  'november': 11,  'december': 12,
+    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
+    'jun': 6, 'jul': 7, 'aug': 8,
+    'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+  };
+
+  /// Parses any of the following into a [DateTime]:
+  ///   • Firestore [Timestamp]          → .toDate()
+  ///   • Dart [DateTime]                → as-is
+  ///   • ISO-8601 string                → "2026-05-10" / "2026-05-10T13:00:00Z"
+  ///   • DD/MM/YYYY string              → "28/05/2026"
+  ///   • "Month D, YYYY" string         → "May 10, 2026"
+  ///   • "D Month YYYY" string          → "10 May 2026"
+  ///
+  /// Returns `null` when the value cannot be interpreted as a date.
+  DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+
+    // Firestore Timestamp
+    if (value is Timestamp) return value.toDate();
+
+    // Already a DateTime
+    if (value is DateTime) return value;
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+
+    // ISO 8601 — covers "2026-05-10" and "2026-05-10T13:00:00..."
+    final iso = DateTime.tryParse(text);
+    if (iso != null) return iso;
+
+    // DD/MM/YYYY  e.g. "28/05/2026"
+    final ddmmyyyy =
+    RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(text);
+    if (ddmmyyyy != null) {
+      final d = int.tryParse(ddmmyyyy.group(1)!);
+      final m = int.tryParse(ddmmyyyy.group(2)!);
+      final y = int.tryParse(ddmmyyyy.group(3)!);
+      if (d != null && m != null && y != null) return DateTime(y, m, d);
+    }
+
+    // "Month D, YYYY"  e.g. "May 10, 2026"
+    final mdy =
+    RegExp(r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$').firstMatch(text);
+    if (mdy != null) {
+      final m = _monthMap[mdy.group(1)!.toLowerCase()];
+      final d = int.tryParse(mdy.group(2)!);
+      final y = int.tryParse(mdy.group(3)!);
+      if (m != null && d != null && y != null) return DateTime(y, m, d);
+    }
+
+    // "D Month YYYY"  e.g. "10 May 2026"
+    final dmy =
+    RegExp(r'^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$').firstMatch(text);
+    if (dmy != null) {
+      final d = int.tryParse(dmy.group(1)!);
+      final m = _monthMap[dmy.group(2)!.toLowerCase()];
+      final y = int.tryParse(dmy.group(3)!);
+      if (d != null && m != null && y != null) return DateTime(y, m, d);
+    }
+
+    return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Per-collection date extractors
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Priority: publishAt → publishDate → date → createdAt → updatedAt
+  DateTime? _announcementDateTime(Map<dynamic, dynamic> item) {
+    for (final field in ['publishAt', 'publishDate', 'date', 'createdAt', 'updatedAt']) {
+      final parsed = _parseDate(item[field]);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  /// Priority: startAt → date → eventDate → startDate → datetime
+  DateTime? _eventDateTime(Map<dynamic, dynamic> item) {
+    for (final field in ['startAt', 'date', 'eventDate', 'startDate', 'datetime']) {
+      final parsed = _parseDate(item[field]);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Filter & sort helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Today at midnight — items whose date equals today are kept.
+  DateTime _todayStart() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// Generic filter: keeps items whose date (via [dateExtractor]) is ≥ today.
+  /// Items with no parsable date are excluded.
+  List<dynamic> _filterUpcoming(
+      List<dynamic> items,
+      DateTime? Function(Map<dynamic, dynamic>) dateExtractor,
+      ) {
+    final todayStart = _todayStart();
+    return items.where((raw) {
+      final item = Map<dynamic, dynamic>.from(raw as Map);
+      final date = dateExtractor(item);
+      if (date == null) return false;
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      return !dateOnly.isBefore(todayStart);
+    }).toList();
+  }
+
+  /// Announcements: newest publish date first (descending).
+  List<dynamic> _sortAnnouncements(List<dynamic> items) {
+    final sorted = List<dynamic>.from(items);
+    sorted.sort((a, b) {
+      final aDate = _announcementDateTime(Map<dynamic, dynamic>.from(a as Map));
+      final bDate = _announcementDateTime(Map<dynamic, dynamic>.from(b as Map));
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate); // descending
+    });
+    return sorted;
+  }
+
+  /// Events: soonest event first (ascending).
+  List<dynamic> _sortEventsAscending(List<dynamic> items) {
+    final sorted = List<dynamic>.from(items);
+    sorted.sort((a, b) {
+      final aDate = _eventDateTime(Map<dynamic, dynamic>.from(a as Map));
+      final bDate = _eventDateTime(Map<dynamic, dynamic>.from(b as Map));
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return aDate.compareTo(bDate); // ascending
+    });
+    return sorted;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Small UI helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
   String _announcementDateText(Map<dynamic, dynamic> item) {
     final publishDate = item['publishDate']?.toString() ?? '';
     final publishTime = item['publishTime']?.toString() ?? '';
@@ -404,55 +578,7 @@ class HomeScreen extends StatelessWidget {
     if (publishDate.isNotEmpty && publishTime.isNotEmpty) {
       return "$publishDate • $publishTime";
     }
-
     return date;
-  }
-
-  DateTime? _parseAnnouncementDate(dynamic value) {
-    if (value == null) return null;
-
-    final text = value.toString().trim();
-    if (text.isEmpty) return null;
-
-    final isoDate = DateTime.tryParse(text);
-    if (isoDate != null) return isoDate;
-
-    final slashDate = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(text);
-    if (slashDate != null) {
-      final day = int.tryParse(slashDate.group(1)!);
-      final month = int.tryParse(slashDate.group(2)!);
-      final year = int.tryParse(slashDate.group(3)!);
-      if (day != null && month != null && year != null) {
-        return DateTime(year, month, day);
-      }
-    }
-
-    return null;
-  }
-
-  DateTime? _announcementDateTime(Map<dynamic, dynamic> item) {
-    return _parseAnnouncementDate(item['publishAt']) ??
-        _parseAnnouncementDate(item['publishDate']) ??
-        _parseAnnouncementDate(item['date']) ??
-        _parseAnnouncementDate(item['createdAt']) ??
-        _parseAnnouncementDate(item['updatedAt']);
-  }
-
-  List<dynamic> _sortAnnouncements(List<dynamic> announcements) {
-    final sorted = List<dynamic>.from(announcements);
-
-    sorted.sort((a, b) {
-      final aDate = _announcementDateTime(Map<dynamic, dynamic>.from(a as Map));
-      final bDate = _announcementDateTime(Map<dynamic, dynamic>.from(b as Map));
-
-      if (aDate == null && bDate == null) return 0;
-      if (aDate == null) return 1;
-      if (bDate == null) return -1;
-
-      return bDate.compareTo(aDate);
-    });
-
-    return sorted;
   }
 
   String _menuDescription(List<dynamic> items) {
@@ -468,9 +594,12 @@ class HomeScreen extends StatelessWidget {
     }).where((text) => text.trim().isNotEmpty).toList();
 
     if (items.length > 4) names.add("...");
-
     return names.join(", ");
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Today's menu card
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildTodayMenuCard(
       BuildContext context, {
@@ -492,9 +621,7 @@ class HomeScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => const CafeteriaMenuScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const CafeteriaMenuScreen()),
       ),
       child: Container(
         width: double.infinity,
