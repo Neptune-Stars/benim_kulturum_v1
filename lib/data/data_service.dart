@@ -287,6 +287,14 @@ class DataService {
     _databaseCache = null;
   }
 
+  static bool isDeletedRecord(Map<dynamic, dynamic> item) {
+    final status = item['status']?.toString().trim().toLowerCase() ?? '';
+
+    return item['isDeleted'] == true ||
+        item['deleted'] == true ||
+        status == 'deleted';
+  }
+
   static Future<void> initializeDefaultDataIfNeeded() async {
     if (_defaultDataChecked) {
       return;
@@ -388,11 +396,30 @@ class DataService {
       rows = normalizeCampusUnitList(rows);
     }
 
+    if (collectionName == 'announcements') {
+      rows = rows.where((row) => !isDeletedRecord(row)).toList();
+    }
+
     if (canUseCache) {
       _collectionCache[collectionName] = rows;
     }
 
     return rows;
+  }
+
+  static Future<void> deleteAnnouncement(String announcementId) async {
+    final batch = _db.batch();
+
+    final announcementRef = _db.collection('announcements').doc(announcementId);
+    final notificationRef = _db.collection('notifications').doc('announcement_$announcementId');
+
+    batch.delete(announcementRef);
+    batch.delete(notificationRef);
+
+    await batch.commit();
+
+    clearCollectionCache('announcements');
+    clearCollectionCache('notifications');
   }
 
   static Future<List<String>> fetchPriceCategories({bool forceRefresh = false}) async {

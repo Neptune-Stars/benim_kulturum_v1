@@ -33,7 +33,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   @override
   void initState() {
     super.initState();
-    _databaseFuture = DataService.loadDatabase();
+    _databaseFuture = DataService.loadDatabase(forceRefresh: true);
+  }
+
+  bool _isAnnouncementVisible(Map<dynamic, dynamic> announcement) {
+    return !DataService.isDeletedRecord(announcement);
   }
 
   bool _isAnnouncementPublished(Map<dynamic, dynamic> announcement) {
@@ -162,6 +166,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
           final filteredAnnouncements = allAnnouncements.where((announcement) {
             final a = announcement as Map<dynamic, dynamic>;
+
+            if (!_isAnnouncementVisible(a)) {
+              return false;
+            }
 
             if (!_isAnnouncementPublished(a)) {
               return false;
