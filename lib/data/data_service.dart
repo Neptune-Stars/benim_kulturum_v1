@@ -875,7 +875,7 @@ class DataService {
         "Meal": {
           "menuName": "Today's Meal",
           "time": "13:00-18:00",
-          "price": "₺35",
+          "price": "₺175",
           "items": [
             "Lentil Soup",
             "Chicken Schnitzel",
@@ -943,7 +943,6 @@ class DataService {
       defaultMenus["Meal"],
       existingFoodMenu,
       fallbackMenuName: "Today's Meal",
-      forcedTime: "13:00-18:00",
     );
 
     fixedMenus["Fast Food"] = _mergeMenu(
@@ -1086,6 +1085,234 @@ class DataService {
     );
   }
 
+  static List<Map<String, dynamic>> _mealTemplateRotation() {
+    return [
+      {
+        "templateId": "meal_menu_01",
+        "menuName": "Today's Meal",
+        "items": [
+          "Ezogelin Soup",
+          "Chicken Schnitzel",
+          "Rice Pilaf",
+          "Seasonal Salad",
+          "Ayran",
+        ],
+      },
+      {
+        "templateId": "meal_menu_02",
+        "menuName": "Today's Meal",
+        "items": [
+          "Tomato Soup",
+          "Grilled Meatballs",
+          "Bulgur Pilaf",
+          "Yogurt",
+          "Fruit",
+        ],
+      },
+      {
+        "templateId": "meal_menu_03",
+        "menuName": "Today's Meal",
+        "items": [
+          "Lentil Soup",
+          "Chicken Saute",
+          "Pasta",
+          "Mixed Salad",
+          "Ayran",
+        ],
+      },
+      {
+        "templateId": "meal_menu_04",
+        "menuName": "Today's Meal",
+        "items": [
+          "Vegetable Soup",
+          "Doner Plate",
+          "Rice Pilaf",
+          "Cacık",
+          "Dessert",
+        ],
+      },
+      {
+        "templateId": "meal_menu_05",
+        "menuName": "Today's Meal",
+        "items": [
+          "Tarhana Soup",
+          "Baked Chicken",
+          "Pasta",
+          "Seasonal Salad",
+          "Ayran",
+        ],
+      },
+      {
+        "templateId": "meal_menu_06",
+        "menuName": "Today's Meal",
+        "items": [
+          "Yayla Soup",
+          "Beef Stew",
+          "Rice Pilaf",
+          "Pickles",
+          "Compote",
+        ],
+      },
+      {
+        "templateId": "meal_menu_07",
+        "menuName": "Today's Meal",
+        "items": [
+          "Mushroom Soup",
+          "Chicken Curry",
+          "Noodles",
+          "Green Salad",
+          "Ayran",
+        ],
+      },
+      {
+        "templateId": "meal_menu_08",
+        "menuName": "Today's Meal",
+        "items": [
+          "Mercimek Soup",
+          "Izmir Meatballs",
+          "Bulgur Pilaf",
+          "Yogurt",
+          "Fruit",
+        ],
+      },
+      {
+        "templateId": "meal_menu_09",
+        "menuName": "Today's Meal",
+        "items": [
+          "Chicken Soup",
+          "Pasta with Tomato Sauce",
+          "Crispy Chicken",
+          "Seasonal Salad",
+          "Ayran",
+        ],
+      },
+      {
+        "templateId": "meal_menu_10",
+        "menuName": "Today's Meal",
+        "items": [
+          "Soup of the Day",
+          "Roasted Chicken",
+          "Rice Pilaf",
+          "Cacık",
+          "Dessert",
+        ],
+      },
+    ];
+  }
+
+  static int _daysSinceRotationStart(DateTime date) {
+    final cleanDate = DateTime(date.year, date.month, date.day);
+    final rotationStart = DateTime(2026, 5, 4);
+    return cleanDate.difference(rotationStart).inDays;
+  }
+
+  static Map<String, dynamic> defaultDailyMealForDate(DateTime date) {
+    final base = defaultMenuForMealType('Meal');
+    final templates = _mealTemplateRotation();
+
+    if (isSunday(date)) {
+      return {
+        ...base,
+        "templateId": "cafeteria_closed",
+        "templateRotationIndex": -1,
+        "templateAlgorithmVersion": 3,
+        "menuName": "Cafeteria Closed",
+        "time": base["time"] ?? "13:00-18:00",
+        "price": "₺175",
+        "items": <String>["Cafeteria Closed"],
+        "isChips": false,
+        "contentManuallyEdited": false,
+      };
+    }
+
+    if (isSaturday(date)) {
+      return {
+        ...base,
+        "templateId": "weekend_fast_food_only",
+        "templateRotationIndex": -1,
+        "templateAlgorithmVersion": 3,
+        "menuName": "Weekend Fast Food Service",
+        "time": base["time"] ?? "13:00-18:00",
+        "price": "₺175",
+        "items": <String>["Weekend Fast Food Service"],
+        "isChips": false,
+        "contentManuallyEdited": false,
+      };
+    }
+
+    final rawIndex = _daysSinceRotationStart(date);
+    final rotationIndex = rawIndex < 0
+        ? (templates.length - ((-rawIndex) % templates.length)) % templates.length
+        : rawIndex % templates.length;
+    final selected = templates[rotationIndex];
+
+    return {
+      ...base,
+      "templateId": selected["templateId"],
+      "templateRotationIndex": rotationIndex,
+      "templateAlgorithmVersion": 3,
+      "menuName": selected["menuName"] ?? "Today's Meal",
+      "time": base["time"] ?? "13:00-18:00",
+      "price": "₺175",
+      "items": List<String>.from(selected["items"] as List),
+      "isChips": false,
+      "contentManuallyEdited": false,
+    };
+  }
+
+  static List<String> _plainMenuItems(dynamic value) {
+    if (value is! List) return <String>[];
+
+    return value
+        .map((item) {
+          if (item is Map) return item['name']?.toString() ?? '';
+          return item.toString();
+        })
+        .map((item) => item.trim().toLowerCase())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  static bool _samePlainMenuItems(dynamic a, dynamic b) {
+    final left = _plainMenuItems(a);
+    final right = _plainMenuItems(b);
+    if (left.length != right.length) return false;
+    for (int i = 0; i < left.length; i++) {
+      if (left[i] != right[i]) return false;
+    }
+    return true;
+  }
+
+  static bool _isLegacySeedMealContent(dynamic items) {
+    return _samePlainMenuItems(items, [
+      "Lentil Soup",
+      "Chicken Schnitzel",
+      "Rice",
+      "Seasonal Salad",
+      "Ayran",
+    ]);
+  }
+
+  static bool _shouldPreserveExistingDailyMeal(Map<String, dynamic> currentMenu) {
+    final items = currentMenu['items'];
+    final hasItems = _plainMenuItems(items).isNotEmpty;
+    if (!hasItems) return false;
+
+    final wasGeneratedByOldAlgorithm =
+        currentMenu['templateAlgorithmVersion'] != null &&
+        currentMenu['templateAlgorithmVersion'] != 3;
+    final hasOldDemoPrice = currentMenu['price']?.toString().trim() == '₺35';
+
+    if (_isLegacySeedMealContent(items) || wasGeneratedByOldAlgorithm || hasOldDemoPrice) {
+      return false;
+    }
+
+    // Non-empty, non-legacy content is treated as real menu content.
+    // This preserves dates that were edited directly from Firestore before
+    // the contentManuallyEdited flag existed.
+    return true;
+  }
+
   static String normalizeMealType(String mealType) {
     final trimmed = mealType.trim();
     if (trimmed == "Lunch" || trimmed == "Dinner" || trimmed == "Menu of the Day") {
@@ -1197,19 +1424,53 @@ class DataService {
         .replaceAll(RegExp(r'^_|_$'), '');
   }
 
+  static String canonicalCampusKey(String campus) {
+    final value = _slug(campus);
+
+    if (value == 'atakoy' || value == 'atakoy_campus' || value == 'atakoy_yerleskesi') {
+      return 'atakoy_campus';
+    }
+    if (value == 'incirli' || value == 'incirli_campus' || value == 'incirli_yerleskesi') {
+      return 'incirli_campus';
+    }
+    if (value == 'sirinevler' || value == 'sirinevler_campus' || value == 'sirinevler_yerleskesi') {
+      return 'sirinevler_campus';
+    }
+    if (value == 'basin_ekspres' || value == 'basin_ekspres_campus' || value == 'basin_ekspres_yerleskesi') {
+      return 'basin_ekspres_campus';
+    }
+
+    return value.isEmpty ? 'atakoy_campus' : value;
+  }
+
+  static String canonicalCampusLabel(String campus) {
+    switch (canonicalCampusKey(campus)) {
+      case 'atakoy_campus':
+        return 'Ataköy Campus';
+      case 'incirli_campus':
+        return 'İncirli Campus';
+      case 'sirinevler_campus':
+        return 'Şirinevler Campus';
+      case 'basin_ekspres_campus':
+        return 'Basın Ekspres Campus';
+      default:
+        return campus.trim().isEmpty ? defaultCampus : campus.trim();
+    }
+  }
+
   static String cafeteriaMenuDocId({
     required DateTime date,
     String campus = defaultCampus,
     required String mealType,
   }) {
-    return "${formatDateKey(date)}_${_slug(campus)}_${_slug(normalizeMealType(mealType))}";
+    return "${formatDateKey(date)}_${canonicalCampusKey(campus)}_${_slug(normalizeMealType(mealType))}";
   }
 
   static String cafeteriaDayStatusDocId({
     required DateTime date,
     String campus = defaultCampus,
   }) {
-    return "${formatDateKey(date)}_${_slug(campus)}";
+    return "${formatDateKey(date)}_${canonicalCampusKey(campus)}";
   }
 
   static Map<String, dynamic> buildCafeteriaDayStatusDocument({
@@ -1226,7 +1487,8 @@ class DataService {
       "weekStart": formatDateKey(startOfWeek(date)),
       "weekday": weekdayName(date.weekday),
       "weekdayIndex": date.weekday,
-      "campus": campus,
+      "campus": canonicalCampusLabel(campus),
+      "campusKey": canonicalCampusKey(campus),
       "isWeekend": weekend,
       "isDayActive": isDayActive ?? defaultIsCafeteriaDayActive(date),
       "weekendDefaultRuleVersion": 2,
@@ -1463,13 +1725,21 @@ class DataService {
       mealType: normalizedMealType,
     );
 
-    await _db.collection('cafeteriaMenus').doc(docId).set(
+    final docRef = _db.collection('cafeteriaMenus').doc(docId);
+    final existingDoc = await docRef.get();
+    final dailyMenu = {
+      ...menu,
+      "contentManuallyEdited": true,
+      "templateAlgorithmVersion": menu["templateAlgorithmVersion"] ?? 3,
+    };
+
+    await docRef.set(
       buildCafeteriaMenuDocument(
         date: date,
         campus: campus,
         mealType: normalizedMealType,
-        menu: menu,
-        includeCreatedAt: true,
+        menu: dailyMenu,
+        includeCreatedAt: !existingDoc.exists,
         isDayActive: dayStatus['isDayActive'] != false,
       ),
       SetOptions(merge: true),
@@ -1490,7 +1760,6 @@ class DataService {
       defaultMenu,
       menu,
       fallbackMenuName: defaultMenu['menuName']?.toString() ?? normalizedMealType,
-      forcedTime: normalizedMealType == "Meal" ? "13:00-18:00" : null,
       itemsHavePrices: normalizedMealType == "Fast Food",
     );
 
@@ -1509,7 +1778,8 @@ class DataService {
       "weekStart": formatDateKey(startOfWeek(date)),
       "weekday": weekdayName(date.weekday),
       "weekdayIndex": date.weekday,
-      "campus": campus,
+      "campus": canonicalCampusLabel(campus),
+      "campusKey": canonicalCampusKey(campus),
       "mealType": normalizedMealType,
       "menuName": completedMenu['menuName'],
       "time": completedMenu['time'],
@@ -1521,6 +1791,10 @@ class DataService {
       "isDayActive": isDayActive ?? menu['isDayActive'] ?? defaultIsCafeteriaDayActive(date),
       "isActive": resolvedIsActive,
       "isActiveManuallyEdited": isActiveManuallyEdited,
+      "contentManuallyEdited": menu['contentManuallyEdited'] == true,
+      "templateId": menu['templateId'],
+      "templateRotationIndex": menu['templateRotationIndex'],
+      "templateAlgorithmVersion": menu['templateAlgorithmVersion'] ?? (normalizedMealType == "Meal" ? 3 : null),
       "weekendDefaultRuleVersion": 2,
       "updatedAt": FieldValue.serverTimestamp(),
     };
@@ -1546,27 +1820,38 @@ class DataService {
       final docId = cafeteriaMenuDocId(date: date, campus: campus, mealType: mealType);
       final docRef = _db.collection('cafeteriaMenus').doc(docId);
       final doc = await docRef.get();
+      final generatedMenu = defaultDailyMealForDate(date);
 
       if (!doc.exists || doc.data() == null) {
-        final defaultMenu = defaultMenuForMealType(mealType);
         await docRef.set(
           buildCafeteriaMenuDocument(
             date: date,
             campus: campus,
             mealType: mealType,
-            menu: defaultMenu,
+            menu: generatedMenu,
             includeCreatedAt: true,
             isDayActive: isDayActive,
           ),
         );
       } else {
         final currentMenu = Map<String, dynamic>.from(doc.data()!);
+        final preserveExistingMeal = _shouldPreserveExistingDailyMeal(currentMenu);
+        final sourceMenu = preserveExistingMeal
+            ? currentMenu
+            : {
+                ...generatedMenu,
+                "createdAt": currentMenu["createdAt"],
+                "isActive": currentMenu["isActive"],
+                "isActiveManuallyEdited": currentMenu["isActiveManuallyEdited"] == true,
+                "contentManuallyEdited": false,
+              };
+
         await docRef.set(
           buildCafeteriaMenuDocument(
             date: date,
             campus: campus,
             mealType: mealType,
-            menu: currentMenu,
+            menu: sourceMenu,
             isDayActive: isDayActive,
           ),
           SetOptions(merge: true),
@@ -1584,6 +1869,23 @@ class DataService {
     for (int i = 0; i < 7; i++) {
       await ensureDailyCafeteriaMenus(start.add(Duration(days: i)), campus: campus);
     }
+  }
+
+  static Future<void> migrateCafeteriaDailyMealDataForPresentation({
+    DateTime? referenceDate,
+    String campus = defaultCampus,
+    int weeksBefore = 2,
+    int weeksAfter = 8,
+  }) async {
+    final reference = referenceDate ?? DateTime.now();
+    final start = startOfWeek(reference).subtract(Duration(days: 7 * weeksBefore));
+    final totalDays = 7 * (weeksBefore + weeksAfter + 1);
+
+    for (int i = 0; i < totalDays; i++) {
+      await ensureDailyCafeteriaMenus(start.add(Duration(days: i)), campus: campus);
+    }
+
+    clearCafeteriaCache();
   }
 
   static Map<String, dynamic> _fixedCafeteriaMenuDocument({
@@ -1638,7 +1940,7 @@ class DataService {
     );
 
     final mealSource = dailyMealData == null || dailyMealData.isEmpty
-        ? defaultMenuForMealType('Meal')
+        ? defaultDailyMealForDate(date)
         : Map<String, dynamic>.from(dailyMealData);
 
     menus['Meal'] = buildCafeteriaMenuDocument(
@@ -1709,7 +2011,8 @@ class DataService {
         'displayDate': formatDisplayDate(cleanDate),
         'weekday': weekdayName(cleanDate.weekday),
         'weekdayIndex': cleanDate.weekday,
-        'campus': campus,
+        'campus': canonicalCampusLabel(campus),
+        'campusKey': canonicalCampusKey(campus),
         'isWeekend': isWeekend(cleanDate),
         'isDayActive': resolvedDayStatus['isDayActive'] != false,
         'dayStatus': resolvedDayStatus,
@@ -1719,6 +2022,8 @@ class DataService {
 
     Future<void> start() async {
       try {
+        await ensureDailyCafeteriaMenus(cleanDate, campus: campus);
+
         final dayStatusId = cafeteriaDayStatusDocId(
           date: cleanDate,
           campus: campus,
@@ -1843,6 +2148,8 @@ class DataService {
         "displayDate": formatDisplayDate(date),
         "weekday": weekdayName(date.weekday),
         "weekdayIndex": date.weekday,
+        "campus": canonicalCampusLabel(campus),
+        "campusKey": canonicalCampusKey(campus),
         "isWeekend": isWeekend(date),
         "isDayActive": dayStatus['isDayActive'] != false,
         "dayStatus": dayStatus,
@@ -1928,7 +2235,7 @@ class DataService {
       {"id": 2, "name": "Turkish Coffee", "price": "₺12", "category": "Coffee Varieties"},
       {"id": 3, "name": "Ayran", "price": "₺5", "category": "Beverages"},
       {"id": 4, "name": "Toast", "price": "₺15", "category": "Toast Varieties"},
-      {"id": 5, "name": "Today's Meal", "price": "₺35", "category": "Meal"},
+      {"id": 5, "name": "Today's Meal", "price": "₺175", "category": "Meal"},
     ];
 
     for (final item in starterPrices) {
