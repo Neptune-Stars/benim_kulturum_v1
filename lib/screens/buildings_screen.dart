@@ -47,8 +47,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
     switch (category) {
       case "Academic Units":
         return Icons.school_outlined;
-      case "Classrooms & Labs":
-        return Icons.meeting_room_outlined;
       case "Halls & Event Spaces":
         return Icons.event_seat_outlined;
       case "Food & Beverage":
@@ -74,8 +72,6 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
         return Colors.redAccent;
       case "Halls & Event Spaces":
         return Colors.purple;
-      case "Classrooms & Labs":
-        return Colors.teal;
       default:
         return AppTheme.primaryColor;
     }

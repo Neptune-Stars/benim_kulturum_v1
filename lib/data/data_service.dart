@@ -68,7 +68,6 @@ class DataService {
   static const List<String> campusUnitCategories = [
     'All',
     'Academic Units',
-    'Classrooms & Labs',
     'Halls & Event Spaces',
     'Food & Beverage',
     'Study & Library',
@@ -82,10 +81,6 @@ class DataService {
     'Faculty',
     'Department',
     'Office',
-    'Classroom',
-    'Laboratory',
-    'Computer Lab',
-    'Workshop',
     'Hall',
     'Auditorium',
     'Seminar Hall',
@@ -189,11 +184,6 @@ class DataService {
       case 'Academic Unit':
       case 'Office':
         return 'Academic Units';
-      case 'Classroom':
-      case 'Laboratory':
-      case 'Computer Lab':
-      case 'Workshop':
-        return 'Classrooms & Labs';
       case 'Hall':
       case 'Auditorium':
       case 'Seminar Hall':
@@ -234,6 +224,33 @@ class DataService {
     if (unit['isVisible'] == false || unit['visible'] == false) return false;
     final status = _searchNormalize(unit['status']?.toString());
     if (status == 'hidden' || status == 'draft' || status == 'inactive') return false;
+
+    // Academic spaces (Classroom, Lab, Amphitheater, Lecture Hall, etc.)
+    // belong to the Classroom screen, not the Unit/Buildings screen.
+    // Hide them from the campus unit list regardless of how they were stored.
+    final type = normalizeCampusUnitType(unit['type']?.toString());
+    const academicSpaceTypes = <String>{
+      'Classroom',
+      'Laboratory',
+      'Computer Lab',
+      'Workshop',
+    };
+    if (academicSpaceTypes.contains(type)) return false;
+
+    // Also catch raw type strings that the normalizer might miss
+    // (e.g. Turkish words like 'derslik', 'sınıf', 'amfi').
+    final rawType = _searchNormalize(unit['type']?.toString());
+    const academicSpaceKeywords = <String>[
+      'derslik',
+      'sinif',
+      'amfi',
+      'amphi',
+      'lecture',
+    ];
+    for (final keyword in academicSpaceKeywords) {
+      if (rawType.contains(keyword)) return false;
+    }
+
     return true;
   }
 

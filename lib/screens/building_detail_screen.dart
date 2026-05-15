@@ -16,8 +16,6 @@ class BuildingDetailScreen extends StatelessWidget {
     switch (category) {
       case "Academic Units":
         return Icons.school_outlined;
-      case "Classrooms & Labs":
-        return Icons.meeting_room_outlined;
       case "Halls & Event Spaces":
          return Icons.event_seat_outlined;
       case "Food & Beverage":
@@ -125,7 +123,7 @@ class BuildingDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            if (category == "Academic Units" || category == "Classrooms & Labs")
+            if (category == "Academic Units")
               FutureBuilder<Map<String, dynamic>>(
                 future: DataService.loadDatabase(),
                 builder: (context, snapshot) {
