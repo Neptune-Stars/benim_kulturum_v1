@@ -3670,5 +3670,201 @@ class DataService {
 
     clearCollectionCache('events');
   }
+  // ============================================================
+  // CLASSROOM B1/B2 DATA FIX + COMPLETION
+  // Bu fonksiyon classroom kayıtlarındaki yanlış kat bilgilerini
+  // düzeltir ve B1/B2 bodrum katlarındaki eksik sınıf/lab
+  // kayıtlarını tamamlar. Sunum öncesi BİR KEZ çalıştırılır.
+  // ============================================================
+  static Future<void> fixAndCompleteClassroomFloorData() async {
+    // Önce mevcut yanlış kayıtları düzeltelim. Burada Firestore'daki
+    // belge ID'sini bilmediğimiz için 'name' alanına göre eşleştirip
+    // sadece yanlış olan alanları güncelliyoruz.
+    //
+    // Eğer aşağıdaki listedeki isimler senin Firestore'unda farklıysa,
+    // listedeki 'name' değerini Firestore'daki isme göre düzenle.
+    final corrections = <Map<String, dynamic>>[
+      // B2-CHMLAB ekranda "2nd Floor" görünüyordu, doğrusu B2 (bodrum 2)
+      {
+        'matchName': 'B2-CHMLAB',
+        'floor': -2,
+        'floorLabel': 'B2 Floor',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B2 Floor',
+        'type': 'Laboratory',
+      },
+    ];
 
+    final batch = _db.batch();
+
+    for (final correction in corrections) {
+      final matchName = correction['matchName'].toString();
+      final querySnapshot = await _db
+          .collection('classrooms')
+          .where('name', isEqualTo: matchName)
+          .get();
+
+      for (final doc in querySnapshot.docs) {
+        final updateData = Map<String, dynamic>.from(correction);
+        updateData.remove('matchName');
+        updateData['updatedAt'] = FieldValue.serverTimestamp();
+        batch.set(doc.reference, updateData, SetOptions(merge: true));
+      }
+    }
+
+    // ----------------------------------------------------------
+    // B1 ve B2 KATLARI - EKSİK SINIF/LAB KAYITLARI
+    // ----------------------------------------------------------
+    // Aşağıdaki liste, Ataköy Mühendislik binasının B1 ve B2
+    // bodrum katlarında bulunması gereken sınıf/laboratuvarlardır.
+    // ID'leri 95xxxxx aralığında tutuldu (mevcut buildings demo
+    // ID'leri 91xxxxx-94xxxxx ile çakışmıyor).
+    final b1b2Classrooms = <Map<String, dynamic>>[
+      // ===== B1 FLOOR (Bodrum 1) =====
+      {
+        'id': 9500101,
+        'name': 'B1-CMPLAB1',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B1 Floor',
+        'type': 'Laboratory',
+        'capacity': 30,
+        'floor': -1,
+        'floorLabel': 'B1 Floor',
+      },
+      {
+        'id': 9500102,
+        'name': 'B1-CMPLAB2',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B1 Floor',
+        'type': 'Laboratory',
+        'capacity': 30,
+        'floor': -1,
+        'floorLabel': 'B1 Floor',
+      },
+      {
+        'id': 9500103,
+        'name': 'B1-PHYLAB',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B1 Floor',
+        'type': 'Laboratory',
+        'capacity': 35,
+        'floor': -1,
+        'floorLabel': 'B1 Floor',
+      },
+      {
+        'id': 9500104,
+        'name': 'B1-101',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B1 Floor',
+        'type': 'Classroom',
+        'capacity': 45,
+        'floor': -1,
+        'floorLabel': 'B1 Floor',
+      },
+      {
+        'id': 9500105,
+        'name': 'B1-102',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B1 Floor',
+        'type': 'Classroom',
+        'capacity': 45,
+        'floor': -1,
+        'floorLabel': 'B1 Floor',
+      },
+      {
+        'id': 9500106,
+        'name': 'B1-AMPHI',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B1 Floor',
+        'type': 'Lecture Hall',
+        'capacity': 120,
+        'floor': -1,
+        'floorLabel': 'B1 Floor',
+      },
+
+      // ===== B2 FLOOR (Bodrum 2) =====
+      {
+        'id': 9500201,
+        'name': 'B2-CHMLAB',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B2 Floor',
+        'type': 'Laboratory',
+        'capacity': 32,
+        'floor': -2,
+        'floorLabel': 'B2 Floor',
+      },
+      {
+        'id': 9500202,
+        'name': 'B2-BIOLAB',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B2 Floor',
+        'type': 'Laboratory',
+        'capacity': 28,
+        'floor': -2,
+        'floorLabel': 'B2 Floor',
+      },
+      {
+        'id': 9500203,
+        'name': 'B2-ELECLAB',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B2 Floor',
+        'type': 'Laboratory',
+        'capacity': 30,
+        'floor': -2,
+        'floorLabel': 'B2 Floor',
+      },
+      {
+        'id': 9500204,
+        'name': 'B2-201',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B2 Floor',
+        'type': 'Classroom',
+        'capacity': 40,
+        'floor': -2,
+        'floorLabel': 'B2 Floor',
+      },
+      {
+        'id': 9500205,
+        'name': 'B2-202',
+        'building': 'Ataköy Campus, Faculty of Engineering',
+        'campus': 'Ataköy',
+        'location': 'Ataköy Campus, Ataköy Building, B2 Floor',
+        'type': 'Classroom',
+        'capacity': 40,
+        'floor': -2,
+        'floorLabel': 'B2 Floor',
+      },
+    ];
+
+    for (final classroom in b1b2Classrooms) {
+      final id = classroom['id'].toString();
+      batch.set(
+        _db.collection('classrooms').doc(id),
+        {
+          ...classroom,
+          'isDemoSeed': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    await batch.commit();
+
+    // Cache'i temizle ki ekran taze veri çeksin
+    clearCollectionCache('classrooms');
+
+    print('Classroom B1/B2 verileri başarıyla güncellendi ve tamamlandı.');
+  }
 }

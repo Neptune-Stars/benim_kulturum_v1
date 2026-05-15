@@ -19,14 +19,33 @@ class ClassroomDetailScreen extends StatelessWidget {
     if (raw.isEmpty) return 'Ground Floor';
 
     final normalized = raw.toLowerCase().replaceAll('ı', 'i').trim();
+    final compact = normalized.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    // B1-B2 (covers both basement floors)
+    if (compact == 'b1b2' ||
+        compact == 'b2b1' ||
+        normalized.contains('b1 and b2') ||
+        normalized.contains('b1 / b2') ||
+        normalized.contains('b1-b2')) {
+      return 'B1-B2 Floors';
+    }
+
+    // B2 (basement 2)
+    if (compact == 'b2' || compact == 'b2floor') return 'B2 Floor';
+
+    // B1 (basement 1)
+    if (compact == 'b1' || compact == 'b1floor') return 'B1 Floor';
 
     if (normalized.contains('basement') || normalized == '-1') return 'Basement Floor';
     if (normalized.contains('ground') || normalized == '0') return 'Ground Floor';
+    if (normalized.contains('entrance')) return 'Entrance Floor';
+    if (normalized.contains('mezzanine')) return 'Mezzanine Floor';
     if (raw.contains('Floor')) return raw;
 
     final number = int.tryParse(raw);
     if (number != null) {
-      if (number == -1) return 'Basement Floor';
+      if (number == -2) return 'B2 Floor';
+      if (number == -1) return 'B1 Floor';
       if (number == 0) return 'Ground Floor';
       return '$number. Floor';
     }

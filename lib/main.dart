@@ -30,7 +30,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
   // TEMPORARY: Runs once to clean demo price categories and seed realistic prices.
   // Remove this line after running the app once successfully.
 
