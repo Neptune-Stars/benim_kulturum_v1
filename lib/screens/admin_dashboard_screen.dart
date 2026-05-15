@@ -275,23 +275,78 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   void _showDeleteDialog(String collectionKey, String docId) {
+    final isAnnouncementDelete = collectionKey == 'announcements';
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Confirm Deletion"),
-        content: const Text("Are you sure you want to delete this record? This action cannot be undone."),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          isAnnouncementDelete ? "Delete Announcement" : "Confirm Deletion",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          isAnnouncementDelete
+              ? "Are you sure you want to delete this announcement? It will be removed from Firestore and will no longer appear on student screens."
+              : "Are you sure you want to delete this record? This action cannot be undone.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: AppTheme.textMuted))),
           TextButton(
-              onPressed: () async {
-                await FirebaseFirestore.instance.collection(collectionKey).doc(docId).delete();
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                if (isAnnouncementDelete) {
+                  await DataService.deleteAnnouncement(docId);
+                } else {
+                  await FirebaseFirestore.instance
+                      .collection(collectionKey)
+                      .doc(docId)
+                      .delete();
+
+                  DataService.clearCollectionCache(collectionKey);
+                }
+
                 if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Record deleted from cloud database.")));
+                  Navigator.pop(dialogContext);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isAnnouncementDelete
+                            ? "Announcement deleted from Firebase and student screens."
+                            : "Record deleted from cloud database.",
+                      ),
+                    ),
+                  );
+
                   _refreshAdminData(collectionKey: collectionKey);
                 }
-              },
-              child: const Text("Delete", style: TextStyle(color: AppTheme.destructiveColor))
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(dialogContext);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isAnnouncementDelete
+                            ? "Announcement could not be deleted: $e"
+                            : "Record could not be deleted: $e",
+                      ),
+                      backgroundColor: AppTheme.destructiveColor,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: AppTheme.destructiveColor),
+            ),
           ),
         ],
       ),

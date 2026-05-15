@@ -25,6 +25,10 @@ import 'notifications_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
+  bool _isVisibleAnnouncement(Map<dynamic, dynamic> announcement) {
+    return !DataService.isDeletedRecord(announcement);
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor =
@@ -197,13 +201,19 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               FutureBuilder<Map<String, dynamic>>(
-                future: DataService.loadDatabase(),
+                future: DataService.loadDatabase(forceRefresh: true),
                 builder: (context, snapshot) {
                   final data = snapshot.data ?? {};
 
+                  final visibleAnnouncements =
+                  (data['announcements'] as List<dynamic>? ?? []).where((raw) {
+                    final announcement = Map<dynamic, dynamic>.from(raw as Map);
+                    return _isVisibleAnnouncement(announcement);
+                  }).toList();
+
                   final announcements = _sortAnnouncements(
                     _filterUpcoming(
-                      data['announcements'] as List<dynamic>? ?? [],
+                      visibleAnnouncements,
                       _announcementDateTime,
                     ),
                   );
