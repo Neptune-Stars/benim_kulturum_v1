@@ -164,7 +164,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           break;
         case 8:
           if (forceRefresh || _issuesFuture == null) {
-            _issuesFuture = DataService.fetchCollection('issues', forceRefresh: forceRefresh);
+            _issuesFuture = DataService.fetchCollection(
+              'issues',
+              forceRefresh: forceRefresh,
+              orderBy: 'createdAt',
+              descending: true,
+            );
           }
           break;
         case 9:
@@ -1228,9 +1233,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
         final allIssues = snapshot.data ?? [];
         final sq = _normalizeForSearch(_searchControllers[8]!.text);
+
         final filteredIssues = allIssues.where((iss) {
-          return _normalizeForSearch(iss['subject']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(iss['category']?.toString() ?? '').contains(sq);
+          final title = iss['title']?.toString() ??
+              iss['subject']?.toString() ??
+              '';
+
+          return _normalizeForSearch(title).contains(sq) ||
+              _normalizeForSearch(iss['category']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(iss['studentName']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(iss['studentEmail']?.toString() ?? '').contains(sq) ||
+              _normalizeForSearch(iss['status']?.toString() ?? '').contains(sq);
         }).toList();
 
         return _buildIssuesTab(filteredIssues, _searchControllers[8]!);
@@ -2367,14 +2380,74 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildIssuesTab(List<dynamic> issues, TextEditingController searchController) {
+    String normalizeStatus(dynamic rawStatus) {
+      final value = rawStatus?.toString().trim().toLowerCase() ?? 'open';
+      if (value == 'resolved' || value == 'closed' || value == 'çözüldü') {
+        return 'resolved';
+      }
+      return 'open';
+    }
+
+    String normalizePriority(dynamic rawPriority) {
+      final value = rawPriority?.toString().trim().toLowerCase() ?? 'normal';
+
+      if (value == 'high' || value == 'yüksek') return 'high';
+      if (value == 'medium' || value == 'orta') return 'medium';
+      if (value == 'low' || value == 'düşük') return 'normal';
+      if (value == 'normal') return 'normal';
+
+      return 'normal';
+    }
+
+    String labelFromStatus(String status) {
+      return status == 'resolved' ? 'Resolved' : 'Open';
+    }
+
+    String labelFromPriority(String priority) {
+      if (priority == 'high') return 'High';
+      if (priority == 'medium') return 'Medium';
+      return 'Normal';
+    }
+
+    Color colorFromPriority(String priority) {
+      if (priority == 'high') return AppTheme.destructiveColor;
+      if (priority == 'medium') return AppTheme.warningColor;
+      return AppTheme.successColor;
+    }
+
+    String issueTitle(Map<dynamic, dynamic> issue) {
+      return issue['title']?.toString().trim().isNotEmpty == true
+          ? issue['title'].toString()
+          : (issue['subject']?.toString().trim().isNotEmpty == true
+          ? issue['subject'].toString()
+          : 'Untitled issue');
+    }
+
+    String issueCreatedText(Map<dynamic, dynamic> issue) {
+      final dateText = issue['date']?.toString();
+      if (dateText != null && dateText.trim().isNotEmpty) {
+        return dateText;
+      }
+
+      final createdAt = issue['createdAt'];
+      if (createdAt is Timestamp) {
+        final date = createdAt.toDate();
+        return "${date.day.toString().padLeft(2, '0')}/"
+            "${date.month.toString().padLeft(2, '0')}/"
+            "${date.year} "
+            "${date.hour.toString().padLeft(2, '0')}:"
+            "${date.minute.toString().padLeft(2, '0')}";
+      }
+
+      return '-';
+    }
+
     final openIssues = issues.where((issue) {
-      final status = (issue["status"] ?? "Open").toString();
-      return status != "Resolved";
+      return normalizeStatus(issue["status"]) != "resolved";
     }).toList();
 
     final resolvedIssues = issues.where((issue) {
-      final status = (issue["status"] ?? "Open").toString();
-      return status == "Resolved";
+      return normalizeStatus(issue["status"]) == "resolved";
     }).toList();
 
     final sortedIssues = [...openIssues, ...resolvedIssues];
@@ -2388,7 +2461,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             children: [
               Text(
                 "Incoming Issues (${issues.length})",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                tooltip: "Refresh issues",
+                onPressed: () => _refreshTab(8),
+                icon: Icon(
+                  Icons.refresh,
+                  color: _adminPrimaryColor(),
+                ),
               ),
             ],
           ),
@@ -2397,40 +2481,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: AppSearchBar(
             controller: searchController,
-            placeholder: "Search subject or location...",
+            placeholder: "Search title, category, student, or status...",
             onChanged: (val) => setState(() {}),
           ),
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: sortedIssues.isEmpty
+              ? Center(
+            child: Text(
+              "No issue reports found.",
+              style: TextStyle(color: _adminTextMutedColor()),
+            ),
+          )
+              : ListView.separated(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             itemCount: sortedIssues.length,
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (context, index) {
-              final issue = sortedIssues[index];
+              final issue = sortedIssues[index] as Map<dynamic, dynamic>;
 
-              final status = (issue["status"] ?? "Open").toString();
-              final isResolved = status == "Resolved";
+              final status = normalizeStatus(issue["status"]);
+              final isResolved = status == "resolved";
 
-              Color priorityColor = issue["priority"] == "High"
-                  ? AppTheme.destructiveColor
-                  : (issue["priority"] == "Medium"
-                  ? AppTheme.warningColor
-                  : AppTheme.successColor);
+              final priority = normalizePriority(issue["priority"]);
+              final priorityColor = colorFromPriority(priority);
+
+              final title = issueTitle(issue);
+              final category = issue["category"]?.toString() ?? "-";
+              final location = issue["location"]?.toString() ?? "Not specified";
+              final studentName = issue["studentName"]?.toString() ?? "Unknown Student";
+              final createdText = issueCreatedText(issue);
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: priorityColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        issue["priority"] ?? '',
+                        labelFromPriority(priority),
                         style: TextStyle(
                           color: priorityColor,
                           fontSize: 12,
@@ -2440,7 +2540,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: isResolved
                             ? AppTheme.successColor.withOpacity(0.1)
@@ -2448,7 +2551,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        status,
+                        labelFromStatus(status),
                         style: TextStyle(
                           color: isResolved
                               ? AppTheme.successColor
@@ -2461,7 +2564,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        issue["subject"] ?? '',
+                        title,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           decoration: isResolved
@@ -2477,7 +2580,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 4.0),
                   child: Text(
-                    "${issue["category"]} • ${issue["location"]}\n${issue["date"]}",
+                    "$category • $location\n$studentName • $createdText",
                     style: TextStyle(color: _adminTextMutedColor()),
                   ),
                 ),
@@ -2485,11 +2588,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.remove_red_eye, color: AppTheme.primaryLight),
+                      icon: Icon(
+                        Icons.remove_red_eye,
+                        color: _adminPrimaryColor(),
+                      ),
                       onPressed: () => _openIssueDetailsDialog(issue),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: AppTheme.destructiveColor),
+                      icon: const Icon(
+                        Icons.delete,
+                        color: AppTheme.destructiveColor,
+                      ),
                       onPressed: () => _showDeleteDialog(
                         'issues',
                         (issue['firestoreDocId'] ?? issue['id']).toString(),
@@ -2506,49 +2615,114 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   void _openIssueDetailsDialog(Map<dynamic, dynamic> issue) {
+    String issueTitle() {
+      return issue['title']?.toString().trim().isNotEmpty == true
+          ? issue['title'].toString()
+          : (issue['subject']?.toString().trim().isNotEmpty == true
+          ? issue['subject'].toString()
+          : 'Untitled issue');
+    }
+
+    String normalizeStatus(dynamic rawStatus) {
+      final value = rawStatus?.toString().trim().toLowerCase() ?? 'open';
+      if (value == 'resolved' || value == 'closed' || value == 'çözüldü') {
+        return 'resolved';
+      }
+      return 'open';
+    }
+
+    final status = normalizeStatus(issue['status']);
+    final isResolved = status == 'resolved';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Issue Details", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Issue Details",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Subject: ${issue["subject"]}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                "Title: ${issueTitle()}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 12),
-              Text("Category: ${issue["category"]}", style: const TextStyle(color: AppTheme.textMuted)),
+              Text(
+                "Category: ${issue["category"] ?? "-"}",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
               const SizedBox(height: 4),
-              Text("Location: ${issue["location"]}", style: const TextStyle(color: AppTheme.textMuted)),
+              Text(
+                "Priority: ${issue["priority"] ?? "normal"}",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Status: ${isResolved ? "Resolved" : "Open"}",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Location: ${issue["location"] ?? "Not specified"}",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Student: ${issue["studentName"] ?? "Unknown Student"}",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Email: ${issue["studentEmail"] ?? "-"}",
+                style: TextStyle(color: _adminTextMutedColor()),
+              ),
               const Divider(height: 24),
-              Text(issue["description"] ?? '', style: const TextStyle(height: 1.4)),
+              Text(
+                issue["description"] ?? '',
+                style: const TextStyle(height: 1.4),
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
-          ElevatedButton.icon(
-            onPressed: () async {
-
-              // Mark issue as resolved instead of deleting it
-              await FirebaseFirestore.instance
-                  .collection('issues')
-                  .doc((issue['firestoreDocId'] ?? issue['id']).toString())
-                  .update({
-                "status": "Resolved",
-                "resolvedAt": FieldValue.serverTimestamp(),
-              });
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Issue marked as resolved.")),
-                );
-                _refreshAdminData(collectionKey: 'issues');
-              }
-            },
-            icon: const Icon(Icons.check, size: 18), label: const Text("Resolved"),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.successColor, foregroundColor: Colors.white),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
           ),
+          if (!isResolved)
+            ElevatedButton.icon(
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('issues')
+                    .doc((issue['firestoreDocId'] ?? issue['id']).toString())
+                    .update({
+                  "status": "resolved",
+                  "resolvedAt": FieldValue.serverTimestamp(),
+                  "updatedAt": FieldValue.serverTimestamp(),
+                });
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Issue marked as resolved.")),
+                  );
+                  _refreshAdminData(collectionKey: 'issues');
+                }
+              },
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text("Mark Resolved"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.successColor,
+                foregroundColor: Colors.white,
+              ),
+            ),
         ],
       ),
     );

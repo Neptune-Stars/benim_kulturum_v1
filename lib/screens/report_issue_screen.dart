@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // YENİ: Firebase eklendi
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+
+import '../data/data_service.dart';
+import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 
@@ -12,7 +16,8 @@ class ReportIssueScreen extends StatefulWidget {
 
 class _ReportIssueScreenState extends State<ReportIssueScreen> {
   String? _selectedCategory;
-  String _selectedPriority = "Low";
+  String _selectedPriority = "normal";
+  bool _isSubmitting = false;
 
   final _subjectController = TextEditingController();
   final _locationController = TextEditingController();
@@ -27,10 +32,19 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     "Other",
   ];
 
-  bool get _isFormValid =>
-      _selectedCategory != null &&
-          _subjectController.text.isNotEmpty &&
-          _descController.text.isNotEmpty;
+  bool get _isFormValid {
+    return _selectedCategory != null &&
+        _subjectController.text.trim().isNotEmpty &&
+        _descController.text.trim().isNotEmpty;
+  }
+
+  @override
+  void dispose() {
+    _subjectController.dispose();
+    _locationController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
 
   InputDecoration _inputDecoration(
       BuildContext context, {
@@ -63,83 +77,143 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
+  String _formatLocalDate(DateTime dateTime) {
+    return "${dateTime.day.toString().padLeft(2, '0')}/"
+        "${dateTime.month.toString().padLeft(2, '0')}/"
+        "${dateTime.year} "
+        "${dateTime.hour.toString().padLeft(2, '0')}:"
+        "${dateTime.minute.toString().padLeft(2, '0')}";
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
 
-    int docId = DateTime.now().millisecondsSinceEpoch;
-    DateTime now = DateTime.now();
-    String formattedDate = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    if (!_isFormValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please fill in category, subject, and description."),
+        ),
+      );
+      return;
+    }
 
-    Map<String, dynamic> issueData = {
-      "id": docId,
-      "category": _selectedCategory ?? "Other",
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final authProvider = context.read<AuthProvider>();
+    final userData = authProvider.userData ?? {};
+
+    final studentId = authProvider.currentUserDocId ?? '';
+    final studentName = userData['name']?.toString() ?? 'Unknown Student';
+    final studentEmail = userData['email']?.toString() ?? '';
+
+    final title = _subjectController.text.trim();
+    final description = _descController.text.trim();
+    final category = _selectedCategory ?? "Other";
+    final location = _locationController.text.trim().isEmpty
+        ? "Not specified"
+        : _locationController.text.trim();
+
+    final docRef = FirebaseFirestore.instance.collection('issues').doc();
+    final now = DateTime.now();
+
+    final Map<String, dynamic> issueData = {
+      // Required / standard fields
+      "id": docRef.id,
+      "title": title,
+      "description": description,
+      "category": category,
+      "status": "open",
       "priority": _selectedPriority,
-      "subject": _subjectController.text.trim(),
-      "location": _locationController.text.trim().isEmpty
-          ? "Not specified"
-          : _locationController.text.trim(),
-      "description": _descController.text.trim(),
-      "date": formattedDate,
-
-      "status": "Open",
+      "studentId": studentId,
+      "studentName": studentName,
+      "studentEmail": studentEmail,
       "createdAt": FieldValue.serverTimestamp(),
+      "updatedAt": FieldValue.serverTimestamp(),
+
+      // Extra fields still useful for the current admin UI / old compatibility
+      "subject": title,
+      "location": location,
+      "date": _formatLocalDate(now),
       "resolvedAt": null,
     };
 
     try {
-      await FirebaseFirestore.instance.collection('issues').doc(docId.toString()).set(issueData);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("An error occurred while submitting.")));
-      return;
-    }
+      await docRef.set(issueData);
 
-    if (!mounted) return;
+      // Prevent stale admin/dashboard cache in the same app session.
+      DataService.clearCollectionCache('issues');
 
-    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = Theme.of(context).brightness == Brightness.dark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+      if (!mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.check_circle,
-                color: AppTheme.successColor,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "Success!",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      final textColor =
+          Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
+      final mutedColor = Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.darkTextMuted
+          : AppTheme.textMuted;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: AppTheme.successColor,
+                  size: 64,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Your issue report has been successfully submitted. We will look into it as soon as possible.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: mutedColor),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  "Success!",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Your issue report has been submitted successfully. The administration can now review it.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: mutedColor),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pop();
-        Navigator.of(context).pop();
-      }
-    });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.of(context).pop();
+          Navigator.of(context).pop();
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Issue report could not be submitted: $e"),
+        ),
+      );
+    }
   }
 
   @override
@@ -179,7 +253,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "You can report the issues you encounter on campus to the authorities from here.",
+                      "You can report campus, technical, cleaning, security, or transportation issues to the administration from here.",
                       style: TextStyle(
                         color: textColor,
                         height: 1.4,
@@ -204,8 +278,13 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 ),
               )
                   .toList(),
-              onChanged: (val) => setState(() => _selectedCategory = val),
+              onChanged: (val) {
+                setState(() {
+                  _selectedCategory = val;
+                });
+              },
             ),
+
             const SizedBox(height: 20),
 
             Text(
@@ -219,17 +298,29 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                _buildPriorityButton(context, "Low", AppTheme.successColor),
-                const SizedBox(width: 8),
-                _buildPriorityButton(context, "Medium", AppTheme.warningColor),
+                _buildPriorityButton(
+                  context,
+                  value: "normal",
+                  label: "Normal",
+                  color: AppTheme.successColor,
+                ),
                 const SizedBox(width: 8),
                 _buildPriorityButton(
                   context,
-                  "High",
-                  AppTheme.destructiveColor,
+                  value: "medium",
+                  label: "Medium",
+                  color: AppTheme.warningColor,
+                ),
+                const SizedBox(width: 8),
+                _buildPriorityButton(
+                  context,
+                  value: "high",
+                  label: "High",
+                  color: AppTheme.destructiveColor,
                 ),
               ],
             ),
+
             const SizedBox(height: 20),
 
             TextField(
@@ -238,6 +329,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               decoration: _inputDecoration(context, label: "Subject"),
               onChanged: (_) => setState(() {}),
             ),
+
             const SizedBox(height: 20),
 
             TextField(
@@ -248,6 +340,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 label: "Location (Optional)",
               ),
             ),
+
             const SizedBox(height: 20),
 
             TextField(
@@ -268,12 +361,21 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _isFormValid ? _submit : null,
+                onPressed: _isFormValid && !_isSubmitting ? _submit : null,
                 style: ElevatedButton.styleFrom(
                   disabledBackgroundColor: borderColor,
                   disabledForegroundColor: mutedColor,
                 ),
-                child: const Text(
+                child: _isSubmitting
+                    ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                    : const Text(
                   "Submit",
                   style: TextStyle(
                     fontSize: 16,
@@ -289,11 +391,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   }
 
   Widget _buildPriorityButton(
-      BuildContext context,
-      String label,
-      Color color,
-      ) {
-    final isSelected = _selectedPriority == label;
+      BuildContext context, {
+        required String value,
+        required String label,
+        required Color color,
+      }) {
+    final isSelected = _selectedPriority == value;
     final textColor =
         Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final borderColor = Theme.of(context).dividerColor;
@@ -301,7 +404,11 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedPriority = label),
+        onTap: () {
+          setState(() {
+            _selectedPriority = value;
+          });
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
