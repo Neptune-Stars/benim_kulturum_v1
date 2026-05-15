@@ -1926,7 +1926,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     controller: priceCtrl,
                     decoration: InputDecoration(
                       labelText: isFastFood ? "General Price Info" : "Price",
-                      hintText: isFastFood ? "Product based" : "e.g. ₺35",
+                      hintText: isFastFood ? "Product based" : "e.g. ₺175",
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2069,6 +2069,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     "isActive": item['isActive'] ?? true,
                     "isActiveManuallyEdited": item['isActiveManuallyEdited'] == true,
                     "isChips": item['isChips'] ?? false,
+                    "contentManuallyEdited": !DataService.isFixedCafeteriaMealType(normalizedMealType),
+                    "templateAlgorithmVersion": item['templateAlgorithmVersion'] ?? 3,
+                    "templateId": item['templateId'],
+                    "templateRotationIndex": item['templateRotationIndex'],
                   };
 
                   await DataService.saveCafeteriaMenu(
@@ -4277,14 +4281,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     mealTypes.add(newMealName);
                   }
 
-                  menus[newMealName] = {
+                  final normalizedNewMealType = DataService.normalizeMealType(newMealName);
+
+                  menus[normalizedNewMealType] = {
                     "menuName": menuNameCtrl.text.trim().isEmpty
-                        ? newMealName
+                        ? normalizedNewMealType
                         : menuNameCtrl.text.trim(),
                     "time": timeCtrl.text.trim(),
                     "price": normalizedPrice,
                     "items": newItems,
                     "isChips": item['isChips'] ?? false,
+                    "contentManuallyEdited": !DataService.isFixedCafeteriaMealType(normalizedNewMealType),
+                    "templateAlgorithmVersion": item['templateAlgorithmVersion'] ?? 3,
+                    "templateId": item['templateId'],
+                    "templateRotationIndex": item['templateRotationIndex'],
                   };
 
                   updatedData['mealTypes'] = mealTypes;
