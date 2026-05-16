@@ -270,7 +270,8 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
           }
 
           final allUnits = (snapshot.data!['buildings'] as List<dynamic>? ?? [])
-              .map((unit) => DataService.normalizeCampusUnitRecord(Map<String, dynamic>.from(unit as Map)))
+              .whereType<Map<dynamic, dynamic>>()
+              .map((unit) => DataService.normalizeCampusUnitRecord(unit))
               .where((unit) => DataService.isCampusUnitVisible(unit))
               .toList();
 
@@ -311,7 +312,7 @@ class _BuildingsScreenState extends State<BuildingsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: AppSearchBar(
-                    placeholder: "Search unit, faculty, classroom, or service...",
+                    placeholder: "Search unit, faculty, library, cafeteria, or service...",
                     onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),

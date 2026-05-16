@@ -609,17 +609,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         final sq = _normalizeForSearch(_searchControllers[1]!.text);
 
         final filteredUnits = allUnits.where((unit) {
-          final type = (unit['type'] ?? '').toString();
-          final name = (unit['name'] ?? '').toString();
+          final normalizedUnit = DataService.normalizeCampusUnitRecord(unit);
 
-          bool isPhysicalSpace = ['Classroom', 'Amphitheater', 'Laboratory'].contains(type) ||
-              name.contains('Classroom') || name.contains('302');
+          if (!DataService.isCampusUnitVisible(normalizedUnit)) {
+            return false;
+          }
 
-          if (isPhysicalSpace) return false;
+          final name = normalizedUnit['name']?.toString() ?? '';
+          final location = normalizedUnit['location']?.toString() ?? '';
+          final type = normalizedUnit['type']?.toString() ?? '';
+          final category = normalizedUnit['category']?.toString() ?? '';
 
           if (sq.isEmpty) return true;
+
           return _normalizeForSearch(name).contains(sq) ||
-              _normalizeForSearch(unit['location']?.toString() ?? '').contains(sq);
+              _normalizeForSearch(location).contains(sq) ||
+              _normalizeForSearch(type).contains(sq) ||
+              _normalizeForSearch(category).contains(sq);
         }).toList();
 
         final campusCards = <Map<String, String>>[
@@ -3188,18 +3194,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final List<String> campusOptions = ["Ataköy", "İncirli", "Basın Ekspres", "Şirinevler"];
     final List<String> unitTypeOptions = [
       "Academic Unit",
-      "Classroom",
-      "Laboratory",
+      "Faculty",
+      "Department",
+      "Office",
       "Library",
+      "Study Area",
       "Hall",
       "Auditorium",
-      "Health Unit",
+      "Seminar Hall",
+      "Conference Hall",
       "Food & Drink",
+      "Cafeteria",
+      "Cafe",
+      "Restaurant",
+      "Canteen",
+      "Health Unit",
+      "Infirmary",
       "Student Services",
+      "Student Affairs",
       "Security",
       "Service",
-      "Office",
-      "Workshop",
+      "Stationery",
+      "Other",
     ];
 
     String? _matchCampusOption(String? rawValue) {
@@ -3225,18 +3241,54 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       if (value.contains('faculty') || value.contains('school') || value.contains('department') || value.contains('academic unit')) {
         return "Academic Unit";
       }
-      if (value.contains('classroom') || value.contains('lecture')) return "Classroom";
-      if (value.contains('laboratory') || value.contains('lab')) return "Laboratory";
-      if (value.contains('library')) return "Library";
+      if (value.contains('classroom') ||
+          value.contains('lecture hall') ||
+          value.contains('lecture room') ||
+          value.contains('laboratory') ||
+          value == 'lab' ||
+          value.contains(' lab') ||
+          value.contains('amphitheater') ||
+          value.contains('amfi') ||
+          value.contains('workshop') ||
+          value.contains('derslik') ||
+          value.contains('sinif') ||
+          value.contains('sınıf')) {
+        return "Academic Unit";
+      }
+
       if (value.contains('auditorium')) return "Auditorium";
+      if (value.contains('seminar')) return "Seminar Hall";
+      if (value.contains('conference')) return "Conference Hall";
       if (value.contains('hall') || value.contains('courtroom')) return "Hall";
-      if (value.contains('health') || value.contains('infirmary') || value.contains('revir')) return "Health Unit";
-      if (value.contains('cafe') || value.contains('restaurant') || value.contains('canteen') || value.contains('food')) return "Food & Drink";
-      if (value.contains('student service') || value.contains('student_services')) return "Student Services";
+
+      if (value.contains('library')) return "Library";
+      if (value.contains('study')) return "Study Area";
+      if (value.contains('health') ||
+          value.contains('infirmary') ||
+          value.contains('revir')) {
+        return "Health Unit";
+      }
+      if (value.contains('cafeteria')) return "Cafeteria";
+      if (value.contains('cafe')) return "Cafe";
+      if (value.contains('restaurant')) return "Restaurant";
+      if (value.contains('canteen')) return "Canteen";
+      if (value.contains('food')) return "Food & Drink";
+      if (value.contains('student affairs') || value.contains('registrar')) {
+        return "Student Affairs";
+      }
+      if (value.contains('student service') || value.contains('student_services')) {
+        return "Student Services";
+      }
       if (value.contains('security')) return "Security";
       if (value.contains('office')) return "Office";
-      if (value.contains('workshop') || value.contains('factory')) return "Workshop";
-      if (value.contains('service') || value.contains('bank') || value.contains('stationery') || value.contains('hairdresser')) return "Service";
+      if (value.contains('stationery') || value.contains('copy')) {
+        return "Stationery";
+      }
+      if (value.contains('service') ||
+          value.contains('bank') ||
+          value.contains('hairdresser')) {
+        return "Service";
+      }
 
       return "Academic Unit";
     }
