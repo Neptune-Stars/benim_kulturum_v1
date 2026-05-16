@@ -20,26 +20,6 @@ class InstructorDetailScreen extends StatelessWidget {
     return names.isNotEmpty ? names[0][0].toUpperCase() : "?";
   }
 
-
-  List<Map<String, dynamic>> _generateRealisticMockHours(String id, String generalOffice) {
-    final int seed = id.hashCode;
-    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    final List<String> timeBlocks = [
-      "09:00 - 11:00", "10:00 - 12:00", "11:00 - 13:00",
-      "13:00 - 15:00", "14:00 - 16:00", "15:00 - 17:00"
-    ];
-
-    String day1 = days[seed % days.length];
-    String block1 = timeBlocks[seed % timeBlocks.length];
-    String day2 = days[(seed + 2) % days.length];
-    String block2 = timeBlocks[(seed + 3) % timeBlocks.length];
-
-    return [
-      {"day": day1, "startTime": block1.split(" - ")[0], "endTime": block1.split(" - ")[1], "office": generalOffice},
-      {"day": day2, "startTime": block2.split(" - ")[0], "endTime": block2.split(" - ")[1], "office": generalOffice}
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
@@ -52,9 +32,11 @@ class InstructorDetailScreen extends StatelessWidget {
     final String instructorId = instructorData['id']?.toString() ?? '0';
 
 
-    final List<dynamic> displayHours = (instructorData['officeHours'] is List && (instructorData['officeHours'] as List).isNotEmpty)
+    final List<dynamic> displayHours =
+    (instructorData['officeHours'] is List &&
+        (instructorData['officeHours'] as List).isNotEmpty)
         ? instructorData['officeHours']
-        : _generateRealisticMockHours(instructorId, office);
+        : <dynamic>[];
 
     final String email = (instructorData['email'] != null && instructorData['email'].toString().isNotEmpty)
         ? instructorData['email']
@@ -154,7 +136,15 @@ class InstructorDetailScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(color: dividerColor),
               ),
-              child: ListView.separated(
+              child: displayHours.isEmpty
+                  ? Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "Office hour information has not been added yet.",
+                  style: TextStyle(color: mutedColor, height: 1.4),
+                ),
+              )
+                  : ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: displayHours.length,

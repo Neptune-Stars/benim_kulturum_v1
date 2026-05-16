@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
-
 
 import 'theme/app_theme.dart';
 
@@ -21,30 +19,14 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
-import 'data/data_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase is initialized with the local FlutterFire configuration file.
-  // Do not share firebase_options.dart in AI tools or public environments.
+  // Firebase is the single shared data source for the final app.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // TEMPORARY: Runs once to clean demo price categories and seed realistic prices.
-  // Remove this line after running the app once successfully.
-
-
-  // Hive is kept only for user-specific/local preferences.
-  // Shared app data must be stored in Cloud Firestore.
-
-  await DataService.resetDemoCampusUnitsForPresentation();
-
-
-
-  await Hive.initFlutter();
-  await Hive.openBox('favoritesBox');
-  await Hive.openBox('userBox');
 
   runApp(
     MultiProvider(
@@ -54,9 +36,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => JoinedEventsProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
-        ChangeNotifierProvider(
-          create: (_) => ProfileProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: const BenimKulturumApp(),
     ),

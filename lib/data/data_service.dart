@@ -11,8 +11,6 @@ class DataService {
   static final Map<String, List<Map<String, dynamic>>> _collectionCache = {};
   static Map<String, dynamic>? _cafeteriaSettingsCache;
   static Map<String, int>? _dashboardSummaryCache;
-  static Future<void>? _defaultDataInitializationFuture;
-  static bool _defaultDataChecked = false;
 
   static const String defaultCampus = "Ataköy Campus";
 
@@ -295,41 +293,10 @@ class DataService {
         status == 'deleted';
   }
 
-  static Future<void> initializeDefaultDataIfNeeded() async {
-    if (_defaultDataChecked) {
-      return;
-    }
-
-    _defaultDataInitializationFuture ??= _initializeDefaultDataInternal();
-    await _defaultDataInitializationFuture;
-  }
-
-  static Future<void> _initializeDefaultDataInternal() async {
-    final studentSnap = await _db.collection('students').limit(1).get();
-    if (studentSnap.docs.isEmpty) {
-      print("Students missing, loading default data to Firebase...");
-      await _seedExtraData();
-      clearCollectionCache('students');
-    }
-
-    final campusSnap = await _db.collection('campuses').limit(1).get();
-    if (campusSnap.docs.isEmpty) {
-      print("Campus reference data missing, loading to Firebase...");
-      await _seedCampusReferenceData();
-      clearCollectionCache('campuses');
-      clearCollectionCache('classroomLocations');
-    }
-
-    await ensureCafeteriaData();
-    _defaultDataChecked = true;
-  }
-
   static Future<Map<String, dynamic>> loadDatabase({bool forceRefresh = false}) async {
     if (!forceRefresh && _databaseCache != null) {
       return _databaseCache!;
     }
-
-    await initializeDefaultDataIfNeeded();
 
     final results = await Future.wait([
       fetchCollection('buildings', forceRefresh: forceRefresh),
@@ -374,12 +341,12 @@ class DataService {
       return List<Map<String, dynamic>>.from(_collectionCache[collectionName]!);
     }
 
-    await initializeDefaultDataIfNeeded();
-
     Query<Map<String, dynamic>> query = _db.collection(collectionName);
+
     if (orderBy != null) {
       query = query.orderBy(orderBy, descending: descending);
     }
+
     if (limit != null) {
       query = query.limit(limit);
     }
@@ -534,284 +501,6 @@ class DataService {
         .replaceAll(RegExp(r'^_+|_+$'), '');
   }
 
-  /// One-time demo seed for the Prices screen.
-  ///
-  /// Use this only once before the presentation, then remove the temporary
-  /// call from main.dart. If you leave it active, every app launch will reset
-  /// admin price changes.
-  static Future<void> resetDemoPricesForPresentation() async {
-    final categoriesToRemove = <String>{
-      'food',
-      'tea_coffee',
-      'tea_and_coffee',
-      'tea_coffe',
-    };
-
-    final categoriesToReset = <String>{
-      'beverages',
-      'coffee_varieties',
-      'toast_varieties',
-      'snacks',
-      ...categoriesToRemove,
-    };
-
-    final defaultCategories = <Map<String, dynamic>>[
-      {
-        'id': 'beverages',
-        'name': 'Beverages',
-        'order': 1,
-        'isDefault': true,
-      },
-      {
-        'id': 'coffee_varieties',
-        'name': 'Coffee Varieties',
-        'order': 2,
-        'isDefault': true,
-      },
-      {
-        'id': 'toast_varieties',
-        'name': 'Toast Varieties',
-        'order': 3,
-        'isDefault': true,
-      },
-      {
-        'id': 'snacks',
-        'name': 'Snacks',
-        'order': 4,
-        'isDefault': true,
-      },
-    ];
-
-    final realisticPrices = <Map<String, dynamic>>[
-      // Beverages
-      {
-        'name': 'Water 500 ml',
-        'price': '₺15',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Sparkling Water',
-        'price': '₺20',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Ayran',
-        'price': '₺25',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Fruit Juice',
-        'price': '₺35',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Iced Tea',
-        'price': '₺40',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Cola',
-        'price': '₺45',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Fanta',
-        'price': '₺45',
-        'category': 'Beverages',
-      },
-      {
-        'name': 'Sprite',
-        'price': '₺45',
-        'category': 'Beverages',
-      },
-
-      // Coffee Varieties
-      {
-        'name': 'Turkish Tea',
-        'price': '₺15',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Turkish Coffee',
-        'price': '₺45',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Espresso',
-        'price': '₺45',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Filter Coffee',
-        'price': '₺55',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Americano',
-        'price': '₺60',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Latte',
-        'price': '₺70',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Cappuccino',
-        'price': '₺70',
-        'category': 'Coffee Varieties',
-      },
-      {
-        'name': 'Mocha',
-        'price': '₺80',
-        'category': 'Coffee Varieties',
-      },
-
-      // Toast Varieties
-      {
-        'name': 'Cheese Toast',
-        'price': '₺70',
-        'category': 'Toast Varieties',
-      },
-      {
-        'name': 'Sucuk Toast',
-        'price': '₺90',
-        'category': 'Toast Varieties',
-      },
-      {
-        'name': 'Mixed Toast',
-        'price': '₺100',
-        'category': 'Toast Varieties',
-      },
-      {
-        'name': 'Ayvalık Toast',
-        'price': '₺130',
-        'category': 'Toast Varieties',
-      },
-      {
-        'name': 'Chicken Sandwich',
-        'price': '₺120',
-        'category': 'Toast Varieties',
-      },
-      {
-        'name': 'Tuna Sandwich',
-        'price': '₺130',
-        'category': 'Toast Varieties',
-      },
-
-      // Snacks
-      {
-        'name': 'Simit',
-        'price': '₺20',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Poğaça',
-        'price': '₺30',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Açma',
-        'price': '₺30',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Croissant',
-        'price': '₺60',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Muffin',
-        'price': '₺55',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Chocolate Bar',
-        'price': '₺40',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Chips',
-        'price': '₺50',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Biscuit',
-        'price': '₺35',
-        'category': 'Snacks',
-      },
-      {
-        'name': 'Cake Slice',
-        'price': '₺70',
-        'category': 'Snacks',
-      },
-    ];
-
-    final batch = _db.batch();
-
-    final priceDocs = await _db.collection('prices').get();
-    for (final doc in priceDocs.docs) {
-      final data = doc.data();
-      final category = data['category']?.toString() ?? '';
-      final categoryKey = _demoPriceCategoryKey(category);
-
-      if (categoriesToReset.contains(categoryKey)) {
-        batch.delete(doc.reference);
-      }
-    }
-
-    final categoryDocs = await _db.collection('priceCategories').get();
-    for (final doc in categoryDocs.docs) {
-      final data = doc.data();
-      final name = data['name']?.toString() ??
-          data['title']?.toString() ??
-          data['category']?.toString() ??
-          '';
-      final categoryKey = _demoPriceCategoryKey(name);
-
-      if (categoriesToRemove.contains(categoryKey)) {
-        batch.delete(doc.reference);
-      }
-    }
-
-    for (final category in defaultCategories) {
-      final id = category['id'].toString();
-
-      batch.set(
-        _db.collection('priceCategories').doc(id),
-        {
-          ...category,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-    }
-
-    for (final item in realisticPrices) {
-      final category = item['category'].toString();
-      final name = item['name'].toString();
-      final docId = _demoPriceDocId(category, name);
-
-      batch.set(
-        _db.collection('prices').doc(docId),
-        {
-          'id': docId,
-          'name': name,
-          'price': item['price'],
-          'category': category,
-          'isActive': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-    }
-
-    await batch.commit();
-
-    clearCollectionCache('prices');
-    clearCollectionCache('priceCategories');
-  }
-
   static Future<List<Map<String, dynamic>>> _fetchList(String collectionName) {
     return fetchCollection(collectionName);
   }
@@ -821,11 +510,12 @@ class DataService {
       return Map<String, dynamic>.from(_cafeteriaSettingsCache!);
     }
 
-    await initializeDefaultDataIfNeeded();
     final cafeteriaDoc = await _db.collection('settings').doc('cafeteria').get();
+
     _cafeteriaSettingsCache = cafeteriaDoc.exists
         ? Map<String, dynamic>.from(cafeteriaDoc.data() ?? {})
         : <String, dynamic>{};
+
     return Map<String, dynamic>.from(_cafeteriaSettingsCache!);
   }
 
@@ -847,8 +537,6 @@ class DataService {
     if (!forceRefresh && _dashboardSummaryCache != null) {
       return Map<String, int>.from(_dashboardSummaryCache!);
     }
-
-    await initializeDefaultDataIfNeeded();
 
     final entries = await Future.wait([
       _countCollectionEntry('buildings'),
@@ -876,468 +564,45 @@ class DataService {
     }
   }
 
-  static Map<String, dynamic> _defaultCafeteriaData() {
+  static Map<String, dynamic> defaultMenuForMealType(String mealType) {
+    final normalizedMealType = normalizeMealType(mealType);
+
     return {
-      "mealTypes": cafeteriaMealTypes,
-      "defaultCampus": defaultCampus,
-      "weekdayDefaultMealType": "Meal",
-      "weekendDefaultMealType": "Fast Food",
-      "menus": {
-        "Breakfast": {
-          "menuName": "Breakfast Menu",
-          "time": "08:00-10:00",
-          "price": "₺25",
-          "items": [
-            "Cheese",
-            "Olives",
-            "Tomatoes",
-            "Cucumber",
-            "Jam",
-            "Butter",
-            "Boiled egg",
-            "Tea"
-          ],
-          "isChips": true,
-        },
-        "Meal": {
-          "menuName": "Today's Meal",
-          "time": "13:00-18:00",
-          "price": "₺175",
-          "items": [
-            "Lentil Soup",
-            "Chicken Schnitzel",
-            "Rice",
-            "Seasonal Salad",
-            "Ayran"
-          ],
-          "isChips": false,
-        },
-        "Fast Food": {
-          "menuName": "Fast Food Menu",
-          "time": "10:00-18:00",
-          "price": "Product based",
-          "items": [
-            {"name": "Grilled Meatball Menu", "price": "₺75"},
-            {"name": "Chicken Schnitzel Menu", "price": "₺70"},
-            {"name": "Penne Pasta", "price": "₺55"},
-            {"name": "French Fries", "price": "₺35"},
-            {"name": "Cheese Toast", "price": "₺40"}
-          ],
-          "isChips": false,
-        },
-      },
-      "updatedAt": FieldValue.serverTimestamp(),
+      "mealType": normalizedMealType,
+      "menuName": normalizedMealType,
+      "time": "",
+      "price": normalizedMealType == "Fast Food" ? "Product based" : "",
+      "items": <dynamic>[],
+      "isChips": false,
+      "isActive": false,
+      "isActiveManuallyEdited": false,
     };
   }
 
-  static Future<void> ensureCafeteriaData() async {
-    final cafeteriaRef = _db.collection('settings').doc('cafeteria');
-    final cafeteriaDoc = await cafeteriaRef.get();
+  static List<dynamic> _cleanMenuItems(dynamic rawItems) {
+    if (rawItems is! List) return <dynamic>[];
 
-    final defaultData = _defaultCafeteriaData();
-
-    if (!cafeteriaDoc.exists || cafeteriaDoc.data() == null) {
-      await cafeteriaRef.set(defaultData);
-      clearCafeteriaCache();
-      print("Cafeteria data created for the first time.");
-      return;
-    }
-
-    final currentData = Map<String, dynamic>.from(cafeteriaDoc.data()!);
-
-    final currentMealTypes = (currentData['mealTypes'] as List<dynamic>?)
-        ?.map((e) => e.toString())
-        .toList() ??
-        [];
-
-    final currentMenus =
-    Map<String, dynamic>.from((currentData['menus'] as Map?) ?? {});
-
-    final defaultMenus =
-    Map<String, dynamic>.from(defaultData['menus'] as Map);
-
-    final Map<String, dynamic> fixedMenus = {};
-
-    fixedMenus["Breakfast"] = _mergeMenu(
-      defaultMenus["Breakfast"],
-      currentMenus["Breakfast"],
-      fallbackMenuName: "Breakfast Menu",
-    );
-
-    final existingFoodMenu = currentMenus["Meal"] ?? currentMenus["Lunch"];
-
-    fixedMenus["Meal"] = _mergeMenu(
-      defaultMenus["Meal"],
-      existingFoodMenu,
-      fallbackMenuName: "Today's Meal",
-    );
-
-    fixedMenus["Fast Food"] = _mergeMenu(
-      defaultMenus["Fast Food"],
-      currentMenus["Fast Food"],
-      fallbackMenuName: "Fast Food Menu",
-      itemsHavePrices: true,
-    );
-
-    final fixedMealTypes = <String>[
-      "Breakfast",
-      "Meal",
-      "Fast Food",
-    ];
-
-    // Admin can add custom categories later, they will be preserved.
-    for (final mealType in currentMealTypes) {
-      if (mealType == "Lunch" ||
-          mealType == "Dinner" ||
-          mealType == "Menu of the Day") {
-        continue;
-      }
-
-      if (!fixedMealTypes.contains(mealType)) {
-        fixedMealTypes.add(mealType);
-
-        if (currentMenus[mealType] is Map) {
-          fixedMenus[mealType] = currentMenus[mealType];
-        }
-      }
-    }
-
-    await cafeteriaRef.set({
-      "mealTypes": fixedMealTypes,
-      "defaultCampus": currentData['defaultCampus'] ?? defaultCampus,
-      "weekdayDefaultMealType": currentData['weekdayDefaultMealType'] ?? "Meal",
-      "weekendDefaultMealType": currentData['weekendDefaultMealType'] ?? "Fast Food",
-      "menus": fixedMenus,
-      "updatedAt": FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    clearCafeteriaCache();
-    print("Cafeteria data checked and missing parts fixed.");
-  }
-
-  static Map<String, dynamic> _mergeMenu(
-      dynamic defaultMenu,
-      dynamic existingMenu, {
-        required String fallbackMenuName,
-        String? forcedTime,
-        bool itemsHavePrices = false,
-      }) {
-    final defaultMap = Map<String, dynamic>.from((defaultMenu as Map?) ?? {});
-    final existingMap = Map<String, dynamic>.from((existingMenu as Map?) ?? {});
-
-    final merged = {
-      ...defaultMap,
-      ...existingMap,
-    };
-
-    final menuName = merged["menuName"]?.toString().trim() ?? "";
-    merged["menuName"] = menuName.isNotEmpty ? menuName : fallbackMenuName;
-
-    if (forcedTime != null) {
-      merged["time"] = forcedTime;
-    } else {
-      final time = merged["time"]?.toString().trim() ?? "";
-      merged["time"] = time.isNotEmpty ? time : defaultMap["time"];
-    }
-
-    final price = merged["price"]?.toString().trim() ?? "";
-    merged["price"] = price.isNotEmpty ? price : defaultMap["price"];
-
-    if (itemsHavePrices) {
-      merged["price"] = "Product based";
-      merged["items"] = _normalizePricedItems(
-        merged["items"],
-        defaultMap["items"],
-      );
-    } else if (merged["items"] is! List || (merged["items"] as List).isEmpty) {
-      merged["items"] = defaultMap["items"] ?? [];
-    }
-
-    merged["isChips"] = merged["isChips"] ?? false;
-
-    return merged;
-  }
-
-  static List<Map<String, dynamic>> _normalizePricedItems(
-      dynamic currentItems,
-      dynamic defaultItems,
-      ) {
-    final defaults = <String, String>{};
-
-    if (defaultItems is List) {
-      for (final item in defaultItems) {
-        if (item is Map) {
-          final name = item["name"]?.toString().trim() ?? "";
-          final price = item["price"]?.toString().trim() ?? "";
-          if (name.isNotEmpty) {
-            defaults[name] = price.isNotEmpty ? price : "₺0";
-          }
-        }
-      }
-    }
-
-    final sourceItems = currentItems is List && currentItems.isNotEmpty
-        ? currentItems
-        : (defaultItems is List ? defaultItems : <dynamic>[]);
-
-    return sourceItems
-        .map<Map<String, dynamic>>((item) {
+    return rawItems.where((item) {
       if (item is Map) {
-        final name = item["name"]?.toString().trim() ?? "";
-        final price = item["price"]?.toString().trim() ?? "";
+        return item['name']?.toString().trim().isNotEmpty == true;
+      }
 
+      return item.toString().trim().isNotEmpty;
+    }).map((item) {
+      if (item is Map) {
         return {
-          "name": name,
-          "price": price.isNotEmpty ? price : (defaults[name] ?? "₺0"),
+          "name": item['name']?.toString().trim() ?? "",
+          "price": item['price']?.toString().trim() ?? "",
         };
       }
 
-      final name = item.toString().trim();
-      return {
-        "name": name,
-        "price": defaults[name] ?? "₺0",
-      };
-    })
-        .where((item) => item["name"].toString().trim().isNotEmpty)
-        .toList();
+      return item.toString().trim();
+    }).toList();
   }
 
-  static Map<String, dynamic> defaultMenuForMealType(String mealType) {
-    final defaultMenus =
-    Map<String, dynamic>.from(_defaultCafeteriaData()['menus'] as Map);
-
-    final normalizedMealType = normalizeMealType(mealType);
-    return Map<String, dynamic>.from(
-      (defaultMenus[normalizedMealType] ?? defaultMenus['Meal']) as Map,
-    );
-  }
-
-  static List<Map<String, dynamic>> _mealTemplateRotation() {
-    return [
-      {
-        "templateId": "meal_menu_01",
-        "menuName": "Today's Meal",
-        "items": [
-          "Ezogelin Soup",
-          "Chicken Schnitzel",
-          "Rice Pilaf",
-          "Seasonal Salad",
-          "Ayran",
-        ],
-      },
-      {
-        "templateId": "meal_menu_02",
-        "menuName": "Today's Meal",
-        "items": [
-          "Tomato Soup",
-          "Grilled Meatballs",
-          "Bulgur Pilaf",
-          "Yogurt",
-          "Fruit",
-        ],
-      },
-      {
-        "templateId": "meal_menu_03",
-        "menuName": "Today's Meal",
-        "items": [
-          "Lentil Soup",
-          "Chicken Saute",
-          "Pasta",
-          "Mixed Salad",
-          "Ayran",
-        ],
-      },
-      {
-        "templateId": "meal_menu_04",
-        "menuName": "Today's Meal",
-        "items": [
-          "Vegetable Soup",
-          "Doner Plate",
-          "Rice Pilaf",
-          "Cacık",
-          "Dessert",
-        ],
-      },
-      {
-        "templateId": "meal_menu_05",
-        "menuName": "Today's Meal",
-        "items": [
-          "Tarhana Soup",
-          "Baked Chicken",
-          "Pasta",
-          "Seasonal Salad",
-          "Ayran",
-        ],
-      },
-      {
-        "templateId": "meal_menu_06",
-        "menuName": "Today's Meal",
-        "items": [
-          "Yayla Soup",
-          "Beef Stew",
-          "Rice Pilaf",
-          "Pickles",
-          "Compote",
-        ],
-      },
-      {
-        "templateId": "meal_menu_07",
-        "menuName": "Today's Meal",
-        "items": [
-          "Mushroom Soup",
-          "Chicken Curry",
-          "Noodles",
-          "Green Salad",
-          "Ayran",
-        ],
-      },
-      {
-        "templateId": "meal_menu_08",
-        "menuName": "Today's Meal",
-        "items": [
-          "Mercimek Soup",
-          "Izmir Meatballs",
-          "Bulgur Pilaf",
-          "Yogurt",
-          "Fruit",
-        ],
-      },
-      {
-        "templateId": "meal_menu_09",
-        "menuName": "Today's Meal",
-        "items": [
-          "Chicken Soup",
-          "Pasta with Tomato Sauce",
-          "Crispy Chicken",
-          "Seasonal Salad",
-          "Ayran",
-        ],
-      },
-      {
-        "templateId": "meal_menu_10",
-        "menuName": "Today's Meal",
-        "items": [
-          "Soup of the Day",
-          "Roasted Chicken",
-          "Rice Pilaf",
-          "Cacık",
-          "Dessert",
-        ],
-      },
-    ];
-  }
-
-  static int _daysSinceRotationStart(DateTime date) {
-    final cleanDate = DateTime(date.year, date.month, date.day);
-    final rotationStart = DateTime(2026, 5, 4);
-    return cleanDate.difference(rotationStart).inDays;
-  }
-
-  static Map<String, dynamic> defaultDailyMealForDate(DateTime date) {
-    final base = defaultMenuForMealType('Meal');
-    final templates = _mealTemplateRotation();
-
-    if (isSunday(date)) {
-      return {
-        ...base,
-        "templateId": "cafeteria_closed",
-        "templateRotationIndex": -1,
-        "templateAlgorithmVersion": 3,
-        "menuName": "Cafeteria Closed",
-        "time": base["time"] ?? "13:00-18:00",
-        "price": "₺175",
-        "items": <String>["Cafeteria Closed"],
-        "isChips": false,
-        "contentManuallyEdited": false,
-      };
-    }
-
-    if (isSaturday(date)) {
-      return {
-        ...base,
-        "templateId": "weekend_fast_food_only",
-        "templateRotationIndex": -1,
-        "templateAlgorithmVersion": 3,
-        "menuName": "Weekend Fast Food Service",
-        "time": base["time"] ?? "13:00-18:00",
-        "price": "₺175",
-        "items": <String>["Weekend Fast Food Service"],
-        "isChips": false,
-        "contentManuallyEdited": false,
-      };
-    }
-
-    final rawIndex = _daysSinceRotationStart(date);
-    final rotationIndex = rawIndex < 0
-        ? (templates.length - ((-rawIndex) % templates.length)) % templates.length
-        : rawIndex % templates.length;
-    final selected = templates[rotationIndex];
-
-    return {
-      ...base,
-      "templateId": selected["templateId"],
-      "templateRotationIndex": rotationIndex,
-      "templateAlgorithmVersion": 3,
-      "menuName": selected["menuName"] ?? "Today's Meal",
-      "time": base["time"] ?? "13:00-18:00",
-      "price": "₺175",
-      "items": List<String>.from(selected["items"] as List),
-      "isChips": false,
-      "contentManuallyEdited": false,
-    };
-  }
-
-  static List<String> _plainMenuItems(dynamic value) {
-    if (value is! List) return <String>[];
-
-    return value
-        .map((item) {
-          if (item is Map) return item['name']?.toString() ?? '';
-          return item.toString();
-        })
-        .map((item) => item.trim().toLowerCase())
-        .where((item) => item.isNotEmpty)
-        .toList();
-  }
-
-  static bool _samePlainMenuItems(dynamic a, dynamic b) {
-    final left = _plainMenuItems(a);
-    final right = _plainMenuItems(b);
-    if (left.length != right.length) return false;
-    for (int i = 0; i < left.length; i++) {
-      if (left[i] != right[i]) return false;
-    }
-    return true;
-  }
-
-  static bool _isLegacySeedMealContent(dynamic items) {
-    return _samePlainMenuItems(items, [
-      "Lentil Soup",
-      "Chicken Schnitzel",
-      "Rice",
-      "Seasonal Salad",
-      "Ayran",
-    ]);
-  }
-
-  static bool _shouldPreserveExistingDailyMeal(Map<String, dynamic> currentMenu) {
-    final items = currentMenu['items'];
-    final hasItems = _plainMenuItems(items).isNotEmpty;
-    if (!hasItems) return false;
-
-    final wasGeneratedByOldAlgorithm =
-        currentMenu['templateAlgorithmVersion'] != null &&
-        currentMenu['templateAlgorithmVersion'] != 3;
-    final hasOldDemoPrice = currentMenu['price']?.toString().trim() == '₺35';
-
-    if (_isLegacySeedMealContent(items) || wasGeneratedByOldAlgorithm || hasOldDemoPrice) {
-      return false;
-    }
-
-    // Non-empty, non-legacy content is treated as real menu content.
-    // This preserves dates that were edited directly from Firestore before
-    // the contentManuallyEdited flag existed.
-    return true;
+  static bool _menuHasRealContent(Map<String, dynamic> menu) {
+    final items = _cleanMenuItems(menu['items']);
+    return items.isNotEmpty;
   }
 
   static String normalizeMealType(String mealType) {
@@ -1527,56 +792,12 @@ class DataService {
       DateTime date, {
         String campus = defaultCampus,
       }) async {
-    await ensureCafeteriaDayStatus(date, campus: campus);
-
     final docId = cafeteriaDayStatusDocId(date: date, campus: campus);
     final doc = await _db.collection('cafeteriaDayStatuses').doc(docId).get();
 
     return doc.data() == null
         ? buildCafeteriaDayStatusDocument(date: date, campus: campus)
         : Map<String, dynamic>.from(doc.data()!);
-  }
-
-  static Future<void> ensureCafeteriaDayStatus(
-      DateTime date, {
-        String campus = defaultCampus,
-      }) async {
-    final docId = cafeteriaDayStatusDocId(date: date, campus: campus);
-    final docRef = _db.collection('cafeteriaDayStatuses').doc(docId);
-    final doc = await docRef.get();
-
-    final defaultDayActive = defaultIsCafeteriaDayActive(date);
-
-    if (!doc.exists || doc.data() == null) {
-      await docRef.set(
-        buildCafeteriaDayStatusDocument(
-          date: date,
-          campus: campus,
-          isDayActive: defaultDayActive,
-        )..addAll({
-          "createdAt": FieldValue.serverTimestamp(),
-          "isDayActiveManuallyEdited": false,
-        }),
-      );
-      return;
-    }
-
-    final current = Map<String, dynamic>.from(doc.data()!);
-    final isManuallyEdited = current['isDayActiveManuallyEdited'] == true ||
-        current['manualOverride'] == true;
-    final resolvedDayActive = isManuallyEdited
-        ? current['isDayActive'] != false
-        : defaultDayActive;
-
-    await docRef.set({
-      ...buildCafeteriaDayStatusDocument(
-        date: date,
-        campus: campus,
-        isDayActive: resolvedDayActive,
-      ),
-      "createdAt": current['createdAt'],
-      "isDayActiveManuallyEdited": isManuallyEdited,
-    }, SetOptions(merge: true));
   }
 
   static Future<void> setCafeteriaDayActiveStatus(
@@ -1652,8 +873,9 @@ class DataService {
     final normalizedMealType = normalizeMealType(mealType);
     final cafeteriaRef = _db.collection('settings').doc('cafeteria');
     final cafeteriaDoc = await cafeteriaRef.get();
+
     final currentData = cafeteriaDoc.data() == null
-        ? _defaultCafeteriaData()
+        ? <String, dynamic>{}
         : Map<String, dynamic>.from(cafeteriaDoc.data()!);
 
     final menus = Map<String, dynamic>.from((currentData['menus'] as Map?) ?? {});
@@ -1661,22 +883,22 @@ class DataService {
       (menus[normalizedMealType] as Map?) ?? defaultMenuForMealType(normalizedMealType),
     );
 
+    currentMenu['mealType'] = normalizedMealType;
     currentMenu['isActive'] = isActive;
     currentMenu['isActiveManuallyEdited'] = true;
     currentMenu['manualUpdatedAt'] = FieldValue.serverTimestamp();
+
     menus[normalizedMealType] = currentMenu;
 
     final mealTypes = (currentData['mealTypes'] as List<dynamic>?)
-            ?.map((e) => normalizeMealType(e.toString()))
-            .where((e) => e.isNotEmpty)
-            .toSet()
-            .toList() ??
+        ?.map((e) => normalizeMealType(e.toString()))
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList() ??
         <String>[];
 
-    for (final type in cafeteriaMealTypes) {
-      if (!mealTypes.contains(type)) {
-        mealTypes.add(type);
-      }
+    if (!mealTypes.contains(normalizedMealType)) {
+      mealTypes.add(normalizedMealType);
     }
 
     await cafeteriaRef.set({
@@ -1699,40 +921,38 @@ class DataService {
     if (isFixedCafeteriaMealType(normalizedMealType)) {
       final cafeteriaRef = _db.collection('settings').doc('cafeteria');
       final cafeteriaDoc = await cafeteriaRef.get();
+
       final currentData = cafeteriaDoc.data() == null
-          ? _defaultCafeteriaData()
+          ? <String, dynamic>{}
           : Map<String, dynamic>.from(cafeteriaDoc.data()!);
 
       final menus = Map<String, dynamic>.from((currentData['menus'] as Map?) ?? {});
-      final defaultMenu = defaultMenuForMealType(normalizedMealType);
-      final completedMenu = _mergeMenu(
-        defaultMenu,
-        {
-          ...Map<String, dynamic>.from((menus[normalizedMealType] as Map?) ?? {}),
-          ...menu,
-        },
-        fallbackMenuName: defaultMenu['menuName']?.toString() ?? normalizedMealType,
-        itemsHavePrices: normalizedMealType == "Fast Food",
+      final currentMenu = Map<String, dynamic>.from(
+        (menus[normalizedMealType] as Map?) ?? defaultMenuForMealType(normalizedMealType),
       );
 
-      completedMenu['isActive'] = menu['isActive'] ?? completedMenu['isActive'] ?? true;
-      completedMenu['isActiveManuallyEdited'] = menu['isActiveManuallyEdited'] == true ||
-          completedMenu['isActiveManuallyEdited'] == true;
-      completedMenu['updatedAt'] = FieldValue.serverTimestamp();
+      final completedMenu = {
+        ...currentMenu,
+        ...menu,
+        "mealType": normalizedMealType,
+        "items": _cleanMenuItems(menu['items'] ?? currentMenu['items']),
+        "isActive": menu['isActive'] ?? currentMenu['isActive'] ?? true,
+        "isActiveManuallyEdited": menu['isActiveManuallyEdited'] == true ||
+            currentMenu['isActiveManuallyEdited'] == true,
+        "updatedAt": FieldValue.serverTimestamp(),
+      };
 
       menus[normalizedMealType] = completedMenu;
 
       final mealTypes = (currentData['mealTypes'] as List<dynamic>?)
-              ?.map((e) => normalizeMealType(e.toString()))
-              .where((e) => e.isNotEmpty)
-              .toSet()
-              .toList() ??
+          ?.map((e) => normalizeMealType(e.toString()))
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList() ??
           <String>[];
 
-      for (final type in cafeteriaMealTypes) {
-        if (!mealTypes.contains(type)) {
-          mealTypes.add(type);
-        }
+      if (!mealTypes.contains(normalizedMealType)) {
+        mealTypes.add(normalizedMealType);
       }
 
       await cafeteriaRef.set({
@@ -1754,10 +974,17 @@ class DataService {
 
     final docRef = _db.collection('cafeteriaMenus').doc(docId);
     final existingDoc = await docRef.get();
+
+    final existingData = existingDoc.data() == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(existingDoc.data()!);
+
     final dailyMenu = {
+      ...existingData,
       ...menu,
+      "mealType": normalizedMealType,
+      "items": _cleanMenuItems(menu['items'] ?? existingData['items']),
       "contentManuallyEdited": true,
-      "templateAlgorithmVersion": menu["templateAlgorithmVersion"] ?? 3,
     };
 
     await docRef.set(
@@ -1782,21 +1009,10 @@ class DataService {
     bool? isDayActive,
   }) {
     final normalizedMealType = normalizeMealType(mealType);
-    final defaultMenu = defaultMenuForMealType(normalizedMealType);
-    final completedMenu = _mergeMenu(
-      defaultMenu,
-      menu,
-      fallbackMenuName: defaultMenu['menuName']?.toString() ?? normalizedMealType,
-      itemsHavePrices: normalizedMealType == "Fast Food",
-    );
+    final cleanedItems = _cleanMenuItems(menu['items']);
 
-    final dayStatusId = cafeteriaDayStatusDocId(date: date, campus: campus);
-    final visibleByDefault = defaultIsMenuActiveForDate(date, normalizedMealType);
-    final isActiveManuallyEdited = menu['isActiveManuallyEdited'] == true ||
-        menu['manualActiveOverride'] == true;
-    final resolvedIsActive = isActiveManuallyEdited
-        ? menu['isActive'] ?? visibleByDefault
-        : visibleByDefault;
+    final hasRealContent = cleanedItems.isNotEmpty;
+    final requestedActive = menu['isActive'] == true;
 
     final data = <String, dynamic>{
       "id": cafeteriaMenuDocId(date: date, campus: campus, mealType: normalizedMealType),
@@ -1808,111 +1024,34 @@ class DataService {
       "campus": canonicalCampusLabel(campus),
       "campusKey": canonicalCampusKey(campus),
       "mealType": normalizedMealType,
-      "menuName": completedMenu['menuName'],
-      "time": completedMenu['time'],
-      "price": completedMenu['price'],
-      "items": completedMenu['items'],
-      "isChips": completedMenu['isChips'] ?? false,
+      "menuName": menu['menuName']?.toString().trim().isNotEmpty == true
+          ? menu['menuName'].toString().trim()
+          : normalizedMealType,
+      "time": menu['time']?.toString().trim() ?? "",
+      "price": menu['price']?.toString().trim() ?? "",
+      "items": cleanedItems,
+      "isChips": menu['isChips'] == true,
       "isWeekend": isWeekend(date),
-      "dayStatusId": dayStatusId,
+      "dayStatusId": cafeteriaDayStatusDocId(date: date, campus: campus),
       "isDayActive": isDayActive ?? menu['isDayActive'] ?? defaultIsCafeteriaDayActive(date),
-      "isActive": resolvedIsActive,
-      "isActiveManuallyEdited": isActiveManuallyEdited,
+      "isActive": (isDayActive ?? menu['isDayActive'] ?? defaultIsCafeteriaDayActive(date)) == true &&
+          hasRealContent &&
+          requestedActive,
+      "isActiveManuallyEdited": menu['isActiveManuallyEdited'] == true ||
+          menu['manualActiveOverride'] == true,
       "contentManuallyEdited": menu['contentManuallyEdited'] == true,
-      "templateId": menu['templateId'],
-      "templateRotationIndex": menu['templateRotationIndex'],
-      "templateAlgorithmVersion": menu['templateAlgorithmVersion'] ?? (normalizedMealType == "Meal" ? 3 : null),
-      "weekendDefaultRuleVersion": 2,
       "updatedAt": FieldValue.serverTimestamp(),
     };
 
-    if (includeCreatedAt) {
+    if (menu['createdAt'] != null) {
+      data["createdAt"] = menu['createdAt'];
+    }
+
+    if (includeCreatedAt && menu['createdAt'] == null) {
       data["createdAt"] = FieldValue.serverTimestamp();
     }
 
     return data;
-  }
-
-  static Future<void> ensureDailyCafeteriaMenus(
-      DateTime date, {
-        String campus = defaultCampus,
-      }) async {
-    await ensureCafeteriaData();
-    await ensureCafeteriaDayStatus(date, campus: campus);
-
-    final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
-    final isDayActive = dayStatus['isDayActive'] != false;
-
-    for (final mealType in dailyCafeteriaMealTypes) {
-      final docId = cafeteriaMenuDocId(date: date, campus: campus, mealType: mealType);
-      final docRef = _db.collection('cafeteriaMenus').doc(docId);
-      final doc = await docRef.get();
-      final generatedMenu = defaultDailyMealForDate(date);
-
-      if (!doc.exists || doc.data() == null) {
-        await docRef.set(
-          buildCafeteriaMenuDocument(
-            date: date,
-            campus: campus,
-            mealType: mealType,
-            menu: generatedMenu,
-            includeCreatedAt: true,
-            isDayActive: isDayActive,
-          ),
-        );
-      } else {
-        final currentMenu = Map<String, dynamic>.from(doc.data()!);
-        final preserveExistingMeal = _shouldPreserveExistingDailyMeal(currentMenu);
-        final sourceMenu = preserveExistingMeal
-            ? currentMenu
-            : {
-                ...generatedMenu,
-                "createdAt": currentMenu["createdAt"],
-                "isActive": currentMenu["isActive"],
-                "isActiveManuallyEdited": currentMenu["isActiveManuallyEdited"] == true,
-                "contentManuallyEdited": false,
-              };
-
-        await docRef.set(
-          buildCafeteriaMenuDocument(
-            date: date,
-            campus: campus,
-            mealType: mealType,
-            menu: sourceMenu,
-            isDayActive: isDayActive,
-          ),
-          SetOptions(merge: true),
-        );
-      }
-    }
-  }
-
-  static Future<void> ensureWeeklyCafeteriaMenus({
-    DateTime? weekStart,
-    String campus = defaultCampus,
-  }) async {
-    final start = startOfWeek(weekStart ?? DateTime.now());
-
-    for (int i = 0; i < 7; i++) {
-      await ensureDailyCafeteriaMenus(start.add(Duration(days: i)), campus: campus);
-    }
-  }
-
-  static Future<void> migrateCafeteriaDailyMealDataForPresentation({
-    DateTime? referenceDate,
-    String campus = defaultCampus,
-    int weeksBefore = 2,
-    int weeksAfter = 8,
-  }) async {
-    final reference = referenceDate ?? DateTime.now();
-    final start = startOfWeek(reference).subtract(Duration(days: 7 * weeksBefore));
-    final totalDays = 7 * (weeksBefore + weeksAfter + 1);
-
-    for (int i = 0; i < totalDays; i++) {
-      await ensureDailyCafeteriaMenus(start.add(Duration(days: i)), campus: campus);
-    }
-
-    clearCafeteriaCache();
   }
 
   static Map<String, dynamic> _fixedCafeteriaMenuDocument({
@@ -1924,9 +1063,8 @@ class DataService {
   }) {
     final normalizedMealType = normalizeMealType(mealType);
     final settingsMenus = Map<String, dynamic>.from((settingsData['menus'] as Map?) ?? {});
-    final defaultMenu = defaultMenuForMealType(normalizedMealType);
     final settingsMenu = Map<String, dynamic>.from(
-      (settingsMenus[normalizedMealType] as Map?) ?? defaultMenu,
+      (settingsMenus[normalizedMealType] as Map?) ?? defaultMenuForMealType(normalizedMealType),
     );
 
     final doc = buildCafeteriaMenuDocument(
@@ -1937,11 +1075,6 @@ class DataService {
       isDayActive: isDayActive,
     );
 
-    final fixedMenuIsActive = settingsMenu['isActive'] != false;
-    doc['isActive'] = isDayActive &&
-        defaultIsMenuActiveForDate(date, normalizedMealType) &&
-        fixedMenuIsActive;
-    doc['isActiveManuallyEdited'] = settingsMenu['isActiveManuallyEdited'] == true;
     doc['isFixedMenu'] = true;
     doc['storageScope'] = 'global_settings';
 
@@ -1966,20 +1099,18 @@ class DataService {
       isDayActive: isDayActive,
     );
 
-    final mealSource = dailyMealData == null || dailyMealData.isEmpty
-        ? defaultDailyMealForDate(date)
-        : Map<String, dynamic>.from(dailyMealData);
-
     menus['Meal'] = buildCafeteriaMenuDocument(
       date: date,
       campus: campus,
       mealType: 'Meal',
-      menu: mealSource,
+      menu: dailyMealData == null || dailyMealData.isEmpty
+          ? defaultMenuForMealType('Meal')
+          : Map<String, dynamic>.from(dailyMealData),
       isDayActive: isDayActive,
     )..addAll({
-        'isFixedMenu': false,
-        'storageScope': 'daily_document',
-      });
+      'isFixedMenu': false,
+      'storageScope': 'daily_document',
+    });
 
     menus['Fast Food'] = _fixedCafeteriaMenuDocument(
       date: date,
@@ -1993,9 +1124,9 @@ class DataService {
   }
 
   static Stream<Map<String, dynamic>> cafeteriaMenusForDateStream(
-    DateTime date, {
-    String campus = defaultCampus,
-  }) {
+      DateTime date, {
+        String campus = defaultCampus,
+      }) {
     final cleanDate = DateTime(date.year, date.month, date.day);
     final controller = StreamController<Map<String, dynamic>>();
 
@@ -2022,7 +1153,7 @@ class DataService {
             campus: campus,
           );
 
-      final resolvedSettings = settingsData ?? _defaultCafeteriaData();
+      final resolvedSettings = settingsData ?? <String, dynamic>{};
 
       final menus = _composeCafeteriaMenusForDate(
         date: cleanDate,
@@ -2049,8 +1180,6 @@ class DataService {
 
     Future<void> start() async {
       try {
-        await ensureDailyCafeteriaMenus(cleanDate, campus: campus);
-
         final dayStatusId = cafeteriaDayStatusDocId(
           date: cleanDate,
           campus: campus,
@@ -2070,9 +1199,9 @@ class DataService {
           dayReady = true;
           dayStatus = snapshot.data() == null
               ? buildCafeteriaDayStatusDocument(
-                  date: cleanDate,
-                  campus: campus,
-                )
+            date: cleanDate,
+            campus: campus,
+          )
               : Map<String, dynamic>.from(snapshot.data()!);
           emitIfReady();
         }, onError: controller.addError);
@@ -2084,7 +1213,7 @@ class DataService {
             .listen((snapshot) {
           settingsReady = true;
           settingsData = snapshot.data() == null
-              ? _defaultCafeteriaData()
+              ? <String, dynamic>{}
               : Map<String, dynamic>.from(snapshot.data()!);
           emitIfReady();
         }, onError: controller.addError);
@@ -2119,14 +1248,18 @@ class DataService {
   }
 
   static Future<Map<String, Map<String, dynamic>>> fetchDailyCafeteriaMenus(
-    DateTime date, {
-    String campus = defaultCampus,
-  }) async {
-    await ensureDailyCafeteriaMenus(date, campus: campus);
-
+      DateTime date, {
+        String campus = defaultCampus,
+      }) async {
     final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
     final settingsData = await fetchCafeteriaSettings(forceRefresh: true);
-    final mealDocId = cafeteriaMenuDocId(date: date, campus: campus, mealType: 'Meal');
+
+    final mealDocId = cafeteriaMenuDocId(
+      date: date,
+      campus: campus,
+      mealType: 'Meal',
+    );
+
     final mealDoc = await _db.collection('cafeteriaMenus').doc(mealDocId).get();
 
     return _composeCafeteriaMenusForDate(
@@ -2145,18 +1278,19 @@ class DataService {
     String campus = defaultCampus,
   }) async {
     final start = startOfWeek(weekStart ?? DateTime.now());
-
-    // Only daily Meal documents are ensured here. Breakfast and Fast Food are
-    // read from settings/cafeteria so global updates appear on every day.
-    await ensureWeeklyCafeteriaMenus(weekStart: start, campus: campus);
-
     final settingsData = await fetchCafeteriaSettings(forceRefresh: true);
     final days = <Map<String, dynamic>>[];
 
     for (int i = 0; i < 7; i++) {
       final date = start.add(Duration(days: i));
       final dayStatus = await fetchCafeteriaDayStatus(date, campus: campus);
-      final mealDocId = cafeteriaMenuDocId(date: date, campus: campus, mealType: 'Meal');
+
+      final mealDocId = cafeteriaMenuDocId(
+        date: date,
+        campus: campus,
+        mealType: 'Meal',
+      );
+
       final mealDoc = await _db.collection('cafeteriaMenus').doc(mealDocId).get();
 
       final menus = _composeCafeteriaMenusForDate(
@@ -2250,1108 +1384,6 @@ class DataService {
     });
   }
 
-  static Future<void> _seedCafeteriaData() async {
-    await _db.collection('settings').doc('cafeteria').set(
-      _defaultCafeteriaData(),
-    );
-  }
-
-  static Future<void> _seedExtraData() async {
-    final List<Map<String, dynamic>> starterPrices = [
-      {"id": 1, "name": "Tea", "price": "₺3", "category": "Beverages"},
-      {"id": 2, "name": "Turkish Coffee", "price": "₺12", "category": "Coffee Varieties"},
-      {"id": 3, "name": "Ayran", "price": "₺5", "category": "Beverages"},
-      {"id": 4, "name": "Toast", "price": "₺15", "category": "Toast Varieties"},
-      {"id": 5, "name": "Today's Meal", "price": "₺175", "category": "Meal"},
-    ];
-
-    for (final item in starterPrices) {
-      await _db.collection('prices').doc(item['id'].toString()).set(item);
-    }
-
-    final List<Map<String, dynamic>> starterIssues = [
-      {
-        "id": 1,
-        "category": "Infrastructure Issue",
-        "priority": "High",
-        "subject": "Projector not working in the classroom",
-        "location": "MF-101",
-        "description": "No image is displayed when the computer is connected.",
-        "date": "Today 10:30",
-        "status": "Open",
-        "createdAt": FieldValue.serverTimestamp(),
-        "resolvedAt": null,
-      },
-      {
-        "id": 2,
-        "category": "Cleaning",
-        "priority": "Medium",
-        "subject": "Out of soap in the restrooms",
-        "location": "FEAS 2nd Floor",
-        "description": "The liquid soap dispensers in the men's restroom are completely empty.",
-        "date": "Yesterday 14:15",
-        "status": "Open",
-        "createdAt": FieldValue.serverTimestamp(),
-        "resolvedAt": null,
-      },
-    ];
-
-    for (final item in starterIssues) {
-      await _db.collection('issues').doc(item['id'].toString()).set(item);
-    }
-
-    final List<Map<String, dynamic>> starterStudents = [
-      {
-        "id": 1,
-        "name": "Sample Student",
-        "no": "20210001234",
-        "email": "student@uni.edu.tr",
-        "password": "123456",
-        "grade": "3rd Grade",
-      },
-      {
-        "id": 2,
-        "name": "Ayşe Demir",
-        "no": "20220005678",
-        "email": "ayse@uni.edu.tr",
-        "password": "password123",
-        "grade": "2nd Grade",
-      },
-    ];
-
-    for (final item in starterStudents) {
-      await _db.collection('students').doc(item['id'].toString()).set(item);
-    }
-  }
-
-  // Firebase-backed dropdown reference data for classroom admin form.
-  static Future<void> _seedCampusReferenceData() async {
-    final List<Map<String, dynamic>> campuses = [
-      {
-        "id": "atakoy",
-        "name": "Ataköy",
-        "displayName": "Ataköy Campus",
-        "officialGroup": "Bakırköy Campus",
-        "sortOrder": 1,
-      },
-      {
-        "id": "incirli",
-        "name": "İncirli",
-        "displayName": "İncirli Campus",
-        "officialGroup": "Bakırköy Campus",
-        "sortOrder": 2,
-      },
-      {
-        "id": "sirin_evler",
-        "name": "Şirinevler",
-        "displayName": "Şirinevler / Bahçelievler Campus",
-        "officialGroup": "Bahçelievler Campus",
-        "sortOrder": 3,
-      },
-      {
-        "id": "basin_ekspres",
-        "name": "Basın Ekspres",
-        "displayName": "Basın Ekspres / Küçükçekmece Campus",
-        "officialGroup": "Küçükçekmece Campus",
-        "sortOrder": 4,
-      },
-    ];
-
-    for (final campus in campuses) {
-      await _db.collection('campuses').doc(campus['id'].toString()).set(campus);
-    }
-
-    final List<Map<String, dynamic>> classroomLocations = [
-      {
-        "id": "atakoy_bina",
-        "campusId": "atakoy",
-        "campusName": "Ataköy Campus",
-        "name": "Ataköy Building",
-        "type": "building",
-        "sortOrder": 1,
-      },
-      {
-        "id": "atakoy_muhendislik",
-        "campusId": "atakoy",
-        "campusName": "Ataköy Campus",
-        "name": "Faculty of Engineering",
-        "type": "faculty",
-        "sortOrder": 2,
-      },
-      {
-        "id": "atakoy_mimarlik",
-        "campusId": "atakoy",
-        "campusName": "Ataköy Campus",
-        "name": "Faculty of Architecture",
-        "type": "faculty",
-        "sortOrder": 3,
-      },
-      {
-        "id": "atakoy_sanat_tasarim",
-        "campusId": "atakoy",
-        "campusName": "Ataköy Campus",
-        "name": "Faculty of Art and Design",
-        "type": "faculty",
-        "sortOrder": 4,
-      },
-      {
-        "id": "atakoy_fen_edebiyat",
-        "campusId": "atakoy",
-        "campusName": "Ataköy Campus",
-        "name": "Faculty of Arts and Sciences",
-        "type": "faculty",
-        "sortOrder": 5,
-      },
-      {
-        "id": "incirli_bina",
-        "campusId": "incirli",
-        "campusName": "İncirli Campus",
-        "name": "İncirli Building",
-        "type": "building",
-        "sortOrder": 1,
-      },
-      {
-        "id": "incirli_myo",
-        "campusId": "incirli",
-        "campusName": "İncirli Campus",
-        "name": "Vocational School",
-        "type": "school",
-        "sortOrder": 2,
-      },
-      {
-        "id": "sirin_evler_bina",
-        "campusId": "sirin_evler",
-        "campusName": "Şirinevler / Bahçelievler Campus",
-        "name": "Şirinevler Building",
-        "type": "building",
-        "sortOrder": 1,
-      },
-      {
-        "id": "sirin_evler_hukuk",
-        "campusId": "sirin_evler",
-        "campusName": "Şirinevler / Bahçelievler Campus",
-        "name": "Faculty of Law",
-        "type": "faculty",
-        "sortOrder": 2,
-      },
-      {
-        "id": "sirin_evler_saglik",
-        "campusId": "sirin_evler",
-        "campusName": "Şirinevler / Bahçelievler Campus",
-        "name": "Faculty of Health Sciences",
-        "type": "faculty",
-        "sortOrder": 3,
-      },
-      {
-        "id": "sirin_evler_yabanci_diller",
-        "campusId": "sirin_evler",
-        "campusName": "Şirinevler / Bahçelievler Campus",
-        "name": "Foreign Languages",
-        "type": "unit",
-        "sortOrder": 4,
-      },
-      {
-        "id": "basin_ekspres_bina",
-        "campusId": "basin_ekspres",
-        "campusName": "Basın Ekspres / Küçükçekmece Campus",
-        "name": "Basın Ekspres Building",
-        "type": "building",
-        "sortOrder": 1,
-      },
-      {
-        "id": "basin_ekspres_egitim",
-        "campusId": "basin_ekspres",
-        "campusName": "Basın Ekspres / Küçükçekmece Campus",
-        "name": "Faculty of Education",
-        "type": "faculty",
-        "sortOrder": 2,
-      },
-      {
-        "id": "basin_ekspres_iibf",
-        "campusId": "basin_ekspres",
-        "campusName": "Basın Ekspres / Küçükçekmece Campus",
-        "name": "Faculty of Economics and Admin. Sciences",
-        "type": "faculty",
-        "sortOrder": 3,
-      },
-    ];
-
-    for (final location in classroomLocations) {
-      await _db
-          .collection('classroomLocations')
-          .doc(location['id'].toString())
-          .set(location);
-    }
-  }
-
-
-  static Future<void> resetDemoCampusUnitsForPresentation() async {
-    final demoUnits = <Map<String, dynamic>>[
-      {
-        'id': 910001,
-        'name': 'Kültür Noktası / Student Dean’s Office',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Main Building, 4th Floor, Room 4G09',
-        'building': 'Main Building',
-        'floor': '4th Floor',
-        'roomCode': '4G09',
-        'possibleCorridor': 'G',
-        'type': 'Student Services',
-        'abbr': 'KN',
-        'navigationHint': 'Main Building, 4th floor, room 4G09. Corridor G is inferred from the room code and should be verified on site.',
-        'verificationStatus': 'room_verified_corridor_unverified',
-        'needsVerification': true,
-        'sortOrder': 1,
-      },
-      {
-        'id': 910002,
-        'name': 'Akıngüç Auditorium and Art Center',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building',
-        'building': 'Ataköy Building',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Auditorium',
-        'abbr': 'AKG',
-        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 2,
-      },
-      {
-        'id': 910003,
-        'name': 'Önder Öztunalı Conference Hall',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building',
-        'building': 'Ataköy Building',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': 'OO',
-        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 3,
-      },
-      {
-        'id': 910004,
-        'name': 'Erdal İnönü Seminar Hall',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building',
-        'building': 'Ataköy Building',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': 'EI',
-        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 4,
-      },
-      {
-        'id': 910005,
-        'name': 'Seminar Hall II',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building',
-        'building': 'Ataköy Building',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': 'SS2',
-        'navigationHint': 'Located inside Ataköy Building. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 5,
-      },
-      {
-        'id': 910006,
-        'name': '1st Floor Multipurpose Hall',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building, 1st Floor',
-        'building': 'Ataköy Building',
-        'floor': '1st Floor',
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': '1CAS',
-        'navigationHint': 'Ataköy Building, 1st floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 6,
-      },
-      {
-        'id': 910007,
-        'name': '2nd Floor Multipurpose / Seminar Hall',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building, 2nd Floor',
-        'building': 'Ataköy Building',
-        'floor': '2nd Floor',
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': '2CAS',
-        'navigationHint': 'Ataköy Building, 2nd floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 7,
-      },
-      {
-        'id': 910008,
-        'name': '4th Floor Multipurpose / Seminar Hall',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building, 4th Floor',
-        'building': 'Ataköy Building',
-        'floor': '4th Floor',
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': '4CAS',
-        'navigationHint': 'Ataköy Building, 4th floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 8,
-      },
-      {
-        'id': 910009,
-        'name': 'Design Factory',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ataköy Building',
-        'building': 'Ataköy Building',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Workshop',
-        'abbr': 'TF',
-        'navigationHint': 'Located at Ataköy Campus. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 9,
-      },
-      {
-        'id': 910010,
-        'name': 'Ataköy Library',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus',
-        'building': 'Ataköy Campus',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Library',
-        'abbr': 'LIB',
-        'navigationHint': 'Ataköy Campus library. Floor and corridor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 10,
-      },
-      {
-        'id': 910011,
-        'name': 'Health Unit / Infirmary',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, MIII Building, Ground Floor',
-        'building': 'MIII Building',
-        'floor': 'Ground Floor',
-        'roomCode': null,
-        'type': 'Health Unit',
-        'abbr': 'REV',
-        'navigationHint': 'MIII Building, ground floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 11,
-      },
-      {
-        'id': 910012,
-        'name': 'Canopy Cafe',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ground Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'Ground Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'CAN',
-        'navigationHint': 'Ataköy Campus, ground floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 12,
-      },
-      {
-        'id': 910013,
-        'name': 'Terrace Cafe',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Ground Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'Ground Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'TER',
-        'navigationHint': 'Ataköy Campus, ground floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 13,
-      },
-      {
-        'id': 910014,
-        'name': 'Akpaz VIP',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, 6th Floor',
-        'building': 'Ataköy Campus',
-        'floor': '6th Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'VIP',
-        'navigationHint': 'Ataköy Campus, 6th floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 14,
-      },
-      {
-        'id': 910015,
-        'name': 'B1/B2 Restaurant',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, B1 and B2 Floors',
-        'building': 'Ataköy Campus',
-        'floor': 'B1-B2',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'B12',
-        'navigationHint': 'Ataköy Campus, B1 and B2 floors.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 15,
-      },
-      {
-        'id': 910016,
-        'name': 'Starbucks',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, B1 Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'B1',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'SB',
-        'navigationHint': 'Ataköy Campus, B1 floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 16,
-      },
-      {
-        'id': 910017,
-        'name': 'Ekspresso Lab / Cafe',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, B1 Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'B1',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'EL',
-        'navigationHint': 'Ataköy Campus, B1 floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 17,
-      },
-      {
-        'id': 910018,
-        'name': 'İş Bank Branch',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, B1 Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'B1',
-        'roomCode': null,
-        'type': 'Service',
-        'abbr': 'ISB',
-        'navigationHint': 'Ataköy Campus, B1 floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 18,
-      },
-      {
-        'id': 910019,
-        'name': 'Gözde Stationery',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, B1 Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'B1',
-        'roomCode': null,
-        'type': 'Service',
-        'abbr': 'GK',
-        'navigationHint': 'Ataköy Campus, B1 floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 19,
-      },
-      {
-        'id': 910020,
-        'name': 'Hairdresser',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, B1 Floor',
-        'building': 'Ataköy Campus',
-        'floor': 'B1',
-        'roomCode': null,
-        'type': 'Service',
-        'abbr': 'KUA',
-        'navigationHint': 'Ataköy Campus, B1 floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 20,
-      },
-      {
-        'id': 910021,
-        'name': 'Security Point',
-        'campus': 'Ataköy',
-        'location': 'Ataköy Campus, Main Entrance / Information Desk',
-        'building': 'Main Entrance',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Security',
-        'abbr': 'SEC',
-        'navigationHint': 'Please go to the main entrance or information/security point.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 21,
-      },
-      {
-        'id': 920001,
-        'name': 'Faculty of Law',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law',
-        'building': 'Faculty of Law',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'HF',
-        'navigationHint': 'Şirinevler / Bahçelievler Campus, Faculty of Law building.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 1,
-      },
-      {
-        'id': 920002,
-        'name': 'Faculty of Health Sciences',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Health Sciences',
-        'building': 'Faculty of Health Sciences',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'SBF',
-        'navigationHint': 'Şirinevler / Bahçelievler Campus, Faculty of Health Sciences.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 2,
-      },
-      {
-        'id': 920003,
-        'name': 'Vocational School of Justice',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Vocational School of Justice',
-        'building': 'Vocational School of Justice',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'AMYO',
-        'navigationHint': 'Şirinevler / Bahçelievler Campus, Vocational School of Justice.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 3,
-      },
-      {
-        'id': 920004,
-        'name': 'Foreign Languages Department',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Foreign Languages Department',
-        'building': 'Foreign Languages Department',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'YD',
-        'navigationHint': 'Şirinevler / Bahçelievler Campus, Foreign Languages Department.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 4,
-      },
-      {
-        'id': 920005,
-        'name': 'Moot Courtroom',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law, 6th Floor',
-        'building': 'Faculty of Law',
-        'floor': '6th Floor',
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': 'KDS',
-        'navigationHint': 'Faculty of Law, 6th floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 5,
-      },
-      {
-        'id': 920006,
-        'name': 'Faculty of Law Twin Hall',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law, 6th Floor',
-        'building': 'Faculty of Law',
-        'floor': '6th Floor',
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': 'IKZ',
-        'navigationHint': 'Faculty of Law, 6th floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 6,
-      },
-      {
-        'id': 920007,
-        'name': 'Faculty of Law Academic Offices',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Faculty of Law, 5th Floor, Rooms H-501 / H-502',
-        'building': 'Faculty of Law',
-        'floor': '5th Floor',
-        'roomCode': 'H-501 / H-502',
-        'type': 'Office',
-        'abbr': 'HOF',
-        'navigationHint': 'Faculty of Law, 5th floor, H-501 / H-502 room area.',
-        'verificationStatus': 'room_verified',
-        'needsVerification': false,
-        'sortOrder': 7,
-      },
-      {
-        'id': 920008,
-        'name': 'Vocational School of Justice Classroom 302',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, 3rd Floor, Classroom 302',
-        'building': 'Vocational School of Justice',
-        'floor': '3rd Floor',
-        'roomCode': '302',
-        'type': 'Classroom',
-        'abbr': '302',
-        'navigationHint': 'Vocational School of Justice area, 3rd floor, classroom 302.',
-        'verificationStatus': 'room_verified',
-        'needsVerification': false,
-        'sortOrder': 8,
-      },
-      {
-        'id': 920009,
-        'name': 'Faculty of Health Sciences Block C Classrooms',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Block C, 1st Floor, Classroom 1 / Classroom 2',
-        'building': 'Block C',
-        'floor': '1st Floor',
-        'roomCode': 'Classroom 1 / Classroom 2',
-        'type': 'Classroom',
-        'abbr': 'C1',
-        'navigationHint': 'Block C, 1st floor, Classroom 1 / Classroom 2.',
-        'verificationStatus': 'room_verified',
-        'needsVerification': false,
-        'sortOrder': 9,
-      },
-      {
-        'id': 920010,
-        'name': 'Block C Chemistry Laboratory',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Block C, Chemistry Laboratory',
-        'building': 'Block C',
-        'floor': null,
-        'roomCode': 'KİMYALAB',
-        'type': 'Laboratory',
-        'abbr': 'KIM',
-        'navigationHint': 'Block C Chemistry Laboratory. Floor information should be verified on site.',
-        'verificationStatus': 'room_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 10,
-      },
-      {
-        'id': 920011,
-        'name': 'Law Canteen',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Ground Floor',
-        'building': 'Faculty of Law',
-        'floor': 'Ground Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'HK',
-        'navigationHint': 'Faculty of Law area, ground floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 11,
-      },
-      {
-        'id': 920012,
-        'name': 'Preparatory School Canteen',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Mezzanine Floor',
-        'building': 'Preparatory / Foreign Languages Area',
-        'floor': 'Mezzanine Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'HZK',
-        'navigationHint': 'Preparatory area, mezzanine floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 12,
-      },
-      {
-        'id': 920013,
-        'name': 'Makarna Restaurant',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Ground Floor',
-        'building': 'Şirinevler Campus',
-        'floor': 'Ground Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'MR',
-        'navigationHint': 'Şirinevler Campus, ground floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 13,
-      },
-      {
-        'id': 920014,
-        'name': 'Block C Restaurant',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Block C, 2nd Floor',
-        'building': 'Block C',
-        'floor': '2nd Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'CBR',
-        'navigationHint': 'Block C, 2nd floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 14,
-      },
-      {
-        'id': 920015,
-        'name': 'Şirinevler VIP',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Block C, 6th Floor',
-        'building': 'Block C',
-        'floor': '6th Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'SVIP',
-        'navigationHint': 'Block C, 6th floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 15,
-      },
-      {
-        'id': 920016,
-        'name': 'Security Point',
-        'campus': 'Şirinevler',
-        'location': 'Şirinevler / Bahçelievler Campus, Main Entrance / Information Desk',
-        'building': 'Main Entrance',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Security',
-        'abbr': 'SEC',
-        'navigationHint': 'Please go to the main entrance or information/security point.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 16,
-      },
-      {
-        'id': 930001,
-        'name': 'Vocational School / MYO',
-        'campus': 'İncirli',
-        'location': 'İncirli Campus, Vocational School Building',
-        'building': 'İncirli Building',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'MYO',
-        'navigationHint': 'İncirli Campus, Vocational School building.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 1,
-      },
-      {
-        'id': 930002,
-        'name': '1A01 Amphitheater / Classroom',
-        'campus': 'İncirli',
-        'location': 'İncirli Campus, İncirli Building, Room 1A01',
-        'building': 'İncirli Building',
-        'floor': null,
-        'roomCode': '1A01',
-        'possibleCorridor': 'A',
-        'type': 'Classroom',
-        'abbr': '1A01',
-        'navigationHint': 'İncirli Building, room 1A01. Corridor A is inferred from the room code and should be verified on site.',
-        'verificationStatus': 'room_verified_corridor_unverified',
-        'needsVerification': true,
-        'sortOrder': 2,
-      },
-      {
-        'id': 930003,
-        'name': '4A01 Amphitheater',
-        'campus': 'İncirli',
-        'location': 'İncirli Campus, İncirli Building, Room 4A01',
-        'building': 'İncirli Building',
-        'floor': null,
-        'roomCode': '4A01',
-        'possibleCorridor': 'A',
-        'type': 'Classroom',
-        'abbr': '4A01',
-        'navigationHint': 'İncirli Building, room 4A01. Corridor A is inferred from the room code and should be verified on site.',
-        'verificationStatus': 'room_verified_corridor_unverified',
-        'needsVerification': true,
-        'sortOrder': 3,
-      },
-      {
-        'id': 930004,
-        'name': 'Restaurant / Cafe',
-        'campus': 'İncirli',
-        'location': 'İncirli Campus, Ground Floor',
-        'building': 'İncirli Building',
-        'floor': 'Ground Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'RC',
-        'navigationHint': 'İncirli Campus, ground floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 4,
-      },
-      {
-        'id': 930005,
-        'name': 'Health Unit',
-        'campus': 'İncirli',
-        'location': 'İncirli Campus',
-        'building': 'İncirli Campus',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Health Unit',
-        'abbr': 'REV',
-        'navigationHint': 'Health unit is available at İncirli Campus. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 5,
-      },
-      {
-        'id': 930006,
-        'name': 'Security Point',
-        'campus': 'İncirli',
-        'location': 'İncirli Campus, Main Entrance / Information Desk',
-        'building': 'Main Entrance',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Security',
-        'abbr': 'SEC',
-        'navigationHint': 'Please go to the main entrance or information/security point.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 6,
-      },
-      {
-        'id': 940001,
-        'name': 'Faculty of Education',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Education',
-        'building': 'Basın Ekspres Campus',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'EF',
-        'navigationHint': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Education.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 1,
-      },
-      {
-        'id': 940002,
-        'name': 'Faculty of Economics and Administrative Sciences',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Economics and Administrative Sciences',
-        'building': 'Basın Ekspres Campus',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Academic Unit',
-        'abbr': 'IIBF',
-        'navigationHint': 'Basın Ekspres / Küçükçekmece Campus, Faculty of Economics and Administrative Sciences.',
-        'verificationStatus': 'building_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 2,
-      },
-      {
-        'id': 940003,
-        'name': 'Basın Ekspres Library',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Block B, 2nd Floor',
-        'building': 'Block B',
-        'floor': '2nd Floor',
-        'roomCode': null,
-        'type': 'Library',
-        'abbr': 'LIB',
-        'navigationHint': 'Block B, 2nd floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 3,
-      },
-      {
-        'id': 940004,
-        'name': 'Conference Hall',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus',
-        'building': 'Basın Ekspres Campus',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Hall',
-        'abbr': 'KS',
-        'navigationHint': 'Basın Ekspres / Küçükçekmece Campus. Floor information should be verified on site.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 4,
-      },
-      {
-        'id': 940005,
-        'name': 'Block A Classroom 203',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Block A, 2nd Floor, Classroom 203',
-        'building': 'Block A',
-        'floor': '2nd Floor',
-        'roomCode': '203',
-        'type': 'Classroom',
-        'abbr': 'A203',
-        'navigationHint': 'Block A, 2nd floor, classroom 203.',
-        'verificationStatus': 'room_verified',
-        'needsVerification': false,
-        'sortOrder': 5,
-      },
-      {
-        'id': 940006,
-        'name': 'Academic Office 907',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Block B, 9th Floor, Room 907',
-        'building': 'Block B',
-        'floor': '9th Floor',
-        'roomCode': '907',
-        'type': 'Office',
-        'abbr': 'B907',
-        'navigationHint': 'Block B, 9th floor, room 907.',
-        'verificationStatus': 'room_verified',
-        'needsVerification': false,
-        'sortOrder': 6,
-      },
-      {
-        'id': 940007,
-        'name': 'Basement Classroom L-02',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Basement Floor, L-02',
-        'building': 'Basın Ekspres Campus',
-        'floor': 'Basement Floor',
-        'roomCode': 'L-02',
-        'type': 'Classroom',
-        'abbr': 'L02',
-        'navigationHint': 'Basın Ekspres Campus, basement floor, L-02.',
-        'verificationStatus': 'room_verified',
-        'needsVerification': false,
-        'sortOrder': 7,
-      },
-      {
-        'id': 940008,
-        'name': 'Best Coffee Shop',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
-        'building': 'Basın Ekspres Campus',
-        'floor': 'Entrance Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'BCS',
-        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 8,
-      },
-      {
-        'id': 940009,
-        'name': 'Makarna Pizza',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
-        'building': 'Basın Ekspres Campus',
-        'floor': 'Entrance Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'MP',
-        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 9,
-      },
-      {
-        'id': 940010,
-        'name': 'Lobby Restaurant',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
-        'building': 'Basın Ekspres Campus',
-        'floor': 'Entrance Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'LR',
-        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 10,
-      },
-      {
-        'id': 940011,
-        'name': 'Fast Food Cafe',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Entrance Floor',
-        'building': 'Basın Ekspres Campus',
-        'floor': 'Entrance Floor',
-        'roomCode': null,
-        'type': 'Food & Drink',
-        'abbr': 'FFC',
-        'navigationHint': 'Basın Ekspres Campus, entrance floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 11,
-      },
-      {
-        'id': 940012,
-        'name': 'Gözde Stationery Basın Ekspres',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, B1 Floor',
-        'building': 'Basın Ekspres Campus',
-        'floor': 'B1',
-        'roomCode': null,
-        'type': 'Service',
-        'abbr': 'GK',
-        'navigationHint': 'Basın Ekspres Campus, B1 floor.',
-        'verificationStatus': 'floor_verified',
-        'needsVerification': false,
-        'sortOrder': 12,
-      },
-      {
-        'id': 940013,
-        'name': 'Security Point',
-        'campus': 'Basın Ekspres',
-        'location': 'Basın Ekspres / Küçükçekmece Campus, Main Entrance / Information Desk',
-        'building': 'Main Entrance',
-        'floor': null,
-        'roomCode': null,
-        'type': 'Security',
-        'abbr': 'SEC',
-        'navigationHint': 'Please go to the main entrance or information/security point.',
-        'verificationStatus': 'campus_verified_floor_missing',
-        'needsVerification': true,
-        'sortOrder': 13,
-      },
-    ];
-
-    final batch = _db.batch();
-
-    for (final unit in demoUnits) {
-      final id = unit['id'].toString();
-      batch.set(
-        _db.collection('buildings').doc(id),
-        {
-          ...unit,
-          'isDemoSeed': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-    }
-
-    await batch.commit();
-
-    clearCollectionCache('buildings');
-  }
-
   static String _demoAnnouncementDocId(String title) {
     return title
         .trim()
@@ -3374,126 +1406,6 @@ class DataService {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
-  }
-
-  static Future<void> resetDemoAnnouncementsForPresentation() async {
-    final demoAnnouncements = <Map<String, dynamic>>[
-      {
-        'title': 'Midterm Exam Schedule Announced',
-        'content': 'The midterm exam schedule has been published on the student information system. Students are expected to check their exam rooms before the exam week.',
-        'category': 'academic',
-        'publishAt': DateTime(2026, 5, 7, 8, 30),
-      },
-      {
-        'title': 'Software Engineering Project Demo Reminder',
-        'content': 'Project demo sessions will be held this week. Teams should prepare their working application, test results, and short presentation notes before the demo.',
-        'category': 'academic',
-        'publishAt': DateTime(2026, 5, 6, 16, 30),
-      },
-      {
-        'title': 'Scholarship Applications Started',
-        'content': 'Scholarship applications for the upcoming academic period are now open. Students can submit their documents through the student affairs office.',
-        'category': 'scholarship',
-        'publishAt': DateTime(2026, 5, 6, 9, 15),
-      },
-      {
-        'title': 'Library Working Hours',
-        'content': 'The library will remain open until 22:00 during the midterm and final exam preparation period.',
-        'category': 'admin',
-        'publishAt': DateTime(2026, 5, 5, 10, 0),
-      },
-      {
-        'title': 'Summer School Registration',
-        'content': 'Summer school pre-registration will be available between May 10 and May 24. Course availability will be announced by departments.',
-        'category': 'academic',
-        'publishAt': DateTime(2026, 5, 20, 14, 0),
-      },
-      {
-        'title': 'Internship Application Deadline Reminder',
-        'content': 'Students planning to complete their internship this summer must submit the required documents before the announced deadline.',
-        'category': 'academic',
-        'publishAt': DateTime(2026, 5, 18, 16, 0),
-      },
-      {
-        'title': 'Student Card Renewal',
-        'content': 'Students whose ID cards are damaged or expired can apply for card renewal through Student Affairs.',
-        'category': 'admin',
-        'publishAt': DateTime(2026, 5, 2, 11, 0),
-      },
-      {
-        'title': 'Final Exam Calendar Draft Published',
-        'content': 'The draft final exam calendar has been published for student review. Possible conflicts should be reported to the department secretary.',
-        'category': 'academic',
-        'publishAt': DateTime(2026, 5, 1, 13, 45),
-      },
-      {
-        'title': 'Campus Shuttle Schedule Updated',
-        'content': 'Campus shuttle departure times have been updated for the exam period. Students should check the latest schedule before travel.',
-        'category': 'admin',
-        'publishAt': DateTime(2026, 5, 28, 8, 45),
-      },
-      {
-        'title': 'Career Days Registration Open',
-        'content': 'Career Days registration is now open. Students can attend company talks, workshops, and recruitment sessions on campus.',
-        'category': 'general',
-        'publishAt': DateTime(2026, 4, 29, 12, 0),
-      },
-      {
-        'title': 'Spring Festival 2026',
-        'content': 'The Spring Festival will be held on campus on April 25–26. We look forward to seeing all our students at the events.',
-        'category': 'general',
-        'publishAt': DateTime(2026, 4, 28, 0, 0),
-      },
-      {
-        'title': 'Cafeteria Menu Update',
-        'content': 'The cafeteria menu and campus price list have been updated for the current week.',
-        'category': 'admin',
-        'publishAt': DateTime(2026, 4, 26, 10, 30),
-      },
-      {
-        'title': 'Erasmus Information Meeting',
-        'content': 'An Erasmus information meeting will be organized for students interested in exchange opportunities. Details will be shared by the international office.',
-        'category': 'academic',
-        'publishAt': DateTime(2026, 4, 24, 15, 0),
-      },
-    ];
-
-    final batch = _db.batch();
-
-    final existingAnnouncements = await _db.collection('announcements').get();
-    for (final doc in existingAnnouncements.docs) {
-      batch.delete(doc.reference);
-    }
-
-    for (final item in demoAnnouncements) {
-      final title = item['title'].toString();
-      final content = item['content'].toString();
-      final category = item['category'].toString();
-      final publishAt = item['publishAt'] as DateTime;
-      final docId = _demoAnnouncementDocId(title);
-
-      batch.set(
-        _db.collection('announcements').doc(docId),
-        {
-          'id': docId,
-          'title': title,
-          'content': content,
-          'category': category,
-          'date': _demoAnnouncementDisplayDate(publishAt),
-          'publishDate': _demoAnnouncementDisplayDate(publishAt),
-          'publishTime': _demoAnnouncementDisplayTime(publishAt),
-          'publishAt': Timestamp.fromDate(publishAt),
-          'isNew': false,
-          'createdAt': Timestamp.fromDate(publishAt),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: false),
-      );
-    }
-
-    await batch.commit();
-
-    clearCollectionCache('announcements');
   }
 
 
@@ -3530,145 +1442,6 @@ class DataService {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
-  }
-
-  static Future<void> resetDemoEventsForPresentation() async {
-    final demoEvents = <Map<String, dynamic>>[
-      {
-        'id': 2026051001,
-        'title': 'Software Engineering Final Demo Day',
-        'description': 'Student teams will present their final software engineering project demos, including working applications, test results, and improvement plans.',
-        'category': 'academic',
-        'location': 'Ataköy Campus / Conference Hall',
-        'startAt': DateTime(2026, 5, 10, 10, 0),
-      },
-      {
-        'id': 2026051101,
-        'title': 'Career Days: Technology Companies Session',
-        'description': 'Technology companies will meet students to introduce internship, part-time, and new graduate opportunities.',
-        'category': 'social',
-        'location': 'Ataköy Campus / Akıngüç Auditorium',
-        'startAt': DateTime(2026, 5, 11, 13, 30),
-      },
-      {
-        'id': 2026051201,
-        'title': 'Mobile Programming Firebase Workshop',
-        'description': 'A practical workshop about connecting Flutter applications to Firebase, reading Firestore data, and managing real-time updates.',
-        'category': 'academic',
-        'location': 'Engineering Faculty / Computer Lab',
-        'startAt': DateTime(2026, 5, 12, 15, 0),
-      },
-      {
-        'id': 2026051301,
-        'title': 'Spring Music Night',
-        'description': 'A campus music event organized by student clubs with live performances and social activities.',
-        'category': 'cultural',
-        'location': 'Ataköy Campus / Garden Area',
-        'startAt': DateTime(2026, 5, 13, 18, 0),
-      },
-      {
-        'id': 2026051401,
-        'title': 'Basketball Tournament Finals',
-        'description': 'The final matches of the student basketball tournament will be held with award ceremony after the last game.',
-        'category': 'sports',
-        'location': 'Ataköy Campus / Sports Hall',
-        'startAt': DateTime(2026, 5, 14, 16, 0),
-      },
-      {
-        'id': 2026051501,
-        'title': 'Erasmus Information Seminar',
-        'description': 'The international office will explain Erasmus application requirements, deadlines, documents, and partner universities.',
-        'category': 'academic',
-        'location': 'Ataköy Campus / Seminar Room 2',
-        'startAt': DateTime(2026, 5, 15, 11, 0),
-      },
-      {
-        'id': 2026051601,
-        'title': 'AI and Data Science Student Talks',
-        'description': 'Students and instructors will share short talks about artificial intelligence, data science, and project experiences.',
-        'category': 'academic',
-        'location': 'Engineering Faculty / Room C302',
-        'startAt': DateTime(2026, 5, 16, 14, 0),
-      },
-      {
-        'id': 2026051701,
-        'title': 'Campus Photography Walk',
-        'description': 'A cultural campus walk for students interested in photography, architecture, and visual storytelling.',
-        'category': 'cultural',
-        'location': 'Ataköy Campus / Main Entrance',
-        'startAt': DateTime(2026, 5, 17, 12, 30),
-      },
-      {
-        'id': 2026051801,
-        'title': 'Volleyball Friendly Match',
-        'description': 'A friendly volleyball match between departments will be organized for students and staff.',
-        'category': 'sports',
-        'location': 'Ataköy Campus / Sports Area',
-        'startAt': DateTime(2026, 5, 18, 17, 0),
-      },
-      {
-        'id': 2026051901,
-        'title': 'Student Club Introduction Fair',
-        'description': 'Student clubs will introduce their activities, membership opportunities, and upcoming events.',
-        'category': 'social',
-        'location': 'Ataköy Campus / Main Hall',
-        'startAt': DateTime(2026, 5, 19, 10, 30),
-      },
-      {
-        'id': 2026052001,
-        'title': 'Exam Stress and Time Management Seminar',
-        'description': 'A guidance seminar about managing exam stress, planning study sessions, and improving productivity during exam weeks.',
-        'category': 'academic',
-        'location': 'Ataköy Campus / Psychological Counseling Unit',
-        'startAt': DateTime(2026, 5, 20, 13, 0),
-      },
-      {
-        'id': 2026052101,
-        'title': 'End of Semester Social Gathering',
-        'description': 'A social gathering for students before the final exam period with club stands, music, and refreshments.',
-        'category': 'social',
-        'location': 'Ataköy Campus / Garden Area',
-        'startAt': DateTime(2026, 5, 21, 17, 30),
-      },
-    ];
-
-    final batch = _db.batch();
-
-    final existingEvents = await _db.collection('events').get();
-    for (final doc in existingEvents.docs) {
-      batch.delete(doc.reference);
-    }
-
-    for (final item in demoEvents) {
-      final id = item['id'] as int;
-      final title = item['title'].toString();
-      final description = item['description'].toString();
-      final category = item['category'].toString();
-      final location = item['location'].toString();
-      final startAt = item['startAt'] as DateTime;
-      final docId = id.toString();
-
-      batch.set(
-        _db.collection('events').doc(docId),
-        {
-          'id': id,
-          'title': title,
-          'description': description,
-          'category': category,
-          'date': _demoEventDisplayDate(startAt),
-          'time': _demoEventDisplayTime(startAt),
-          'location': location,
-          'startAt': Timestamp.fromDate(startAt),
-          'createdAt': Timestamp.fromDate(startAt),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: false),
-      );
-    }
-
-    await batch.commit();
-
-    clearCollectionCache('events');
   }
 
 }
