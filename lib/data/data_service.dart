@@ -66,12 +66,11 @@ class DataService {
   static const List<String> campusUnitCategories = [
     'All',
     'Academic Units',
-    'Classrooms & Labs',
-    'Halls & Event Spaces',
     'Food & Beverage',
     'Study & Library',
     'Student Services',
     'Health & Security',
+    'Halls & Event Spaces',
     'Other',
   ];
 
@@ -80,10 +79,6 @@ class DataService {
     'Faculty',
     'Department',
     'Office',
-    'Classroom',
-    'Laboratory',
-    'Computer Lab',
-    'Workshop',
     'Hall',
     'Auditorium',
     'Seminar Hall',
@@ -155,7 +150,13 @@ class DataService {
     }
     if (value.contains('computer') && value.contains('lab')) return 'Computer Lab';
     if (value.contains('laboratory') || value == 'lab' || value.contains(' lab')) return 'Laboratory';
-    if (value.contains('classroom') || value.contains('lecture')) return 'Classroom';
+    if (value.contains('classroom') ||
+        value.contains('lecture') ||
+        value.contains('derslik') ||
+        value.contains('sinif')) {
+      return 'Classroom';
+    }
+    if (value.contains('amphitheater') || value.contains('amfi')) return 'Amphitheater';
     if (value.contains('workshop') || value.contains('factory')) return 'Workshop';
     if (value.contains('seminar')) return 'Seminar Hall';
     if (value.contains('conference')) return 'Conference Hall';
@@ -179,19 +180,56 @@ class DataService {
     return 'Other';
   }
 
+  static bool isAcademicSpaceUnitType(String? rawType) {
+    final value = _searchNormalize(rawType)
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ');
+
+    if (value.isEmpty) return false;
+
+    return value.contains('classroom') ||
+        value.contains('lecture hall') ||
+        value.contains('lecture') ||
+        value.contains('derslik') ||
+        value.contains('sinif') ||
+        value.contains('amphitheater') ||
+        value.contains('amfi') ||
+        value.contains('laboratory') ||
+        value == 'lab' ||
+        value.contains(' lab') ||
+        value.contains('computer lab') ||
+        value.contains('workshop');
+  }
+
+  static bool isAcademicSpaceUnitRecord(Map<dynamic, dynamic> unit) {
+    final type = unit['type']?.toString();
+    final typeNormalized = unit['typeNormalized']?.toString();
+    final category = unit['category']?.toString();
+    final name = unit['name']?.toString();
+    final location = unit['location']?.toString();
+    final roomCode = unit['roomCode']?.toString();
+
+    return isAcademicSpaceUnitType(type) ||
+        isAcademicSpaceUnitType(typeNormalized) ||
+        isAcademicSpaceUnitType(category) ||
+        isAcademicSpaceUnitType(name) ||
+        isAcademicSpaceUnitType(location) ||
+        isAcademicSpaceUnitType(roomCode);
+  }
+
   static String campusUnitCategoryFromType(String? rawType) {
     final type = normalizeCampusUnitType(rawType);
+
+    if (isAcademicSpaceUnitType(type)) {
+      return 'Other';
+    }
+
     switch (type) {
       case 'Faculty':
       case 'Department':
       case 'Academic Unit':
       case 'Office':
         return 'Academic Units';
-      case 'Classroom':
-      case 'Laboratory':
-      case 'Computer Lab':
-      case 'Workshop':
-        return 'Classrooms & Labs';
       case 'Hall':
       case 'Auditorium':
       case 'Seminar Hall':
@@ -230,8 +268,19 @@ class DataService {
 
   static bool isCampusUnitVisible(Map<dynamic, dynamic> unit) {
     if (unit['isVisible'] == false || unit['visible'] == false) return false;
+
     final status = _searchNormalize(unit['status']?.toString());
-    if (status == 'hidden' || status == 'draft' || status == 'inactive') return false;
+    if (status == 'hidden' || status == 'draft' || status == 'inactive') {
+      return false;
+    }
+
+    // Unit/Campus Guide must not show classrooms, labs, amphitheaters,
+    // lecture halls, workshops, or similar academic spaces.
+    // Those belong only to the Classrooms screen.
+    if (isAcademicSpaceUnitRecord(unit)) {
+      return false;
+    }
+
     return true;
   }
 
