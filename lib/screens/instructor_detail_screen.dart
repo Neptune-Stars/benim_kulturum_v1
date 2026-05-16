@@ -29,8 +29,6 @@ class InstructorDetailScreen extends StatelessWidget {
     final String title = instructorData['title'] ?? '';
     final String department = instructorData['department'] ?? '';
     final String office = instructorData['office'] ?? 'Unknown';
-    final String instructorId = instructorData['id']?.toString() ?? '0';
-
 
     final List<dynamic> displayHours =
     (instructorData['officeHours'] is List &&

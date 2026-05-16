@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/filter_chip_widget.dart';
@@ -44,7 +43,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
 
           for (var doc in snapshot.data!.docs) {
             final data = doc.data() as Map<String, dynamic>;
-            final String id = doc.id;
             final String name = data['name'] ?? "Unknown";
             final String dept = data['department'] ?? "";
             final String mainOffice = data['office'] ?? "Unknown";
