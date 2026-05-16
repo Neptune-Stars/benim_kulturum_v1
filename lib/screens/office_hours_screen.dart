@@ -24,6 +24,15 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
         .replaceAll('ü', 'u').replaceAll('ö', 'o');
   }
 
+  String _cleanOfficeHourTime(String value) {
+    final withoutPipeOffice = value.split('|').first.trim();
+    final cleaned = withoutPipeOffice
+        .replaceAll(RegExp(r'\s*Office\s*:.*$', caseSensitive: false), '')
+        .trim();
+
+    return cleaned.isNotEmpty ? cleaned : "-";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,9 +54,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
             final data = doc.data() as Map<String, dynamic>;
             final String name = data['name'] ?? "Unknown";
             final String dept = data['department'] ?? "";
-            final String mainOffice = data['office'] ?? "Unknown";
-
-
             List<dynamic> rawHours =
             (data['officeHours'] is List &&
                 (data['officeHours'] as List).isNotEmpty)
@@ -61,31 +67,27 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
             for (var hour in rawHours) {
               String day = "";
               String time = "";
-              String office = mainOffice;
-
               if (hour is Map) {
                 day = hour['day'] ?? "";
                 String start = hour['startTime'] ?? "";
                 String end = hour['endTime'] ?? "";
-                office = hour['office'] ?? mainOffice;
-
                 if (start.isEmpty && end.isEmpty) {
                   continue;
                 }
-                time = "$start - $end";
+                time = _cleanOfficeHourTime("$start - $end");
               } else {
 
                 String str = hour.toString();
                 if (str.contains(':')) {
                   day = str.split(':')[0].trim();
-                  time = str.split(':').sublist(1).join(':').trim();
+                  time = _cleanOfficeHourTime(str.split(':').sublist(1).join(':').trim());
                 }
               }
 
 
               if (_selectedFilter == "All" || _normalize(day) == _normalize(_selectedFilter)) {
                 hasMatchingDay = true;
-                formattedSlots.add("$day • $time | Office: $office");
+                formattedSlots.add(day.isNotEmpty ? "$day • $time" : time);
               }
             }
 

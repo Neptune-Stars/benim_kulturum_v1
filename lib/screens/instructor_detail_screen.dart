@@ -20,6 +20,15 @@ class InstructorDetailScreen extends StatelessWidget {
     return names.isNotEmpty ? names[0][0].toUpperCase() : "?";
   }
 
+  String _cleanOfficeHourTime(String value) {
+    final withoutPipeOffice = value.split('|').first.trim();
+    final cleaned = withoutPipeOffice
+        .replaceAll(RegExp(r'\s*Office\s*:.*$', caseSensitive: false), '')
+        .trim();
+
+    return cleaned.isNotEmpty ? cleaned : "-";
+  }
+
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
@@ -152,24 +161,23 @@ class InstructorDetailScreen extends StatelessWidget {
 
                   String day = "Meeting";
                   String time = "-";
-                  String? specificRoom;
-
                   if (item is Map) {
                     day = item['day']?.toString() ?? "Unknown";
-                    time = "${item['startTime'] ?? ''} - ${item['endTime'] ?? ''}";
-                    specificRoom = item['office']?.toString();
+                    final start = item['startTime']?.toString() ?? '';
+                    final end = item['endTime']?.toString() ?? '';
+                    time = _cleanOfficeHourTime("$start - $end");
                   } else {
                     final String hourInfo = item.toString();
                     if (hourInfo.contains(':')) {
                       var parts = hourInfo.split(':');
                       day = parts[0].trim();
-                      time = parts.sublist(1).join(':').trim();
+                      time = _cleanOfficeHourTime(parts.sublist(1).join(':').trim());
                     } else {
-                      time = hourInfo;
+                      time = _cleanOfficeHourTime(hourInfo);
                     }
                   }
 
-                  return _buildOfficeHourRow(context, day, time, specificRoom);
+                  return _buildOfficeHourRow(context, day, time);
                 },
               ),
             ),
@@ -179,7 +187,7 @@ class InstructorDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOfficeHourRow(BuildContext context, String day, String time, String? room) {
+  Widget _buildOfficeHourRow(BuildContext context, String day, String time) {
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
 
     return Padding(
@@ -188,23 +196,28 @@ class InstructorDetailScreen extends StatelessWidget {
         children: [
           Expanded(
             flex: 2,
-            child: Text(day, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textColor)),
+            child: Text(
+              day,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: textColor,
+              ),
+            ),
           ),
           Expanded(
             flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(time, style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500)),
-                if (room != null && room.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      room,
-                      style: const TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-              ],
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                time,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ),
         ],
