@@ -25,7 +25,16 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
   ];
 
 
-  String _getDynamicOfficeHoursText(String id, List<dynamic>? existingHours) {
+  String _cleanOfficeHourTime(String value) {
+    final withoutPipeOffice = value.split('|').first.trim();
+    final cleaned = withoutPipeOffice
+        .replaceAll(RegExp(r'\s*Office\s*:.*$', caseSensitive: false), '')
+        .trim();
+
+    return cleaned.isNotEmpty ? cleaned : "-";
+  }
+
+  String _getDynamicOfficeHoursText(List<dynamic>? existingHours) {
     if (existingHours != null && existingHours.isNotEmpty) {
       final first = existingHours.first;
 
@@ -35,11 +44,11 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
         final end = first['endTime']?.toString() ?? '';
 
         if (day.isNotEmpty && start.isNotEmpty && end.isNotEmpty) {
-          return "$day • $start-$end";
+          return "$day • ${_cleanOfficeHourTime('$start - $end')}";
         }
       }
 
-      return first.toString();
+      return _cleanOfficeHourTime(first.toString());
     }
 
     return "Office hours not added";
@@ -115,12 +124,11 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                   itemBuilder: (context, index) {
                     final doc = filteredDocs[index];
                     final data = doc.data() as Map<String, dynamic>;
-                    final String id = doc.id;
                     final Map<String, dynamic> safeInstructorData = Map<String, dynamic>.from(data);
-                    safeInstructorData['id'] = id;
+                    safeInstructorData['id'] = doc.id;
 
                     final String? imageUrl = safeInstructorData['imageUrl'];
-                    final String hoursText = _getDynamicOfficeHoursText(id, data['officeHours']);
+                    final String hoursText = _getDynamicOfficeHoursText(data['officeHours']);
 
                     return InfoCard(
                       leading: CircleAvatar(
@@ -135,7 +143,7 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
                       ),
                       title: safeInstructorData['name'] ?? '',
                       subtitle: safeInstructorData['department'] ?? '',
-                      metadata: "$hoursText | Office: ${safeInstructorData['office'] ?? '-'}",
+                      metadata: hoursText,
                       badge: AppBadge(label: safeInstructorData['title'] ?? ''),
                       onTap: () => Navigator.push(
                           context,

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/profile_provider.dart';
-import '../../data/data_service.dart';
-import '../../widgets/search_bar_widget.dart';
+import '../theme/app_theme.dart';
+import '../providers/theme_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/profile_provider.dart';
+import '../data/data_service.dart';
+import '../widgets/search_bar_widget.dart';
 import 'package:flutter/services.dart';
 import 'admin_chat_list_screen.dart';
 
@@ -87,6 +87,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   Future<List<Map<String, dynamic>>>? _issuesFuture;
   Future<List<Map<String, dynamic>>>? _studentsFuture;
   Future<List<Map<String, dynamic>>>? _weeklyCafeteriaFuture;
+  String _issueStatusFilter = 'all'; // all, open, resolved
+  String _issuePriorityFilter = 'all'; // all, normal, medium, high
+
+  static const String _instructorFilterAll = 'All';
+  String _instructorDepartmentFilter = _instructorFilterAll;
+  String _instructorDayFilter = _instructorFilterAll;
+
+  static const String _announcementFilterAll = 'All';
+  String _announcementCategoryFilter = _announcementFilterAll;
+
+  static const String _classroomFilterAll = 'All';
+  String _classroomCampusFilter = _classroomFilterAll;
+  String _classroomLocationFilter = _classroomFilterAll;
+  String _classroomFloorFilter = _classroomFilterAll;
+  String _classroomTypeFilter = _classroomFilterAll;
 
   final List<String> _tabs = [
     "General", "Units", "Classrooms", "Instructors", "Events", "Announcements", "Cafeteria", "Prices", "Issues", "Students"
@@ -467,7 +482,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     final number = int.tryParse(text);
 
-    if (number == -1) return "Basement Floor";
+    if (number == -2) return "B2 Floor";
+    if (number == -1) return "B1 Floor";
     if (number == 0) return "Ground Floor";
     if (number != null) return "${number}th Floor";
 
@@ -475,13 +491,650 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   int _floorValueFromLabel(String label) {
-    if (label == "Basement Floor") return -1;
+    if (label == "B2 Floor") return -2;
+    if (label == "B1 Floor" || label == "Basement Floor") return -1;
     if (label == "Ground Floor") return 0;
 
     final match = RegExp(r'(\d+)').firstMatch(label);
     if (match == null) return 0;
 
     return int.tryParse(match.group(1) ?? "0") ?? 0;
+  }
+
+  String _normalizeClassroomType(dynamic rawType) {
+    final value = _normalizeForSearch(rawType?.toString() ?? '')
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .trim();
+
+    if (value.contains('laboratory') || value == 'lab' || value.contains(' lab')) {
+      return "Laboratory";
+    }
+
+    if (value.contains('amphitheater') ||
+        value.contains('amfitheater') ||
+        value.contains('amfi') ||
+        value.contains('auditorium')) {
+      return "Amphitheater";
+    }
+
+    if (value.contains('classroom') ||
+        value.contains('lecture') ||
+        value.contains('derslik') ||
+        value.contains('sinif') ||
+        value.contains('sınıf')) {
+      return "Classroom";
+    }
+
+    return rawType?.toString().trim().isNotEmpty == true
+        ? rawType.toString().trim()
+        : "Classroom";
+  }
+
+  bool _isClassroomEducationSpace(Map<dynamic, dynamic> classroom) {
+    final type = _normalizeClassroomType(classroom['type']);
+    final searchableText = [
+      classroom['name'],
+      classroom['type'],
+      classroom['category'],
+      classroom['location'],
+      classroom['building'],
+    ].map((value) => _normalizeForSearch(value?.toString() ?? '')).join(' ');
+
+    final blockedKeywords = <String>[
+      'library',
+      'kutuphane',
+      'canteen',
+      'kantin',
+      'cafeteria',
+      'cafe',
+      'health unit',
+      'revir',
+      'infirmary',
+      'student affairs',
+      'student services',
+      'security',
+      'office',
+      'food',
+      'restaurant',
+    ];
+
+    final isBlockedFacility = blockedKeywords.any(searchableText.contains);
+    return <String>{"Classroom", "Amphitheater", "Laboratory"}.contains(type) &&
+        !isBlockedFacility;
+  }
+
+  String _bestMatchingCampusLabel(String rawValue, List<String> campusOptions) {
+    final normalizedRaw = _normalizeForSearch(rawValue)
+        .replaceAll('campus', '')
+        .replaceAll('kampus', '')
+        .trim();
+
+    if (normalizedRaw.isEmpty) return '';
+
+    for (final option in campusOptions) {
+      final normalizedOption = _normalizeForSearch(option)
+          .replaceAll('campus', '')
+          .replaceAll('kampus', '')
+          .trim();
+
+      if (normalizedOption.isEmpty) continue;
+
+      if (normalizedRaw.contains(normalizedOption) ||
+          normalizedOption.contains(normalizedRaw)) {
+        return option;
+      }
+    }
+
+    if (normalizedRaw.contains('atak')) {
+      return campusOptions.firstWhere(
+        (option) => _normalizeForSearch(option).contains('atak'),
+        orElse: () => rawValue.trim(),
+      );
+    }
+
+    if (normalizedRaw.contains('incir')) {
+      return campusOptions.firstWhere(
+        (option) => _normalizeForSearch(option).contains('incir'),
+        orElse: () => rawValue.trim(),
+      );
+    }
+
+    if (normalizedRaw.contains('bas') || normalizedRaw.contains('ekspres')) {
+      return campusOptions.firstWhere(
+        (option) {
+          final normalizedOption = _normalizeForSearch(option);
+          return normalizedOption.contains('bas') ||
+              normalizedOption.contains('ekspres') ||
+              normalizedOption.contains('kucuk');
+        },
+        orElse: () => rawValue.trim(),
+      );
+    }
+
+    if (normalizedRaw.contains('sirin') || normalizedRaw.contains('bahcel')) {
+      return campusOptions.firstWhere(
+        (option) {
+          final normalizedOption = _normalizeForSearch(option);
+          return normalizedOption.contains('sirin') || normalizedOption.contains('bahcel');
+        },
+        orElse: () => rawValue.trim(),
+      );
+    }
+
+    return rawValue.trim();
+  }
+
+  String _classroomCampusLabel(
+    Map<dynamic, dynamic> classroom,
+    List<String> campusOptions,
+  ) {
+    final rawCandidates = <String>[
+      classroom['campus']?.toString() ?? '',
+      (classroom['building']?.toString() ?? '').split(',').first.trim(),
+      (classroom['location']?.toString() ?? '').split(',').first.trim(),
+    ].where((value) => value.trim().isNotEmpty).toList();
+
+    for (final candidate in rawCandidates) {
+      final match = _bestMatchingCampusLabel(candidate, campusOptions);
+      if (match.trim().isNotEmpty) return match;
+    }
+
+    return campusOptions.isNotEmpty ? campusOptions.first : "Unknown Campus";
+  }
+
+  bool _looksLikeFloorText(String value) {
+    final normalized = _normalizeForSearch(value);
+    return normalized.contains('floor') ||
+        normalized.contains('kat') ||
+        normalized == 'b1' ||
+        normalized == 'b2' ||
+        RegExp(r'^[0-9]+(st|nd|rd|th)?$').hasMatch(normalized);
+  }
+
+  String _classroomLocationLabel(
+    Map<dynamic, dynamic> classroom,
+    List<String> campusOptions,
+  ) {
+    final campus = _classroomCampusLabel(classroom, campusOptions);
+    final rawLocation = classroom['location']?.toString().trim() ?? '';
+    final rawBuilding = classroom['building']?.toString().trim() ?? '';
+    final rawValues = <String>[rawLocation, rawBuilding]
+        .where((value) => value.trim().isNotEmpty)
+        .toList();
+
+    for (final rawValue in rawValues) {
+      final parts = rawValue
+          .split(',')
+          .map((part) => part.trim())
+          .where((part) => part.isNotEmpty)
+          .toList();
+
+      final buildingCandidates = parts.where((part) {
+        final normalizedPart = _normalizeForSearch(part);
+        final normalizedCampus = _normalizeForSearch(campus);
+        final campusWithoutWord = normalizedCampus.replaceAll('campus', '').trim();
+
+        return normalizedPart != normalizedCampus &&
+            normalizedPart != campusWithoutWord &&
+            !_looksLikeFloorText(part);
+      }).toList();
+
+      if (buildingCandidates.isNotEmpty) {
+        return buildingCandidates.last;
+      }
+
+      if (parts.length == 1 && !_looksLikeFloorText(parts.first)) {
+        return parts.first;
+      }
+    }
+
+    return "General Building";
+  }
+
+  String _classroomFloorLabel(Map<dynamic, dynamic> classroom) {
+    final floorLabel = classroom['floorLabel']?.toString().trim() ?? '';
+    if (floorLabel.isNotEmpty) return _floorLabelFromValue(floorLabel);
+
+    final floor = classroom['floor']?.toString().trim() ?? '';
+    if (floor.isNotEmpty) return _floorLabelFromValue(floor);
+
+    final location = classroom['location']?.toString() ?? '';
+    final building = classroom['building']?.toString() ?? '';
+    final combined = '$location, $building';
+
+    final b2Match = RegExp(r'\bB2\b', caseSensitive: false).firstMatch(combined);
+    if (b2Match != null) return "B2 Floor";
+
+    final b1Match = RegExp(r'\bB1\b', caseSensitive: false).firstMatch(combined);
+    if (b1Match != null) return "B1 Floor";
+
+    return "Ground Floor";
+  }
+
+  int _floorSortValue(String label) {
+    final normalized = _normalizeForSearch(label);
+    if (normalized.contains('b2')) return -2;
+    if (normalized.contains('b1') || normalized.contains('basement')) return -1;
+    if (normalized.contains('ground')) return 0;
+
+    final match = RegExp(r'(\d+)').firstMatch(label);
+    return int.tryParse(match?.group(1) ?? '0') ?? 0;
+  }
+
+  int _activeClassroomFilterCount() {
+    return [
+      _classroomCampusFilter,
+      _classroomLocationFilter,
+      _classroomFloorFilter,
+      _classroomTypeFilter,
+    ].where((value) => value != _classroomFilterAll).length;
+  }
+
+  List<String> _classroomFilterOptions(Iterable<String> rawOptions) {
+    final options = rawOptions
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    return <String>[_classroomFilterAll, ...options];
+  }
+
+  List<String> _classroomFloorFilterOptions(Iterable<String> rawOptions) {
+    final options = rawOptions
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => _floorSortValue(a).compareTo(_floorSortValue(b)));
+
+    return <String>[_classroomFilterAll, ...options];
+  }
+
+  bool _matchesClassroomFilter(
+    Map<String, dynamic> classroom,
+    List<String> campusOptions, {
+    required String searchQuery,
+    required String campusFilter,
+    required String locationFilter,
+    required String floorFilter,
+    required String typeFilter,
+  }) {
+    if (!_isClassroomEducationSpace(classroom)) return false;
+
+    final campus = _classroomCampusLabel(classroom, campusOptions);
+    final location = _classroomLocationLabel(classroom, campusOptions);
+    final floor = _classroomFloorLabel(classroom);
+    final type = _normalizeClassroomType(classroom['type']);
+
+    if (campusFilter != _classroomFilterAll && campus != campusFilter) return false;
+    if (locationFilter != _classroomFilterAll && location != locationFilter) return false;
+    if (floorFilter != _classroomFilterAll && floor != floorFilter) return false;
+    if (typeFilter != _classroomFilterAll && type != typeFilter) return false;
+
+    if (searchQuery.isEmpty) return true;
+
+    final searchableText = [
+      classroom['name']?.toString() ?? '',
+      classroom['building']?.toString() ?? '',
+      classroom['location']?.toString() ?? '',
+      campus,
+      location,
+      floor,
+      type,
+    ].map(_normalizeForSearch).join(' ');
+
+    return searchableText.contains(searchQuery);
+  }
+
+  List<Map<String, dynamic>> _educationClassroomsFromRaw(
+    List<dynamic> rawClassrooms,
+  ) {
+    return rawClassrooms
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((item) => _isClassroomEducationSpace(item))
+        .toList();
+  }
+
+  void _clearClassroomFilters() {
+    setState(() {
+      _classroomCampusFilter = _classroomFilterAll;
+      _classroomLocationFilter = _classroomFilterAll;
+      _classroomFloorFilter = _classroomFilterAll;
+      _classroomTypeFilter = _classroomFilterAll;
+    });
+  }
+
+  Widget _buildClassroomFilterButton(
+    List<Map<String, dynamic>> classrooms,
+    List<String> campusOptions,
+  ) {
+    final activeCount = _activeClassroomFilterCount();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _adminBorderColor()),
+          ),
+          child: IconButton(
+            tooltip: "Filter classrooms",
+            icon: Icon(
+              Icons.tune,
+              color: activeCount > 0 ? _adminPrimaryColor() : _adminTextMutedColor(),
+            ),
+            onPressed: () => _openClassroomFilterSheet(
+              classrooms: classrooms,
+              campusOptions: campusOptions,
+            ),
+          ),
+        ),
+        if (activeCount > 0)
+          Positioned(
+            right: -4,
+            top: -5,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(
+                color: AppTheme.destructiveColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                activeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildActiveClassroomFilterChips() {
+    final filters = <Map<String, VoidCallback>>[];
+
+    if (_classroomCampusFilter != _classroomFilterAll) {
+      filters.add({
+        "Campus: $_classroomCampusFilter": () {
+          setState(() {
+            _classroomCampusFilter = _classroomFilterAll;
+            _classroomLocationFilter = _classroomFilterAll;
+            _classroomFloorFilter = _classroomFilterAll;
+          });
+        },
+      });
+    }
+
+    if (_classroomLocationFilter != _classroomFilterAll) {
+      filters.add({
+        "Building: $_classroomLocationFilter": () {
+          setState(() {
+            _classroomLocationFilter = _classroomFilterAll;
+            _classroomFloorFilter = _classroomFilterAll;
+          });
+        },
+      });
+    }
+
+    if (_classroomFloorFilter != _classroomFilterAll) {
+      filters.add({
+        "Floor: $_classroomFloorFilter": () {
+          setState(() {
+            _classroomFloorFilter = _classroomFilterAll;
+          });
+        },
+      });
+    }
+
+    if (_classroomTypeFilter != _classroomFilterAll) {
+      filters.add({
+        "Type: $_classroomTypeFilter": () {
+          setState(() {
+            _classroomTypeFilter = _classroomFilterAll;
+          });
+        },
+      });
+    }
+
+    if (filters.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: filters.map((filter) {
+            final label = filter.keys.first;
+            final onDeleted = filter.values.first;
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InputChip(
+                label: Text(label),
+                onDeleted: onDeleted,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                labelStyle: TextStyle(
+                  color: _adminTextPrimaryColor(),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                deleteIconColor: _adminTextMutedColor(),
+                backgroundColor: _adminPrimaryColor().withOpacity(0.08),
+                side: BorderSide(color: _adminPrimaryColor().withOpacity(0.25)),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _openClassroomFilterSheet({
+    required List<Map<String, dynamic>> classrooms,
+    required List<String> campusOptions,
+  }) {
+    String tempCampus = _classroomCampusFilter;
+    String tempLocation = _classroomLocationFilter;
+    String tempFloor = _classroomFloorFilter;
+    String tempType = _classroomTypeFilter;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final campusFilterOptions = _classroomFilterOptions(
+              classrooms.map((item) => _classroomCampusLabel(item, campusOptions)),
+            );
+
+            if (!campusFilterOptions.contains(tempCampus)) {
+              tempCampus = _classroomFilterAll;
+            }
+
+            final locationSource = classrooms.where((item) {
+              if (tempCampus == _classroomFilterAll) return true;
+              return _classroomCampusLabel(item, campusOptions) == tempCampus;
+            }).toList();
+
+            final locationFilterOptions = _classroomFilterOptions(
+              locationSource.map((item) => _classroomLocationLabel(item, campusOptions)),
+            );
+
+            if (!locationFilterOptions.contains(tempLocation)) {
+              tempLocation = _classroomFilterAll;
+            }
+
+            final floorSource = locationSource.where((item) {
+              if (tempLocation == _classroomFilterAll) return true;
+              return _classroomLocationLabel(item, campusOptions) == tempLocation;
+            }).toList();
+
+            final floorFilterOptions = _classroomFloorFilterOptions(
+              floorSource.map((item) => _classroomFloorLabel(item)),
+            );
+
+            if (!floorFilterOptions.contains(tempFloor)) {
+              tempFloor = _classroomFilterAll;
+            }
+
+            final typeFilterOptions = <String>[
+              _classroomFilterAll,
+              "Classroom",
+              "Laboratory",
+              "Amphitheater",
+            ];
+
+            if (!typeFilterOptions.contains(tempType)) {
+              tempType = _classroomFilterAll;
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 12,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: _adminBorderColor(),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Filter Classrooms",
+                              style: TextStyle(
+                                color: _adminTextPrimaryColor(),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: "Close",
+                            onPressed: () => Navigator.pop(sheetContext),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _buildDropdown(
+                        "Campus",
+                        campusFilterOptions,
+                        value: tempCampus,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            tempCampus = value ?? _classroomFilterAll;
+                            tempLocation = _classroomFilterAll;
+                            tempFloor = _classroomFilterAll;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDropdown(
+                        "Building / Location",
+                        locationFilterOptions,
+                        value: tempLocation,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            tempLocation = value ?? _classroomFilterAll;
+                            tempFloor = _classroomFilterAll;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDropdown(
+                        "Floor",
+                        floorFilterOptions,
+                        value: tempFloor,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            tempFloor = value ?? _classroomFilterAll;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDropdown(
+                        "Classroom Type",
+                        typeFilterOptions,
+                        value: tempType,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            tempType = value ?? _classroomFilterAll;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setSheetState(() {
+                                  tempCampus = _classroomFilterAll;
+                                  tempLocation = _classroomFilterAll;
+                                  tempFloor = _classroomFilterAll;
+                                  tempType = _classroomFilterAll;
+                                });
+                              },
+                              child: const Text("Clear"),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _classroomCampusFilter = tempCampus;
+                                  _classroomLocationFilter = tempLocation;
+                                  _classroomFloorFilter = tempFloor;
+                                  _classroomTypeFilter = tempType;
+                                });
+                                Navigator.pop(sheetContext);
+                              },
+                              child: const Text("Apply Filters"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -841,74 +1494,637 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         final allClassrooms = data['classrooms'] as List<dynamic>? ?? [];
         final campusOptions = _getCampusOptions(data);
         final classroomLocationsByCampus = _getClassroomLocationsByCampus(data);
-
+        final educationClassrooms = _educationClassroomsFromRaw(allClassrooms);
         final sq = _normalizeForSearch(_searchControllers[2]!.text);
-        final filteredClassrooms = allClassrooms.where((classroom) {
-          final name = (classroom['name'] ?? "").toString();
-          final type = (classroom['type'] ?? "").toString();
-          final sq = _normalizeForSearch(_searchControllers[2]!.text);
 
-          final List<String> educationTypes = ["Classroom", "Amphitheater", "Laboratory"];
+        final filteredClassrooms = educationClassrooms.where((classroom) {
+          return _matchesClassroomFilter(
+            classroom,
+            campusOptions,
+            searchQuery: sq,
+            campusFilter: _classroomCampusFilter,
+            locationFilter: _classroomLocationFilter,
+            floorFilter: _classroomFloorFilter,
+            typeFilter: _classroomTypeFilter,
+          );
+        }).toList()
+          ..sort((a, b) {
+            final campusCompare = _classroomCampusLabel(a, campusOptions)
+                .compareTo(_classroomCampusLabel(b, campusOptions));
+            if (campusCompare != 0) return campusCompare;
 
-          final List<String> facilityKeywords = ['Library', 'Kütüphane', 'Canteen', 'Kantin', 'Health Unit', 'Revir', 'Student Affairs'];
+            final locationCompare = _classroomLocationLabel(a, campusOptions)
+                .compareTo(_classroomLocationLabel(b, campusOptions));
+            if (locationCompare != 0) return locationCompare;
 
-          bool isEducationSpace = educationTypes.contains(type) &&
-              !facilityKeywords.any((k) => name.contains(k));
+            final floorCompare = _floorSortValue(_classroomFloorLabel(a))
+                .compareTo(_floorSortValue(_classroomFloorLabel(b)));
+            if (floorCompare != 0) return floorCompare;
 
-          if (!isEducationSpace) return false;
+            return (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString());
+          });
 
-          if (sq.isEmpty) return true;
-          return _normalizeForSearch(name).contains(sq) ||
-              _normalizeForSearch(classroom['building']?.toString() ?? '').contains(sq);
-        }).toList();
-
-        return _buildManagementTab(
-          title: "Classrooms",
-          count: filteredClassrooms.length,
-          searchController: _searchControllers[2]!,
-          items: filteredClassrooms.map((e) {
-            final subtitle = [
-              e['campus'],
-              e['location'],
-              e['floorLabel'] ?? _floorLabelFromValue(e['floor']),
-            ].where((value) => value != null && value.toString().trim().isNotEmpty).join(" • ");
-
-            return _buildListItem(
-              e['name'] ?? '',
-              subtitle,
-                  () => _openClassroomForm(
-                isEdit: true,
-                item: e,
-                campusOptions: campusOptions,
-                locationsByCampus: classroomLocationsByCampus,
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Classrooms (${filteredClassrooms.length})",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => _openClassroomForm(
+                      isEdit: false,
+                      campusOptions: campusOptions,
+                      locationsByCampus: classroomLocationsByCampus,
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Add"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
               ),
-                  () => _showDeleteDialog('classrooms', (e['firestoreDocId'] ?? e['id']).toString()),
-            );
-          }).toList(),
-          onAdd: () => _openClassroomForm(
-            isEdit: false,
-            campusOptions: campusOptions,
-            locationsByCampus: classroomLocationsByCampus,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppSearchBar(
+                      controller: _searchControllers[2]!,
+                      placeholder: "Search classroom...",
+                      onChanged: (val) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildClassroomFilterButton(educationClassrooms, campusOptions),
+                ],
+              ),
+            ),
+            _buildActiveClassroomFilterChips(),
+            const SizedBox(height: 12),
+            Expanded(
+              child: filteredClassrooms.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.meeting_room_outlined,
+                              size: 42,
+                              color: _adminTextMutedColor(),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "No classrooms match the current search/filter.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _adminTextPrimaryColor(),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (_activeClassroomFilterCount() > 0) ...[
+                              const SizedBox(height: 10),
+                              TextButton.icon(
+                                onPressed: _clearClassroomFilters,
+                                icon: const Icon(Icons.clear),
+                                label: const Text("Clear filters"),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: filteredClassrooms.length,
+                      separatorBuilder: (_, __) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final classroom = filteredClassrooms[index];
+                        final campus = _classroomCampusLabel(classroom, campusOptions);
+                        final location = _classroomLocationLabel(classroom, campusOptions);
+                        final floor = _classroomFloorLabel(classroom);
+                        final type = _normalizeClassroomType(classroom['type']);
+
+                        return _buildListItem(
+                          classroom['name']?.toString() ?? '',
+                          "$campus • $location • $floor • $type",
+                          () => _openClassroomForm(
+                            isEdit: true,
+                            item: classroom,
+                            campusOptions: campusOptions,
+                            locationsByCampus: classroomLocationsByCampus,
+                          ),
+                          () => _showDeleteDialog(
+                            'classrooms',
+                            (classroom['firestoreDocId'] ?? classroom['id']).toString(),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  int _activeInstructorFilterCount() {
+    int count = 0;
+    if (_instructorDepartmentFilter != _instructorFilterAll) count++;
+    if (_instructorDayFilter != _instructorFilterAll) count++;
+    return count;
+  }
+
+  String _instructorDepartmentLabel(dynamic value) {
+    final department = value?.toString().trim();
+    if (department == null || department.isEmpty) return 'Unknown Department';
+    return department;
+  }
+
+  String _instructorDayLabel(dynamic value) {
+    final day = value?.toString().trim();
+    if (day == null || day.isEmpty) return 'Unknown Day';
+    return day;
+  }
+
+  List<Map<String, dynamic>> _instructorOfficeHours(Map<String, dynamic> instructor) {
+    final rawOfficeHours = instructor['officeHours'];
+    if (rawOfficeHours is! List) return [];
+
+    return rawOfficeHours
+        .whereType<Map>()
+        .map((slot) => Map<String, dynamic>.from(slot))
+        .toList();
+  }
+
+  List<String> _instructorDepartmentOptions(List<Map<String, dynamic>> instructors) {
+    final departments = <String>{};
+
+    for (final instructor in instructors) {
+      final department = _instructorDepartmentLabel(instructor['department']);
+      if (department.isNotEmpty) departments.add(department);
+    }
+
+    final sortedDepartments = departments.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return [_instructorFilterAll, ...sortedDepartments];
+  }
+
+  List<String> _instructorDayOptions(List<Map<String, dynamic>> instructors) {
+    final days = <String>{
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+    };
+
+    for (final instructor in instructors) {
+      for (final slot in _instructorOfficeHours(instructor)) {
+        final day = _instructorDayLabel(slot['day']);
+        if (day.isNotEmpty && day != 'Unknown Day') days.add(day);
+      }
+    }
+
+    final sortedDays = days.toList()
+      ..sort((a, b) {
+        const order = {
+          'Monday': 1,
+          'Tuesday': 2,
+          'Wednesday': 3,
+          'Thursday': 4,
+          'Friday': 5,
+          'Saturday': 6,
+          'Sunday': 7,
+        };
+
+        final aOrder = order[a] ?? 99;
+        final bOrder = order[b] ?? 99;
+        if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+
+    return [_instructorFilterAll, ...sortedDays];
+  }
+
+  bool _matchesInstructorFilters(Map<String, dynamic> instructor) {
+    if (_instructorDepartmentFilter != _instructorFilterAll &&
+        _normalizeForSearch(_instructorDepartmentLabel(instructor['department'])) !=
+            _normalizeForSearch(_instructorDepartmentFilter)) {
+      return false;
+    }
+
+    if (_instructorDayFilter != _instructorFilterAll) {
+      final hasMatchingDay = _instructorOfficeHours(instructor).any((slot) {
+        return _normalizeForSearch(_instructorDayLabel(slot['day'])) ==
+            _normalizeForSearch(_instructorDayFilter);
+      });
+
+      if (!hasMatchingDay) return false;
+    }
+
+    return true;
+  }
+
+  bool _matchesInstructorSearch(Map<String, dynamic> instructor, String normalizedQuery) {
+    if (normalizedQuery.isEmpty) return true;
+
+    final officeHoursText = _instructorOfficeHours(instructor).map((slot) {
+      final day = slot['day']?.toString() ?? '';
+      final start = slot['startTime']?.toString() ?? '';
+      final end = slot['endTime']?.toString() ?? '';
+      final office = slot['office']?.toString() ?? '';
+      return '$day $start $end $office';
+    }).join(' ');
+
+    final searchableText = [
+      instructor['name'],
+      instructor['department'],
+      instructor['title'],
+      instructor['office'],
+      instructor['email'],
+      officeHoursText,
+    ].map((value) => value?.toString() ?? '').join(' ');
+
+    return _normalizeForSearch(searchableText).contains(normalizedQuery);
+  }
+
+  Widget _buildInstructorFilterButton(List<Map<String, dynamic>> instructors) {
+    final activeCount = _activeInstructorFilterCount();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 48,
+          width: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _adminBorderColor()),
           ),
+          child: IconButton(
+            tooltip: "Filter instructors",
+            icon: Icon(
+              Icons.tune,
+              color: activeCount > 0 ? _adminPrimaryColor() : _adminTextMutedColor(),
+            ),
+            onPressed: () => _openInstructorFilterSheet(instructors),
+          ),
+        ),
+        if (activeCount > 0)
+          Positioned(
+            right: -4,
+            top: -5,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(
+                color: AppTheme.destructiveColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                activeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _openInstructorFilterSheet(List<Map<String, dynamic>> instructors) {
+    String tempDepartment = _instructorDepartmentFilter;
+    String tempDay = _instructorDayFilter;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final media = MediaQuery.of(sheetContext);
+            final departmentOptions = _instructorDepartmentOptions(instructors);
+            final dayOptions = _instructorDayOptions(instructors);
+            final maxChipLabelWidth = media.size.width - 88;
+
+            if (!departmentOptions.contains(tempDepartment)) {
+              tempDepartment = _instructorFilterAll;
+            }
+
+            if (!dayOptions.contains(tempDay)) {
+              tempDay = _instructorFilterAll;
+            }
+
+            Widget buildFilterChip({
+              required String label,
+              required bool selected,
+              required VoidCallback onSelected,
+            }) {
+              return ChoiceChip(
+                label: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxChipLabelWidth),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                selected: selected,
+                onSelected: (_) => onSelected(),
+                selectedColor: _adminPrimaryColor().withValues(alpha: 0.14),
+                backgroundColor: Theme.of(sheetContext).cardColor,
+                side: BorderSide(
+                  color: selected ? _adminPrimaryColor() : _adminBorderColor(),
+                ),
+                labelStyle: TextStyle(
+                  color: selected ? _adminPrimaryColor() : _adminTextMutedColor(),
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              );
+            }
+
+            return SafeArea(
+              top: false,
+              child: SizedBox(
+                height: media.size.height * 0.82,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Filter Instructors",
+                              style: TextStyle(
+                                color: _adminTextPrimaryColor(),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: "Close",
+                            onPressed: () => Navigator.pop(sheetContext),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Department",
+                              style: TextStyle(
+                                color: _adminTextPrimaryColor(),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: departmentOptions.map((department) {
+                                return buildFilterChip(
+                                  label: department,
+                                  selected: tempDepartment == department,
+                                  onSelected: () {
+                                    setSheetState(() {
+                                      tempDepartment = department;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              "Office Day",
+                              style: TextStyle(
+                                color: _adminTextPrimaryColor(),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: dayOptions.map((day) {
+                                return buildFilterChip(
+                                  label: day,
+                                  selected: tempDay == day,
+                                  onSelected: () {
+                                    setSheetState(() {
+                                      tempDay = day;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        12,
+                        16,
+                        16 + media.viewInsets.bottom,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(sheetContext).scaffoldBackgroundColor,
+                        border: Border(
+                          top: BorderSide(color: _adminBorderColor()),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setSheetState(() {
+                                  tempDepartment = _instructorFilterAll;
+                                  tempDay = _instructorFilterAll;
+                                });
+                              },
+                              child: const Text("Clear"),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _instructorDepartmentFilter = tempDepartment;
+                                  _instructorDayFilter = tempDay;
+                                });
+                                Navigator.pop(sheetContext);
+                              },
+                              child: const Text("Apply"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
   Widget _buildInstructorsTab() {
-    return _buildCollectionFutureTab(
-      future: _instructorsFuture,
-      tabIndex: 3,
-      title: "Instructors",
-      searchController: _searchControllers[3]!,
-      searchFields: const ['name', 'department'],
-      onAdd: () => _openInstructorForm(isEdit: false),
-      itemBuilder: (e) => _buildListItem(
-        e['name'] ?? '',
-        e['department'] ?? '',
-            () => _openInstructorForm(isEdit: true, item: e),
-            () => _showDeleteDialog('instructors', (e['firestoreDocId'] ?? e['id']).toString()),
-      ),
+    final future = _instructorsFuture;
+
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(3));
+      return _buildListSkeleton("Loading Instructors...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading Instructors...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch Instructors data.",
+            onRetry: () => _refreshTab(3),
+          );
+        }
+
+        final allInstructors = snapshot.data ?? [];
+        final searchController = _searchControllers[3]!;
+        final normalizedQuery = _normalizeForSearch(searchController.text);
+
+        final filteredInstructors = allInstructors.where((instructor) {
+          return _matchesInstructorSearch(instructor, normalizedQuery) &&
+              _matchesInstructorFilters(instructor);
+        }).toList();
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Instructors (${filteredInstructors.length})",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => _openInstructorForm(isEdit: false),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Add"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppSearchBar(
+                      controller: searchController,
+                      placeholder: "Search instructors...",
+                      onChanged: (val) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildInstructorFilterButton(allInstructors),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: filteredInstructors.isEmpty
+                  ? Center(
+                child: Text(
+                  "No instructors match the current search/filter.",
+                  style: TextStyle(color: _adminTextMutedColor()),
+                ),
+              )
+                  : ListView.separated(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
+                itemCount: filteredInstructors.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, index) {
+                  final instructor = filteredInstructors[index];
+                  final name = instructor['name']?.toString().trim();
+                  final department = _instructorDepartmentLabel(instructor['department']);
+                  final title = instructor['title']?.toString().trim() ?? '';
+                  final office = instructor['office']?.toString().trim() ?? '';
+
+                  final subtitleParts = <String>[
+                    department,
+                    if (title.isNotEmpty) title,
+                    if (office.isNotEmpty) office,
+                  ];
+
+                  return _buildListItem(
+                    name == null || name.isEmpty ? 'Unnamed instructor' : name,
+                    subtitleParts.join(' • '),
+                        () => _openInstructorForm(isEdit: true, item: instructor),
+                        () => _showDeleteDialog(
+                      'instructors',
+                      (instructor['firestoreDocId'] ?? instructor['id']).toString(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -929,20 +2145,324 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildAnnouncementsTab() {
-    return _buildCollectionFutureTab(
-      future: _announcementsFuture,
-      tabIndex: 5,
-      title: "Announcements",
-      searchController: _searchControllers[5]!,
-      searchFields: const ['title', 'date'],
-      onAdd: () => _openAnnouncementForm(isEdit: false),
-      itemBuilder: (e) => _buildListItem(
-        e['title'] ?? '',
-        e['date'] ?? '',
-            () => _openAnnouncementForm(isEdit: true, item: e),
-            () => _showDeleteDialog('announcements', (e['firestoreDocId'] ?? e['id']).toString()),
+  int _activeAnnouncementFilterCount() {
+    return _announcementCategoryFilter == _announcementFilterAll ? 0 : 1;
+  }
+
+  String _announcementCategoryLabel(dynamic value) {
+    final category = value?.toString().trim();
+    if (category == null || category.isEmpty) return 'general';
+    return category;
+  }
+
+  List<String> _announcementCategoryOptions(List<Map<String, dynamic>> announcements) {
+    final categories = <String>{
+      _announcementFilterAll,
+      'general',
+      'academic',
+      'admin',
+      'scholarship',
+    };
+
+    for (final announcement in announcements) {
+      final category = _announcementCategoryLabel(announcement['category']);
+      if (category.isNotEmpty) categories.add(category);
+    }
+
+    return categories.toList();
+  }
+
+  bool _matchesAnnouncementFilters(Map<String, dynamic> announcement) {
+    if (_announcementCategoryFilter != _announcementFilterAll &&
+        _announcementCategoryLabel(announcement['category']) != _announcementCategoryFilter) {
+      return false;
+    }
+
+    return true;
+  }
+
+  Widget _buildAnnouncementFilterButton(List<Map<String, dynamic>> announcements) {
+    final activeCount = _activeAnnouncementFilterCount();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 48,
+          width: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _adminBorderColor()),
+          ),
+          child: IconButton(
+            tooltip: "Filter announcements",
+            icon: Icon(
+              Icons.tune,
+              color: activeCount > 0 ? _adminPrimaryColor() : _adminTextMutedColor(),
+            ),
+            onPressed: () => _openAnnouncementFilterSheet(announcements),
+          ),
+        ),
+        if (activeCount > 0)
+          Positioned(
+            right: -4,
+            top: -5,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(
+                color: AppTheme.destructiveColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                activeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _openAnnouncementFilterSheet(List<Map<String, dynamic>> announcements) {
+    String tempCategory = _announcementCategoryFilter;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final categoryOptions = _announcementCategoryOptions(announcements);
+
+            if (!categoryOptions.contains(tempCategory)) {
+              tempCategory = _announcementFilterAll;
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  16 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Filter Announcements",
+                            style: TextStyle(
+                              color: _adminTextPrimaryColor(),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: "Close",
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Category",
+                      style: TextStyle(
+                        color: _adminTextPrimaryColor(),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: categoryOptions.map((category) {
+                        final selected = tempCategory == category;
+                        return ChoiceChip(
+                          label: Text(category),
+                          selected: selected,
+                          onSelected: (_) {
+                            setSheetState(() {
+                              tempCategory = category;
+                            });
+                          },
+                          selectedColor: _adminPrimaryColor().withValues(alpha: 0.14),
+                          backgroundColor: Theme.of(context).cardColor,
+                          side: BorderSide(
+                            color: selected ? _adminPrimaryColor() : _adminBorderColor(),
+                          ),
+                          labelStyle: TextStyle(
+                            color: selected ? _adminPrimaryColor() : _adminTextMutedColor(),
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setSheetState(() {
+                                tempCategory = _announcementFilterAll;
+                              });
+                            },
+                            child: const Text("Clear"),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _announcementCategoryFilter = tempCategory;
+                              });
+                              Navigator.pop(sheetContext);
+                            },
+                            child: const Text("Apply"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAnnouncementsTab() {
+    final future = _announcementsFuture;
+
+    if (future == null) {
+      Future.microtask(() => _ensureTabFuture(5));
+      return _buildListSkeleton("Loading Announcements...");
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildListSkeleton("Loading Announcements...");
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(
+            "Failed to fetch Announcements data.",
+            onRetry: () => _refreshTab(5),
+          );
+        }
+
+        final allAnnouncements = snapshot.data ?? [];
+        final searchQuery = _normalizeForSearch(_searchControllers[5]!.text);
+
+        final filteredAnnouncements = allAnnouncements.where((announcement) {
+          if (!_matchesAnnouncementFilters(announcement)) return false;
+
+          if (searchQuery.isEmpty) return true;
+
+          final searchableText = [
+            announcement['title']?.toString() ?? '',
+            announcement['content']?.toString() ?? '',
+            announcement['date']?.toString() ?? '',
+            announcement['publishDate']?.toString() ?? '',
+            announcement['category']?.toString() ?? '',
+          ].map(_normalizeForSearch).join(' ');
+
+          return searchableText.contains(searchQuery);
+        }).toList();
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Announcements (${filteredAnnouncements.length})",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _openAnnouncementForm(isEdit: false),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Add"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppSearchBar(
+                      controller: _searchControllers[5]!,
+                      placeholder: "Search announcements...",
+                      onChanged: (val) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildAnnouncementFilterButton(allAnnouncements),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: filteredAnnouncements.isEmpty
+                  ? Center(
+                      child: Text(
+                        "No announcements match the current search/filter.",
+                        style: TextStyle(color: _adminTextMutedColor()),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 8.0,
+                      ),
+                      itemCount: filteredAnnouncements.length,
+                      separatorBuilder: (_, __) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final announcement = filteredAnnouncements[index];
+                        return _buildListItem(
+                          announcement['title'] ?? '',
+                          announcement['date'] ?? '',
+                          () => _openAnnouncementForm(isEdit: true, item: announcement),
+                          () => _showDeleteDialog(
+                            'announcements',
+                            (announcement['firestoreDocId'] ?? announcement['id']).toString(),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1293,21 +2813,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         }
 
         final allIssues = snapshot.data ?? [];
-        final sq = _normalizeForSearch(_searchControllers[8]!.text);
-
-        final filteredIssues = allIssues.where((iss) {
-          final title = iss['title']?.toString() ??
-              iss['subject']?.toString() ??
-              '';
-
-          return _normalizeForSearch(title).contains(sq) ||
-              _normalizeForSearch(iss['category']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(iss['studentName']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(iss['studentEmail']?.toString() ?? '').contains(sq) ||
-              _normalizeForSearch(iss['status']?.toString() ?? '').contains(sq);
-        }).toList();
-
-        return _buildIssuesTab(filteredIssues, _searchControllers[8]!);
+        return _buildIssuesTab(allIssues, _searchControllers[8]!);
       },
     );
   }
@@ -2440,75 +3946,341 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  int _activeIssueFilterCount() {
+    var count = 0;
+    if (_issueStatusFilter != 'all') count++;
+    if (_issuePriorityFilter != 'all') count++;
+    return count;
+  }
+
+  String _normalizeIssueStatus(dynamic rawStatus) {
+    final value = rawStatus?.toString().trim().toLowerCase() ?? 'open';
+    if (value == 'resolved' || value == 'closed' || value == 'çözüldü') {
+      return 'resolved';
+    }
+    return 'open';
+  }
+
+  String _normalizeIssuePriority(dynamic rawPriority) {
+    final value = rawPriority?.toString().trim().toLowerCase() ?? 'normal';
+
+    if (value == 'high' || value == 'yüksek') return 'high';
+    if (value == 'medium' || value == 'orta') return 'medium';
+    if (value == 'low' || value == 'düşük') return 'normal';
+    if (value == 'normal') return 'normal';
+
+    return 'normal';
+  }
+
+  String _issueStatusLabel(String status) {
+    return status == 'resolved' ? 'Resolved' : 'Open';
+  }
+
+  String _issuePriorityLabel(String priority) {
+    if (priority == 'high') return 'High';
+    if (priority == 'medium') return 'Medium';
+    return 'Normal';
+  }
+
+  Color _issuePriorityColor(String priority) {
+    if (priority == 'high') return AppTheme.destructiveColor;
+    if (priority == 'medium') return AppTheme.warningColor;
+    return AppTheme.successColor;
+  }
+
+  String _issueTitle(Map<dynamic, dynamic> issue) {
+    return issue['title']?.toString().trim().isNotEmpty == true
+        ? issue['title'].toString()
+        : (issue['subject']?.toString().trim().isNotEmpty == true
+        ? issue['subject'].toString()
+        : 'Untitled issue');
+  }
+
+  String _issueCreatedText(Map<dynamic, dynamic> issue) {
+    final dateText = issue['date']?.toString();
+    if (dateText != null && dateText.trim().isNotEmpty) {
+      return dateText;
+    }
+
+    final createdAt = issue['createdAt'];
+    if (createdAt is Timestamp) {
+      final date = createdAt.toDate();
+      return "${date.day.toString().padLeft(2, '0')}/"
+          "${date.month.toString().padLeft(2, '0')}/"
+          "${date.year} "
+          "${date.hour.toString().padLeft(2, '0')}:"
+          "${date.minute.toString().padLeft(2, '0')}";
+    }
+
+    return '-';
+  }
+
+  Widget _buildIssueFilterButton() {
+    final activeCount = _activeIssueFilterCount();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 48,
+          width: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _adminBorderColor()),
+          ),
+          child: IconButton(
+            tooltip: "Filter issues",
+            icon: Icon(
+              Icons.tune,
+              color: activeCount > 0 ? _adminPrimaryColor() : _adminTextMutedColor(),
+            ),
+            onPressed: _openIssueFilterSheet,
+          ),
+        ),
+        if (activeCount > 0)
+          Positioned(
+            right: -4,
+            top: -5,
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(
+                color: AppTheme.destructiveColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                activeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _issueFilterChoiceChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    Color? activeColor,
+  }) {
+    final color = activeColor ?? _adminPrimaryColor();
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      selectedColor: color.withValues(alpha: 0.14),
+      backgroundColor: Theme.of(context).cardColor,
+      side: BorderSide(
+        color: selected ? color : _adminBorderColor(),
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected ? color : _adminTextMutedColor(),
+      ),
+    );
+  }
+
+  void _openIssueFilterSheet() {
+    String tempStatus = _issueStatusFilter;
+    String tempPriority = _issuePriorityFilter;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  16 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Filter Issues",
+                            style: TextStyle(
+                              color: _adminTextPrimaryColor(),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: "Close",
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Status",
+                      style: TextStyle(
+                        color: _adminTextPrimaryColor(),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _issueFilterChoiceChip(
+                          label: "All",
+                          selected: tempStatus == 'all',
+                          onTap: () => setSheetState(() => tempStatus = 'all'),
+                        ),
+                        _issueFilterChoiceChip(
+                          label: "Open",
+                          selected: tempStatus == 'open',
+                          activeColor: AppTheme.warningColor,
+                          onTap: () => setSheetState(() => tempStatus = 'open'),
+                        ),
+                        _issueFilterChoiceChip(
+                          label: "Resolved",
+                          selected: tempStatus == 'resolved',
+                          activeColor: AppTheme.successColor,
+                          onTap: () => setSheetState(() => tempStatus = 'resolved'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      "Priority",
+                      style: TextStyle(
+                        color: _adminTextPrimaryColor(),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _issueFilterChoiceChip(
+                          label: "All Priority",
+                          selected: tempPriority == 'all',
+                          onTap: () => setSheetState(() => tempPriority = 'all'),
+                        ),
+                        _issueFilterChoiceChip(
+                          label: "Normal",
+                          selected: tempPriority == 'normal',
+                          activeColor: AppTheme.successColor,
+                          onTap: () => setSheetState(() => tempPriority = 'normal'),
+                        ),
+                        _issueFilterChoiceChip(
+                          label: "Medium",
+                          selected: tempPriority == 'medium',
+                          activeColor: AppTheme.warningColor,
+                          onTap: () => setSheetState(() => tempPriority = 'medium'),
+                        ),
+                        _issueFilterChoiceChip(
+                          label: "High",
+                          selected: tempPriority == 'high',
+                          activeColor: AppTheme.destructiveColor,
+                          onTap: () => setSheetState(() => tempPriority = 'high'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setSheetState(() {
+                                tempStatus = 'all';
+                                tempPriority = 'all';
+                              });
+                            },
+                            child: const Text("Clear"),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _issueStatusFilter = tempStatus;
+                                _issuePriorityFilter = tempPriority;
+                              });
+                              Navigator.pop(sheetContext);
+                            },
+                            child: const Text("Apply"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildIssuesTab(List<dynamic> issues, TextEditingController searchController) {
-    String normalizeStatus(dynamic rawStatus) {
-      final value = rawStatus?.toString().trim().toLowerCase() ?? 'open';
-      if (value == 'resolved' || value == 'closed' || value == 'çözüldü') {
-        return 'resolved';
-      }
-      return 'open';
-    }
+    final sq = _normalizeForSearch(searchController.text);
 
-    String normalizePriority(dynamic rawPriority) {
-      final value = rawPriority?.toString().trim().toLowerCase() ?? 'normal';
+    final filteredIssues = issues.where((issue) {
+      final issueMap = issue as Map<dynamic, dynamic>;
+      final status = _normalizeIssueStatus(issueMap["status"]);
+      final priority = _normalizeIssuePriority(issueMap["priority"]);
 
-      if (value == 'high' || value == 'yüksek') return 'high';
-      if (value == 'medium' || value == 'orta') return 'medium';
-      if (value == 'low' || value == 'düşük') return 'normal';
-      if (value == 'normal') return 'normal';
+      final matchesStatus = _issueStatusFilter == 'all' ||
+          _issueStatusFilter == status;
 
-      return 'normal';
-    }
+      final matchesPriority = _issuePriorityFilter == 'all' ||
+          _issuePriorityFilter == priority;
 
-    String labelFromStatus(String status) {
-      return status == 'resolved' ? 'Resolved' : 'Open';
-    }
+      if (!matchesStatus || !matchesPriority) return false;
 
-    String labelFromPriority(String priority) {
-      if (priority == 'high') return 'High';
-      if (priority == 'medium') return 'Medium';
-      return 'Normal';
-    }
+      if (sq.isEmpty) return true;
 
-    Color colorFromPriority(String priority) {
-      if (priority == 'high') return AppTheme.destructiveColor;
-      if (priority == 'medium') return AppTheme.warningColor;
-      return AppTheme.successColor;
-    }
+      final searchableText = [
+        _issueTitle(issueMap),
+        issueMap['category']?.toString() ?? '',
+        issueMap['location']?.toString() ?? '',
+        issueMap['studentName']?.toString() ?? '',
+        issueMap['studentEmail']?.toString() ?? '',
+        _issueStatusLabel(status),
+        _issuePriorityLabel(priority),
+        issueMap['description']?.toString() ?? '',
+      ].map(_normalizeForSearch).join(' ');
 
-    String issueTitle(Map<dynamic, dynamic> issue) {
-      return issue['title']?.toString().trim().isNotEmpty == true
-          ? issue['title'].toString()
-          : (issue['subject']?.toString().trim().isNotEmpty == true
-          ? issue['subject'].toString()
-          : 'Untitled issue');
-    }
-
-    String issueCreatedText(Map<dynamic, dynamic> issue) {
-      final dateText = issue['date']?.toString();
-      if (dateText != null && dateText.trim().isNotEmpty) {
-        return dateText;
-      }
-
-      final createdAt = issue['createdAt'];
-      if (createdAt is Timestamp) {
-        final date = createdAt.toDate();
-        return "${date.day.toString().padLeft(2, '0')}/"
-            "${date.month.toString().padLeft(2, '0')}/"
-            "${date.year} "
-            "${date.hour.toString().padLeft(2, '0')}:"
-            "${date.minute.toString().padLeft(2, '0')}";
-      }
-
-      return '-';
-    }
-
-    final openIssues = issues.where((issue) {
-      return normalizeStatus(issue["status"]) != "resolved";
+      return searchableText.contains(sq);
     }).toList();
 
-    final resolvedIssues = issues.where((issue) {
-      return normalizeStatus(issue["status"]) == "resolved";
+    final openIssues = filteredIssues.where((issue) {
+      return _normalizeIssueStatus((issue as Map<dynamic, dynamic>)["status"]) != "resolved";
+    }).toList();
+
+    final resolvedIssues = filteredIssues.where((issue) {
+      return _normalizeIssueStatus((issue as Map<dynamic, dynamic>)["status"]) == "resolved";
     }).toList();
 
     final sortedIssues = [...openIssues, ...resolvedIssues];
@@ -2520,13 +4292,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Incoming Issues (${issues.length})",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  "Incoming Issues (${sortedIssues.length})",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 12),
               IconButton(
                 tooltip: "Refresh issues",
                 onPressed: () => _refreshTab(8),
@@ -2540,10 +4317,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppSearchBar(
-            controller: searchController,
-            placeholder: "Search title, category, student, or status...",
-            onChanged: (val) => setState(() {}),
+          child: Row(
+            children: [
+              Expanded(
+                child: AppSearchBar(
+                  controller: searchController,
+                  placeholder: "Search issues...",
+                  onChanged: (val) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _buildIssueFilterButton(),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -2551,7 +4336,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           child: sortedIssues.isEmpty
               ? Center(
             child: Text(
-              "No issue reports found.",
+              "No issue reports match the current search/filter.",
               style: TextStyle(color: _adminTextMutedColor()),
             ),
           )
@@ -2565,17 +4350,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             itemBuilder: (context, index) {
               final issue = sortedIssues[index] as Map<dynamic, dynamic>;
 
-              final status = normalizeStatus(issue["status"]);
+              final status = _normalizeIssueStatus(issue["status"]);
               final isResolved = status == "resolved";
 
-              final priority = normalizePriority(issue["priority"]);
-              final priorityColor = colorFromPriority(priority);
+              final priority = _normalizeIssuePriority(issue["priority"]);
+              final priorityColor = _issuePriorityColor(priority);
 
-              final title = issueTitle(issue);
+              final title = _issueTitle(issue);
               final category = issue["category"]?.toString() ?? "-";
               final location = issue["location"]?.toString() ?? "Not specified";
               final studentName = issue["studentName"]?.toString() ?? "Unknown Student";
-              final createdText = issueCreatedText(issue);
+              final createdText = _issueCreatedText(issue);
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -2587,11 +4372,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: priorityColor.withOpacity(0.1),
+                        color: priorityColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        labelFromPriority(priority),
+                        _issuePriorityLabel(priority),
                         style: TextStyle(
                           color: priorityColor,
                           fontSize: 12,
@@ -2607,12 +4392,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       ),
                       decoration: BoxDecoration(
                         color: isResolved
-                            ? AppTheme.successColor.withOpacity(0.1)
-                            : AppTheme.warningColor.withOpacity(0.1),
+                            ? AppTheme.successColor.withValues(alpha: 0.1)
+                            : AppTheme.warningColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        labelFromStatus(status),
+                        _issueStatusLabel(status),
                         style: TextStyle(
                           color: isResolved
                               ? AppTheme.successColor
@@ -3413,7 +5198,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final capacityCtrl = TextEditingController(text: (item?['capacity'] ?? 40).toString());
 
     final List<String> floorOptions = [
-      "Basement Floor",
+      "B2 Floor",
+      "B1 Floor",
       "Ground Floor",
       "1st Floor",
       "2nd Floor",
