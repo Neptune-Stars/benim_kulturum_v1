@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import '../data/data_service.dart';
@@ -34,9 +35,15 @@ class HomeScreen extends StatelessWidget {
         Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
     final dividerColor = Theme.of(context).dividerColor;
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: AppTheme.primaryColor,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,8 +212,10 @@ class HomeScreen extends StatelessWidget {
                   final data = snapshot.data ?? {};
 
                   final visibleAnnouncements =
-                  (data['announcements'] as List<dynamic>? ?? []).where((raw) {
-                    final announcement = Map<dynamic, dynamic>.from(raw as Map);
+                  (data['announcements'] as List<dynamic>? ?? [])
+                      .where((raw) {
+                    final announcement =
+                    Map<dynamic, dynamic>.from(raw as Map);
                     return _isVisibleAnnouncement(announcement);
                   }).toList();
 
@@ -232,13 +241,15 @@ class HomeScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SectionHeader(
                           title: "Recent Announcements",
-                          actionLabel: announcements.isEmpty ? null : "See All",
+                          actionLabel:
+                          announcements.isEmpty ? null : "See All",
                           onAction: announcements.isEmpty
                               ? null
                               : () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const AnnouncementsScreen(),
+                              builder: (_) =>
+                              const AnnouncementsScreen(),
                             ),
                           ),
                         ),
@@ -249,7 +260,8 @@ class HomeScreen extends StatelessWidget {
                         child: Column(
                           children: announcements.take(2).map((announcement) {
                             final item = Map<dynamic, dynamic>.from(
-                                announcement as Map);
+                              announcement as Map,
+                            );
                             return InfoCard(
                               title: item['title']?.toString() ?? '',
                               subtitle: _announcementDateText(item),
@@ -327,7 +339,12 @@ class HomeScreen extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.of(context).padding.top + 18,
+        16,
+        18,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppTheme.primaryColor, AppTheme.primaryLight],
@@ -433,12 +450,29 @@ class HomeScreen extends StatelessWidget {
   // ─────────────────────────────────────────────────────────────────────────
 
   static const Map<String, int> _monthMap = {
-    'january': 1,   'february': 2,  'march': 3,     'april': 4,
-    'may': 5,       'june': 6,      'july': 7,       'august': 8,
-    'september': 9, 'october': 10,  'november': 11,  'december': 12,
-    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-    'jun': 6, 'jul': 7, 'aug': 8,
-    'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+    'january': 1,
+    'february': 2,
+    'march': 3,
+    'april': 4,
+    'may': 5,
+    'june': 6,
+    'july': 7,
+    'august': 8,
+    'september': 9,
+    'october': 10,
+    'november': 11,
+    'december': 12,
+    'jan': 1,
+    'feb': 2,
+    'mar': 3,
+    'apr': 4,
+    'jun': 6,
+    'jul': 7,
+    'aug': 8,
+    'sep': 9,
+    'oct': 10,
+    'nov': 11,
+    'dec': 12,
   };
 
   /// Parses any of the following into a [DateTime]:
@@ -505,7 +539,13 @@ class HomeScreen extends StatelessWidget {
 
   /// Priority: publishAt → publishDate → date → createdAt → updatedAt
   DateTime? _announcementDateTime(Map<dynamic, dynamic> item) {
-    for (final field in ['publishAt', 'publishDate', 'date', 'createdAt', 'updatedAt']) {
+    for (final field in [
+      'publishAt',
+      'publishDate',
+      'date',
+      'createdAt',
+      'updatedAt',
+    ]) {
       final parsed = _parseDate(item[field]);
       if (parsed != null) return parsed;
     }
@@ -514,7 +554,13 @@ class HomeScreen extends StatelessWidget {
 
   /// Priority: startAt → date → eventDate → startDate → datetime
   DateTime? _eventDateTime(Map<dynamic, dynamic> item) {
-    for (final field in ['startAt', 'date', 'eventDate', 'startDate', 'datetime']) {
+    for (final field in [
+      'startAt',
+      'date',
+      'eventDate',
+      'startDate',
+      'datetime',
+    ]) {
       final parsed = _parseDate(item[field]);
       if (parsed != null) return parsed;
     }
@@ -593,14 +639,18 @@ class HomeScreen extends StatelessWidget {
   String _menuDescription(List<dynamic> items) {
     if (items.isEmpty) return "Menu information not found.";
 
-    final names = items.take(4).map((item) {
+    final names = items
+        .take(4)
+        .map((item) {
       if (item is Map) {
         final name = item['name']?.toString() ?? "";
         final price = item['price']?.toString() ?? "";
         return price.isEmpty ? name : "$name $price";
       }
       return item.toString();
-    }).where((text) => text.trim().isNotEmpty).toList();
+    })
+        .where((text) => text.trim().isNotEmpty)
+        .toList();
 
     if (items.length > 4) names.add("...");
     return names.join(", ");
