@@ -38,7 +38,6 @@ class _SearchScreenState extends State<SearchScreen> {
     "Cafeteria",
     "Office Hours",
   ];
-  final List<String> _recentSearches = ["FE-101", "Library", "John Doe", "Spring Festival"];
 
   @override
   void initState() {
@@ -128,27 +127,20 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildRecentSearches() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Recent Searches", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _recentSearches.map((search) => ActionChip(
-              label: Text(search),
-              backgroundColor: AppTheme.primaryLight.withOpacity(0.1),
-              side: BorderSide.none,
-              onPressed: () {
-                _searchController.text = search;
-                setState(() => _searchQuery = search);
-              },
-            )).toList(),
-          )
-        ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Text(
+          "Search for classrooms, instructors, events, announcements, cafeteria information, or campus locations.",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: mutedColor,
+            height: 1.4,
+          ),
+        ),
       ),
     );
   }

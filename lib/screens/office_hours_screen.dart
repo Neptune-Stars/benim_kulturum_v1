@@ -18,25 +18,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
   String _selectedFilter = "All";
   final List<String> _filters = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  List<Map<String, dynamic>> _generateRealisticFallback(String id, String office) {
-    final int seed = id.hashCode;
-    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    final List<String> blocks = [
-      "09:00 - 11:00", "10:00 - 12:00", "11:00 - 13:00",
-      "13:00 - 15:00", "14:00 - 16:00", "15:00 - 17:00"
-    ];
-
-    String day1 = days[seed % days.length];
-    String time1 = blocks[seed % blocks.length];
-    String day2 = days[(seed + 2) % days.length];
-    String time2 = blocks[(seed + 3) % blocks.length];
-
-    return [
-      {"day": day1, "startTime": time1.split(" - ")[0], "endTime": time1.split(" - ")[1], "office": office},
-      {"day": day2, "startTime": time2.split(" - ")[0], "endTime": time2.split(" - ")[1], "office": office},
-    ];
-  }
-
   String _normalize(String text) {
     return text.toLowerCase()
         .replaceAll('ş', 's').replaceAll('ı', 'i')
@@ -69,9 +50,11 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
             final String mainOffice = data['office'] ?? "Unknown";
 
 
-            List<dynamic> rawHours = (data['officeHours'] is List && (data['officeHours'] as List).isNotEmpty)
+            List<dynamic> rawHours =
+            (data['officeHours'] is List &&
+                (data['officeHours'] as List).isNotEmpty)
                 ? data['officeHours']
-                : _generateRealisticFallback(id, mainOffice);
+                : <dynamic>[];
 
 
             List<String> formattedSlots = [];
@@ -113,13 +96,6 @@ class _OfficeHoursScreenState extends State<OfficeHoursScreen> {
                 _normalize(dept).contains(_normalize(_searchQuery));
 
             if (matchesSearch && hasMatchingDay) {
-              // Eğer veritabanı kaydı bozuksa ve hiçbir slot oluşmadıysa taslağı zorla
-              if (formattedSlots.isEmpty && _selectedFilter == "All") {
-                final fallback = _generateRealisticFallback(id, mainOffice);
-                for (var f in fallback) {
-                  formattedSlots.add("${f['day']} • ${f['startTime']} - ${f['endTime']} | Office: ${f['office']}");
-                }
-              }
 
               groupedList.add({
                 "name": name,

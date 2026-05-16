@@ -28,18 +28,21 @@ class _InstructorsScreenState extends State<InstructorsScreen> {
   String _getDynamicOfficeHoursText(String id, List<dynamic>? existingHours) {
     if (existingHours != null && existingHours.isNotEmpty) {
       final first = existingHours.first;
+
       if (first is Map) {
-        return "${first['day']} • ${first['startTime']}-${first['endTime']}";
+        final day = first['day']?.toString() ?? '';
+        final start = first['startTime']?.toString() ?? '';
+        final end = first['endTime']?.toString() ?? '';
+
+        if (day.isNotEmpty && start.isNotEmpty && end.isNotEmpty) {
+          return "$day • $start-$end";
+        }
       }
+
       return first.toString();
     }
 
-
-    final int seed = id.hashCode;
-    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    final List<String> blocks = ["09:00-11:00", "10:00-12:00", "11:00-13:00", "13:00-15:00", "14:00-16:00", "15:00-17:00"];
-
-    return "${days[seed % 5]} • ${blocks[seed % 6]}";
+    return "Office hours not added";
   }
 
 
