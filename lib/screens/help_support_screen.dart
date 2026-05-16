@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_app_bar.dart';
-import 'report_issue_screen.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? AppTheme.textPrimary;
-    final mutedColor = isDark ? AppTheme.darkTextMuted : AppTheme.textMuted;
     final dividerColor = Theme.of(context).dividerColor;
     final cardColor = Theme.of(context).cardColor;
 

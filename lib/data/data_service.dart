@@ -477,34 +477,6 @@ class DataService {
     clearCollectionCache('priceCategories');
   }
 
-
-  static String _demoPriceCategoryKey(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll('&', ' ')
-        .replaceAll('/', ' ')
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-  }
-
-  static String _demoPriceDocId(String category, String name) {
-    final raw = '${category}_$name';
-    return raw
-        .trim()
-        .toLowerCase()
-        .replaceAll('&', ' ')
-        .replaceAll('/', ' ')
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-  }
-
-  static Future<List<Map<String, dynamic>>> _fetchList(String collectionName) {
-    return fetchCollection(collectionName);
-  }
-
   static Future<Map<String, dynamic>> fetchCafeteriaSettings({bool forceRefresh = false}) async {
     if (!forceRefresh && _cafeteriaSettingsCache != null) {
       return Map<String, dynamic>.from(_cafeteriaSettingsCache!);
@@ -598,11 +570,6 @@ class DataService {
 
       return item.toString().trim();
     }).toList();
-  }
-
-  static bool _menuHasRealContent(Map<String, dynamic> menu) {
-    final items = _cleanMenuItems(menu['items']);
-    return items.isNotEmpty;
   }
 
   static String normalizeMealType(String mealType) {
@@ -1382,66 +1349,6 @@ class DataService {
         "dashboardMessage": "There is no active menu for today.",
       };
     });
-  }
-
-  static String _demoAnnouncementDocId(String title) {
-    return title
-        .trim()
-        .toLowerCase()
-        .replaceAll('&', ' ')
-        .replaceAll('/', ' ')
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-  }
-
-  static String _demoAnnouncementDisplayDate(DateTime value) {
-    final day = value.day.toString().padLeft(2, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    final year = value.year.toString();
-    return '$day/$month/$year';
-  }
-
-  static String _demoAnnouncementDisplayTime(DateTime value) {
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-
-  static String _demoEventDocId(String title) {
-    return title
-        .trim()
-        .toLowerCase()
-        .replaceAll('&', ' ')
-        .replaceAll('/', ' ')
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-  }
-
-  static String _demoEventDisplayDate(DateTime value) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[value.month - 1]} ${value.day}, ${value.year}';
-  }
-
-  static String _demoEventDisplayTime(DateTime value) {
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
   }
 
 }

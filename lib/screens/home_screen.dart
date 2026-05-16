@@ -10,7 +10,6 @@ import '../widgets/section_header.dart';
 import '../widgets/info_card.dart';
 
 import 'classrooms_screen.dart';
-import 'buildings_screen.dart';
 import 'instructors_screen.dart';
 import 'office_hours_screen.dart';
 import 'cafeteria_menu_screen.dart';
