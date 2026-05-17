@@ -29,10 +29,23 @@ class InstructorDetailScreen extends StatelessWidget {
     return cleaned.isNotEmpty ? cleaned : "-";
   }
 
+  String _resolveInstructorFavoriteId() {
+    final rawId = instructorData['id'] ??
+        instructorData['firestoreDocId'] ??
+        instructorData['docId'] ??
+        instructorData['email'] ??
+        instructorData['name'];
+
+    return rawId?.toString() ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final favProvider = context.watch<FavoritesProvider>();
-    final isFav = favProvider.isFavorite("inst_${instructorData['id']}");
+    final instructorFavoriteId = _resolveInstructorFavoriteId();
+    final isFav = instructorFavoriteId.isNotEmpty
+        ? favProvider.isFavorite("inst_$instructorFavoriteId")
+        : false;
 
     final String name = instructorData['name'] ?? 'Unknown';
     final String title = instructorData['title'] ?? '';
@@ -63,7 +76,11 @@ class InstructorDetailScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(isFav ? Icons.star : Icons.star_border, color: isFav ? AppTheme.warningColor : AppTheme.textPrimary),
-            onPressed: () => context.read<FavoritesProvider>().toggleFavorite("inst_${instructorData['id']}"),
+            onPressed: instructorFavoriteId.isEmpty
+                ? null
+                : () => context
+                .read<FavoritesProvider>()
+                .toggleFavorite("inst_$instructorFavoriteId"),
           )
         ],
       ),
